@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fastnoise2-populate"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/747d5c1db6c6b5a18508230dc9a7c118/fastnoise2-populate.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/26290170337fb1a759aa7e00a8230dd6/fastnoise2-populate-complete.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fcfe3551740c5ca9ec758c0657e6135b/fastnoise2-populate-build.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fcfe3551740c5ca9ec758c0657e6135b/fastnoise2-populate-configure.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fcfe3551740c5ca9ec758c0657e6135b/fastnoise2-populate-download.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fcfe3551740c5ca9ec758c0657e6135b/fastnoise2-populate-install.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fcfe3551740c5ca9ec758c0657e6135b/fastnoise2-populate-mkdir.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fcfe3551740c5ca9ec758c0657e6135b/fastnoise2-populate-patch.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fcfe3551740c5ca9ec758c0657e6135b/fastnoise2-populate-test.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/fcfe3551740c5ca9ec758c0657e6135b/fastnoise2-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"fastnoise2-populate"
+		],
+		"name" : "fastnoise2-populate"
+	}
+}

@@ -1,0 +1,10 @@
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\GLM-SUBBUILD\CMAKEFILES\A27A9FEC1B9BCE8336E41EF7E37AB164\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/glm-populate.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

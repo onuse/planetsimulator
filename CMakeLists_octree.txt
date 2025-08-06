@@ -1,0 +1,122 @@
+cmake_minimum_required(VERSION 3.20)
+project(OctreePlanet)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Set Vulkan SDK path if environment variable exists
+if(DEFINED ENV{VULKAN_SDK})
+    set(VULKAN_SDK $ENV{VULKAN_SDK})
+elseif(EXISTS "C:/VulkanSDK/1.4.321.1")
+    set(VULKAN_SDK "C:/VulkanSDK/1.4.321.1")
+    set(ENV{VULKAN_SDK} ${VULKAN_SDK})
+endif()
+
+# Find Vulkan
+find_package(Vulkan REQUIRED)
+
+# Source files
+set(SOURCES
+    octree_main.cpp
+    octree.cpp
+    vulkan_renderer.cpp
+    vulkan_compute.cpp
+    planet_generator.cpp
+    camera.cpp
+)
+
+# Header files
+set(HEADERS
+    octree.hpp
+    vulkan_renderer.hpp
+    vulkan_compute.hpp
+    planet_generator.hpp
+    camera.hpp
+)
+
+# Add executable
+add_executable(octree_planet ${SOURCES} ${HEADERS})
+
+# Link Vulkan
+target_link_libraries(octree_planet ${Vulkan_LIBRARIES})
+target_include_directories(octree_planet PRIVATE ${Vulkan_INCLUDE_DIRS})
+
+# Add GLFW
+include(FetchContent)
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.3.8
+)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(glfw)
+target_link_libraries(octree_planet glfw)
+
+# Add GLM
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1
+)
+FetchContent_MakeAvailable(glm)
+target_link_libraries(octree_planet glm::glm)
+
+# Add stb_image_write for screenshots
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(stb)
+target_include_directories(octree_planet PRIVATE ${stb_SOURCE_DIR})
+
+# Shader compilation
+set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
+set(SHADER_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/shaders)
+
+file(GLOB_RECURSE GLSL_SOURCE_FILES
+    "${SHADER_DIR}/*.frag"
+    "${SHADER_DIR}/*.vert"
+    "${SHADER_DIR}/*.comp"
+)
+
+foreach(GLSL ${GLSL_SOURCE_FILES})
+    get_filename_component(FILE_NAME ${GLSL} NAME)
+    set(SPIRV "${SHADER_BINARY_DIR}/${FILE_NAME}.spv")
+    add_custom_command(
+        OUTPUT ${SPIRV}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_BINARY_DIR}"
+        COMMAND ${Vulkan_GLSLC_EXECUTABLE} ${GLSL} -o ${SPIRV}
+        DEPENDS ${GLSL}
+    )
+    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+endforeach()
+
+add_custom_target(
+    Shaders 
+    DEPENDS ${SPIRV_BINARY_FILES}
+)
+
+add_dependencies(octree_planet Shaders)
+
+# Copy shaders to binary directory
+add_custom_command(TARGET octree_planet POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${SHADER_BINARY_DIR}"
+        "$<TARGET_FILE_DIR:octree_planet>/shaders"
+)
+
+# Set Visual Studio debugger working directory
+set_property(TARGET octree_planet PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# Optimizations for Release build
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(MSVC)
+        target_compile_options(octree_planet PRIVATE /O2 /GL)
+        target_link_options(octree_planet PRIVATE /LTCG)
+    else()
+        target_compile_options(octree_planet PRIVATE -O3 -march=native)
+    endif()
+endif()

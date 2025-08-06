@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/glm-populate"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/a27a9fec1b9bce8336e41ef7e37ab164/glm-populate.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/b7a62d97423dc71856fc64fdc9e7a710/glm-populate-complete.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/47c2e616172975f30e9b505b23b99fff/glm-populate-build.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/47c2e616172975f30e9b505b23b99fff/glm-populate-configure.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/47c2e616172975f30e9b505b23b99fff/glm-populate-download.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/47c2e616172975f30e9b505b23b99fff/glm-populate-install.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/47c2e616172975f30e9b505b23b99fff/glm-populate-mkdir.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/47c2e616172975f30e9b505b23b99fff/glm-populate-patch.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/47c2e616172975f30e9b505b23b99fff/glm-populate-test.rule"
+		},
+		{
+			"file" : "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/CMakeFiles/47c2e616172975f30e9b505b23b99fff/glm-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"glm-populate"
+		],
+		"name" : "glm-populate"
+	}
+}
