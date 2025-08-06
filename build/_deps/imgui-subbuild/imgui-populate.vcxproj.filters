@@ -1,44 +1,44 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\670e7ebb176c03759c984c248d50bf3c\imgui-populate-mkdir.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\da559e786b9f0562c39cc8696c479405\imgui-populate-mkdir.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\670e7ebb176c03759c984c248d50bf3c\imgui-populate-download.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\da559e786b9f0562c39cc8696c479405\imgui-populate-download.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\670e7ebb176c03759c984c248d50bf3c\imgui-populate-update.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\da559e786b9f0562c39cc8696c479405\imgui-populate-update.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\670e7ebb176c03759c984c248d50bf3c\imgui-populate-patch.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\da559e786b9f0562c39cc8696c479405\imgui-populate-patch.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\670e7ebb176c03759c984c248d50bf3c\imgui-populate-configure.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\da559e786b9f0562c39cc8696c479405\imgui-populate-configure.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\670e7ebb176c03759c984c248d50bf3c\imgui-populate-build.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\da559e786b9f0562c39cc8696c479405\imgui-populate-build.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\670e7ebb176c03759c984c248d50bf3c\imgui-populate-install.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\da559e786b9f0562c39cc8696c479405\imgui-populate-install.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\670e7ebb176c03759c984c248d50bf3c\imgui-populate-test.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\da559e786b9f0562c39cc8696c479405\imgui-populate-test.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\9ab4968cd378698a6eabe0ed5ceaed05\imgui-populate-complete.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\b393d81158bc33f0eab37b5147b3145c\imgui-populate-complete.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\7f843f86cca7fa54c9414c52623893a8\imgui-populate.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\4338696eca557cc3d2127be1102a8409\imgui-populate.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeLists.txt" />
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-subbuild\CMakeFiles\imgui-populate" />
+    <None Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-subbuild\CMakeFiles\imgui-populate" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{E5FA31FF-E6BE-3159-9D96-0F806CBF6DD3}</UniqueIdentifier>
+      <UniqueIdentifier>{CC26E9D7-0DD0-3801-9EBF-73901A5C482B}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\FASTNOISE2-SRC\SRC\CMAKELISTS.TXT
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\FASTNOISE2-SRC\SRC\CMAKELISTS.TXT
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build --check-stamp-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/src/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/planetsimulator -BC:/Users/glimm/Documents/Projects/planetsimulator/build --check-stamp-file C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/src/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

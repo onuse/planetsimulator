@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\CMakeFiles\f7bbe49d0efa10612b0ebc71209ddc4e\uninstall.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\CMakeFiles\cd4b9ff05994fcfbc3c78d21a81d65fe\uninstall.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\CMakeLists.txt" />
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\CMakeFiles\uninstall" />
+    <None Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\CMakeFiles\uninstall" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{7849A1AB-2A84-3C2F-8C92-0F49D166ACA1}</UniqueIdentifier>
+      <UniqueIdentifier>{8835F674-B46E-349A-BED2-23F63AFBC400}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

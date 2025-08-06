@@ -205,8 +205,24 @@ OctreeNode::GPUNode OctreeNode::toGPUNode(uint32_t& nodeIndex, uint32_t& voxelIn
         gpuNode.voxelIndex = voxelIndex;
         voxelIndex += LEAF_VOXELS;
         
-        // Encode dominant material type in flags
-        MaterialType dominantMaterial = voxels[0].material;
+        // Find the dominant material type by counting
+        int materialCounts[4] = {0, 0, 0, 0}; // Air, Rock, Water, Magma
+        for (const auto& voxel : voxels) {
+            if (static_cast<int>(voxel.material) < 4) {
+                materialCounts[static_cast<int>(voxel.material)]++;
+            }
+        }
+        
+        // Find most common material
+        MaterialType dominantMaterial = MaterialType::Air;
+        int maxCount = materialCounts[0];
+        for (int i = 1; i < 4; i++) {
+            if (materialCounts[i] > maxCount) {
+                maxCount = materialCounts[i];
+                dominantMaterial = static_cast<MaterialType>(i);
+            }
+        }
+        
         gpuNode.flags |= (static_cast<uint32_t>(dominantMaterial) << 8);
     } else {
         gpuNode.childrenIndex = nodeIndex;
@@ -222,7 +238,7 @@ OctreeNode::GPUNode OctreeNode::toGPUNode(uint32_t& nodeIndex, uint32_t& voxelIn
 // ============================================================================
 
 OctreePlanet::OctreePlanet(float radius, int maxDepth)
-    : radius(radius), maxDepth(std::min(maxDepth, 7)) {  // Cap at depth 7 for performance
+    : radius(radius), maxDepth(std::min(maxDepth, 12)) {  // Increased cap to depth 12 for higher fidelity
     // Create root node that encompasses entire planet
     // Root size should be large enough to contain the sphere
     float rootHalfSize = radius * 1.5f; // Some padding around the planet
@@ -238,8 +254,8 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
     bool nearSurface = std::abs(distToCenter - radius) < nodeRadius;
     
     // Only subdivide near the surface for better performance
-    // Reduce depth to 3 minimum and 7 maximum for much fewer nodes
-    if (depth < 3 || (depth < 7 && nearSurface)) {
+    // Use the actual maxDepth parameter for higher fidelity
+    if (depth < 3 || (depth < maxDepth && nearSurface)) {
         node->subdivide();
         
         // Recursively subdivide children

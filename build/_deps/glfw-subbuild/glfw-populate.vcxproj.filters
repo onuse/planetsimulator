@@ -1,44 +1,44 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\f55ee70a55f98d082b09984b89d8dde5\glfw-populate-mkdir.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\9bb0e7c717cf352eb77620edbbec3e87\glfw-populate-mkdir.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\f55ee70a55f98d082b09984b89d8dde5\glfw-populate-download.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\9bb0e7c717cf352eb77620edbbec3e87\glfw-populate-download.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\f55ee70a55f98d082b09984b89d8dde5\glfw-populate-update.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\9bb0e7c717cf352eb77620edbbec3e87\glfw-populate-update.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\f55ee70a55f98d082b09984b89d8dde5\glfw-populate-patch.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\9bb0e7c717cf352eb77620edbbec3e87\glfw-populate-patch.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\f55ee70a55f98d082b09984b89d8dde5\glfw-populate-configure.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\9bb0e7c717cf352eb77620edbbec3e87\glfw-populate-configure.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\f55ee70a55f98d082b09984b89d8dde5\glfw-populate-build.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\9bb0e7c717cf352eb77620edbbec3e87\glfw-populate-build.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\f55ee70a55f98d082b09984b89d8dde5\glfw-populate-install.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\9bb0e7c717cf352eb77620edbbec3e87\glfw-populate-install.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\f55ee70a55f98d082b09984b89d8dde5\glfw-populate-test.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\9bb0e7c717cf352eb77620edbbec3e87\glfw-populate-test.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\0b3870aa5204c163ca9694aa7c80e609\glfw-populate-complete.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\ad8f8a943e87857fdff783128558e73c\glfw-populate-complete.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\17d4b02f0ad228e09c4decbff5b22bae\glfw-populate.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\7814e78fb9353b3f4aa92d63901cefdf\glfw-populate.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeLists.txt" />
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-subbuild\CMakeFiles\glfw-populate" />
+    <None Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-subbuild\CMakeFiles\glfw-populate" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{5FF89879-D6F0-3FAB-B9AB-B171399E39A1}</UniqueIdentifier>
+      <UniqueIdentifier>{5A062378-B345-34F7-BC66-C6942AD60066}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

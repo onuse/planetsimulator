@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp
+# Install script for directory: C:/Users/glimm/Documents/Projects/planetsimulator
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,39 +34,39 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-build/cmake_install.cmake")
+  include("C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-build/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-build/cmake_install.cmake")
+  include("C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glm-build/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/cmake_install.cmake")
+  include("C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/bin/Debug/OctreePlanet.exe")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/bin/Debug/OctreePlanet.exe")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/bin/Release/OctreePlanet.exe")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/bin/Release/OctreePlanet.exe")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/bin/MinSizeRel/OctreePlanet.exe")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/bin/MinSizeRel/OctreePlanet.exe")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ww][Ii][Tt][Hh][Dd][Ee][Bb][Ii][Nn][Ff][Oo])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/bin/RelWithDebInfo/OctreePlanet.exe")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/bin/RelWithDebInfo/OctreePlanet.exe")
   endif()
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/bin/shaders")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/bin/shaders")
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/install_local_manifest.txt"
+  file(WRITE "C:/Users/glimm/Documents/Projects/planetsimulator/build/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
 if(CMAKE_INSTALL_COMPONENT)
@@ -82,6 +82,6 @@ else()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "C:/Users/glimm/Documents/Projects/planetsimulator/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

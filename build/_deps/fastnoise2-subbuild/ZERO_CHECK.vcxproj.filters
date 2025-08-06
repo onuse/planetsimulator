@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\747d5c1db6c6b5a18508230dc9a7c118\generate.stamp.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\2e1db152c74643439b1a5d5751648d40\generate.stamp.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{8DFB01CF-52CB-3167-BC9D-F6C370D04A0B}</UniqueIdentifier>
+      <UniqueIdentifier>{5354B159-7737-30BE-AF45-0188B2FFD117}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

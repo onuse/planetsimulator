@@ -253,6 +253,9 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
     instances.reserve(visibleNodeCount);
     
     // Now render the actual octree nodes!
+    static bool debugOnce = true;
+    int materialCounts[4] = {0, 0, 0, 0}; // Air, Rock, Water, Magma
+    
     for (uint32_t nodeIdx : renderData.visibleNodes) {
         const auto& node = renderData.nodes[nodeIdx];
         
@@ -263,10 +266,18 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
         
         // Determine color based on material type (encoded in flags)
         uint32_t materialType = (node.flags >> 8) & 0xFF;
+        
+        // Count materials for debugging
+        if (materialType < 4) {
+            materialCounts[materialType]++;
+        }
+        
+        // Skip air nodes - they should be invisible
+        if (materialType == 0) {
+            continue;
+        }
+        
         switch (materialType) {
-            case 0: // Air
-                instance.color = glm::vec3(0.7f, 0.85f, 1.0f);
-                break;
             case 1: // Rock
                 instance.color = glm::vec3(0.5f, 0.4f, 0.3f);
                 break;
@@ -285,6 +296,24 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
         instances.push_back(instance);
     }
     
+    if (debugOnce) {
+        std::cout << "Material distribution in " << renderData.visibleNodes.size() << " visible nodes:\n";
+        std::cout << "  Air: " << materialCounts[0] << "\n";
+        std::cout << "  Rock: " << materialCounts[1] << "\n";
+        std::cout << "  Water: " << materialCounts[2] << "\n";
+        std::cout << "  Magma: " << materialCounts[3] << "\n";
+        
+        // Debug the actual instance colors being set
+        std::cout << "First 10 instance colors:\n";
+        for (size_t i = 0; i < std::min(size_t(10), instances.size()); i++) {
+            std::cout << "  Instance " << i << ": color=(" 
+                      << instances[i].color.r << "," 
+                      << instances[i].color.g << "," 
+                      << instances[i].color.b << "), material=" 
+                      << instances[i].materialType << "\n";
+        }
+        debugOnce = false;
+    }
     
     // Update or create instance buffer
     VkDeviceSize bufferSize = sizeof(InstanceData) * instances.size();
@@ -312,17 +341,6 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
     
     // Copy instance data to buffer
     memcpy(instanceBufferMapped, instances.data(), bufferSize);
-    
-    // Debug: Verify data was copied
-    static bool debugOnce = true;
-    // if (debugOnce && instances.size() > 0) {
-    //     InstanceData* mappedData = static_cast<InstanceData*>(instanceBufferMapped);
-    //     std::cout << "Verifying instance buffer data after memcpy:" << std::endl;
-    //     std::cout << "  First instance center: (" << mappedData[0].center.x << ", " 
-    //               << mappedData[0].center.y << ", " << mappedData[0].center.z << ")" << std::endl;
-    //     std::cout << "  First instance halfSize: " << mappedData[0].halfSize << std::endl;
-    //     debugOnce = false;
-    // }
 }
 
 // ============================================================================

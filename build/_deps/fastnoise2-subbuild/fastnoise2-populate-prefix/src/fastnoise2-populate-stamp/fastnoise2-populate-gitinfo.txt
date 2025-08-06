@@ -3,9 +3,9 @@
 # No other meaning or use of this file is supported.
 
 method=git
-command=C:/Program Files/CMake/bin/cmake.exe;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/tmp/fastnoise2-populate-gitclone.cmake
-source_dir=C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src
-work_dir=C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps
+command=C:/Program Files/CMake/bin/cmake.exe;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/tmp/fastnoise2-populate-gitclone.cmake
+source_dir=C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src
+work_dir=C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps
 repository=https://github.com/Auburn/FastNoise2.git
 remote=origin
 init_submodules=TRUE

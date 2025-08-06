@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glm-subbuild/cmake_install.cmake"
+		"C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glm-subbuild/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

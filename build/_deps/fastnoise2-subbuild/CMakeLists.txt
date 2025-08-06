@@ -28,8 +28,8 @@ set_property(GLOBAL PROPERTY _CMAKE_FindGit_GIT_EXECUTABLE_VERSION
 include(ExternalProject)
 ExternalProject_Add(fastnoise2-populate
                      "UPDATE_DISCONNECTED" "False" "GIT_REPOSITORY" "https://github.com/Auburn/FastNoise2.git" "EXTERNALPROJECT_INTERNAL_ARGUMENT_SEPARATOR" "GIT_TAG" "master" "GIT_SHALLOW" "TRUE"
-                    SOURCE_DIR          "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src"
-                    BINARY_DIR          "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build"
+                    SOURCE_DIR          "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src"
+                    BINARY_DIR          "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build"
                     CONFIGURE_COMMAND   ""
                     BUILD_COMMAND       ""
                     INSTALL_COMMAND     ""

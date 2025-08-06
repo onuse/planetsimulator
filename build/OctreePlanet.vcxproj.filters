@@ -1,99 +1,99 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\core\camera.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\core\camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\core\octree.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\core\octree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\main.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\gpu_octree.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\gpu_octree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\imgui_manager.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\imgui_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\vulkan_renderer.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\vulkan_renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\vulkan_renderer_commands.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\vulkan_renderer_commands.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\vulkan_renderer_device.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\vulkan_renderer_device.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\vulkan_renderer_pipeline.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\vulkan_renderer_pipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\vulkan_renderer_raymarch.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\vulkan_renderer_raymarch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\vulkan_renderer_resources.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\vulkan_renderer_resources.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\rendering\vulkan_renderer_screenshot_impl.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\rendering\vulkan_renderer_screenshot_impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\src\utils\screenshot.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\src\utils\screenshot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-src\imgui.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-src\imgui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-src\imgui_demo.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-src\imgui_demo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-src\imgui_draw.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-src\imgui_draw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-src\imgui_tables.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-src\imgui_tables.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-src\imgui_widgets.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-src\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-src\backends\imgui_impl_glfw.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-src\backends\imgui_impl_glfw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-src\backends\imgui_impl_vulkan.cpp">
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-src\backends\imgui_impl_vulkan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\include\core\camera.hpp">
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\include\core\camera.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\include\core\octree.hpp">
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\include\core\octree.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\include\rendering\gpu_octree.hpp">
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\include\rendering\gpu_octree.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\include\rendering\imgui_manager.hpp">
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\include\rendering\imgui_manager.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\include\rendering\vulkan_renderer.hpp">
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\include\rendering\vulkan_renderer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\include\stb_image_write.h">
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\include\stb_image_write.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\include\utils\screenshot.hpp">
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\include\utils\screenshot.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\CMakeLists.txt" />
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
-      <UniqueIdentifier>{03AE79B9-35E8-3EA3-A5E9-29C15F312061}</UniqueIdentifier>
+      <UniqueIdentifier>{A202E36E-BC37-3209-A494-FD4E212BC290}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{AED315EA-2FA6-360C-B81D-CB1C3F936F3F}</UniqueIdentifier>
+      <UniqueIdentifier>{24241758-A3AA-3289-B13A-90F8B1139405}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

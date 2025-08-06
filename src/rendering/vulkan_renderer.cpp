@@ -60,12 +60,13 @@ bool VulkanRenderer::initialize() {
             throw std::runtime_error("Failed to initialize ImGui");
         }
         
-        // Initialize GPU octree (optional)
-        if (useGPUOctree) {
-            gpuOctree = std::make_unique<GPUOctree>(device, physicalDevice);
-            createRayMarchPipeline();
-            std::cout << "GPU octree support initialized\n";
-        }
+        // DISABLED: GPU octree ray marching - use instance-based rendering only
+        // if (useGPUOctree) {
+        //     gpuOctree = std::make_unique<GPUOctree>(device, physicalDevice);
+        //     createRayMarchPipeline();
+        //     std::cout << "GPU octree support initialized\n";
+        // }
+        useGPUOctree = false; // Force instance-based rendering
         
         std::cout << "Vulkan renderer initialized successfully\n";
         return true;

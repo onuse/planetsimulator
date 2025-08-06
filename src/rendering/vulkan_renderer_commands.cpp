@@ -84,8 +84,8 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     
-    // Choose pipeline based on rendering mode
-    if (useGPUOctree && rayMarchPipeline != VK_NULL_HANDLE && !rayMarchDescriptorSets.empty()) {
+    // ALWAYS use instance-based rendering - no dual pipelines
+    if (false) { // DISABLED: ray marching pipeline
         // Use ray marching pipeline for GPU octree
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rayMarchPipeline);
         
@@ -98,7 +98,7 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         
         pushConstants.resolution[0] = static_cast<float>(swapChainExtent.width);
         pushConstants.resolution[1] = static_cast<float>(swapChainExtent.height);
-        pushConstants.planetRadius = currentPlanet ? currentPlanet->getRadius() : 6371000.0f; // Use actual planet radius
+        pushConstants.planetRadius = 6371000.0f; // Earth radius in meters
         pushConstants.debugMode = 1; // Debug mode: show planet sphere in red if hit
         
         vkCmdPushConstants(commandBuffer, rayMarchPipelineLayout,

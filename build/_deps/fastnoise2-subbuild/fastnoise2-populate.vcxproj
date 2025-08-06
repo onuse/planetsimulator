@@ -10,7 +10,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{399CACEE-99CC-3363-AB6B-36495BD367CB}</ProjectGuid>
+    <ProjectGuid>{184171C7-0D0F-3AAB-9AAD-FC0F78222B78}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
@@ -46,13 +46,13 @@
     </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fcfe3551740c5ca9ec758c0657e6135b\fastnoise2-populate-mkdir.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\5af91cde8e849c1aba0a6efbc5f5b6a3\fastnoise2-populate-mkdir.rule">
       <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Creating directories for 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/tmp/fastnoise2-populate-mkdirs.cmake
+"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/tmp/fastnoise2-populate-mkdirs.cmake
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-mkdir
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-mkdir
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -61,21 +61,21 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-mkdir</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-mkdir</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fcfe3551740c5ca9ec758c0657e6135b\fastnoise2-populate-download.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\5af91cde8e849c1aba0a6efbc5f5b6a3\fastnoise2-populate-download.rule">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Performing download step (git clone) for 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/tmp/fastnoise2-populate-gitclone.cmake
+"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/tmp/fastnoise2-populate-gitclone.cmake
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-download
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-download
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -83,20 +83,20 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\fastnoise2-populate-gitinfo.txt;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-mkdir;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-download</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\fastnoise2-populate-gitinfo.txt;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-mkdir;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-download</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fcfe3551740c5ca9ec758c0657e6135b\fastnoise2-populate-update.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\5af91cde8e849c1aba0a6efbc5f5b6a3\fastnoise2-populate-update.rule">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Performing update step for 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-src
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-src
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/tmp/fastnoise2-populate-gitupdate.cmake
+"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/tmp/fastnoise2-populate-gitupdate.cmake
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -104,19 +104,19 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\tmp\fastnoise2-populate-gitupdate.cmake;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\fastnoise2-populate-update-info.txt;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-download;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-update</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\tmp\fastnoise2-populate-gitupdate.cmake;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\fastnoise2-populate-update-info.txt;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-download;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-update</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fcfe3551740c5ca9ec758c0657e6135b\fastnoise2-populate-patch.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\5af91cde8e849c1aba0a6efbc5f5b6a3\fastnoise2-populate-patch.rule">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No patch step for 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-patch
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-patch
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -124,24 +124,24 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\fastnoise2-populate-patch-info.txt;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-update;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-patch</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\fastnoise2-populate-patch-info.txt;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-update;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-patch</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fcfe3551740c5ca9ec758c0657e6135b\fastnoise2-populate-configure.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\5af91cde8e849c1aba0a6efbc5f5b6a3\fastnoise2-populate-configure.rule">
       <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No configure step for 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-build
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-build
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-configure
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-configure
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -149,23 +149,23 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\tmp\fastnoise2-populate-cfgcmd.txt;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-patch;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-configure</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\tmp\fastnoise2-populate-cfgcmd.txt;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-patch;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-configure</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fcfe3551740c5ca9ec758c0657e6135b\fastnoise2-populate-build.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\5af91cde8e849c1aba0a6efbc5f5b6a3\fastnoise2-populate-build.rule">
       <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No build step for 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-build
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-build
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-build
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-build
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -173,23 +173,23 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-configure;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-build</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-configure;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-build</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fcfe3551740c5ca9ec758c0657e6135b\fastnoise2-populate-install.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\5af91cde8e849c1aba0a6efbc5f5b6a3\fastnoise2-populate-install.rule">
       <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No install step for 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-build
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-build
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-install
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-install
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -197,23 +197,23 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-build;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-install</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-build;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-install</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fcfe3551740c5ca9ec758c0657e6135b\fastnoise2-populate-test.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\5af91cde8e849c1aba0a6efbc5f5b6a3\fastnoise2-populate-test.rule">
       <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No test step for 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-build
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-build
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-test
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-test
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -221,21 +221,21 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-install;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-test</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-install;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-test</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\26290170337fb1a759aa7e00a8230dd6\fastnoise2-populate-complete.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\82ff02dfb7d2a27aae85cbc3a304ebfa\fastnoise2-populate-complete.rule">
       <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Completed 'fastnoise2-populate'</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/Debug
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/CMakeFiles/Debug
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/Debug/fastnoise2-populate-complete
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/CMakeFiles/Debug/fastnoise2-populate-complete
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-done
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/fastnoise2-populate-prefix/src/fastnoise2-populate-stamp/Debug/fastnoise2-populate-done
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -243,14 +243,14 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-install;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-mkdir;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-download;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-update;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-patch;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-configure;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-build;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-test;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\Debug\fastnoise2-populate-complete</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-install;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-mkdir;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-download;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-update;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-patch;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-configure;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-build;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\src\fastnoise2-populate-stamp\Debug\fastnoise2-populate-test;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\Debug\fastnoise2-populate-complete</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\747d5c1db6c6b5a18508230dc9a7c118\fastnoise2-populate.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\2e1db152c74643439b1a5d5751648d40\fastnoise2-populate.rule">
       <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'"></Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
@@ -260,18 +260,18 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\Debug\fastnoise2-populate-complete;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fastnoise2-populate</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\Debug\fastnoise2-populate-complete;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\fastnoise2-populate</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeLists.txt">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeLists.txt">
       <UseUtf8Encoding>Always</UseUtf8Encoding>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild --check-stamp-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-subbuild/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild -BC:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild --check-stamp-file C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-subbuild/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -279,19 +279,19 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\PatchInfo.txt.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\RepositoryInfo.txt.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\UpdateInfo.txt.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\cfgcmd.txt.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\gitclone.cmake.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\gitupdate.cmake.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\mkdirs.cmake.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\shared_internal_commands.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\4.1.0-rc4\CMakeSystem.cmake;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\tmp\fastnoise2-populate-mkdirs.cmake;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\generate.stamp</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\PatchInfo.txt.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\RepositoryInfo.txt.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\UpdateInfo.txt.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\cfgcmd.txt.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\gitclone.cmake.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\gitupdate.cmake.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\mkdirs.cmake.in;C:\Program Files\CMake\share\cmake-4.1\Modules\ExternalProject\shared_internal_commands.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\4.1.0-rc4\CMakeSystem.cmake;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\fastnoise2-populate-prefix\tmp\fastnoise2-populate-mkdirs.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <None Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\CMakeFiles\fastnoise2-populate">
+    <None Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\CMakeFiles\fastnoise2-populate">
     </None>
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\fastnoise2-subbuild\ZERO_CHECK.vcxproj">
-      <Project>{2E6C2D45-207F-3A3B-880D-AF9EE63853EB}</Project>
+    <ProjectReference Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\fastnoise2-subbuild\ZERO_CHECK.vcxproj">
+      <Project>{5CDE98F8-2756-31DB-AA86-DD9F1C8B9DBA}</Project>
       <Name>ZERO_CHECK</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>

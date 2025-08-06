@@ -22,7 +22,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{72BB6695-1502-31A9-A30F-7EE071D869E2}</ProjectGuid>
+    <ProjectGuid>{2F00C9DA-D2BE-3B3B-8080-AC6FAA5C81A7}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
@@ -59,26 +59,26 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\lib\Debug\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\lib\Debug\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">glfw.dir\Debug\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">glfw3</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\lib\Release\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\lib\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">glfw.dir\Release\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">glfw3</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\lib\MinSizeRel\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\lib\MinSizeRel\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">glfw.dir\MinSizeRel\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">glfw3</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\lib\RelWithDebInfo\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\lib\RelWithDebInfo\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">glfw.dir\RelWithDebInfo\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">glfw3</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.lib</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -101,10 +101,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;_GLFW_USE_CONFIG_H;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -117,7 +117,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <ExceptionHandling>
@@ -141,10 +141,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_GLFW_USE_CONFIG_H;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -157,7 +157,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <ExceptionHandling>
@@ -181,10 +181,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_GLFW_USE_CONFIG_H;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -197,7 +197,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -220,10 +220,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;_GLFW_USE_CONFIG_H;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src;C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -235,11 +235,11 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\CMakeLists.txt">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\CMakeLists.txt">
       <UseUtf8Encoding>Always</UseUtf8Encoding>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-src/src/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-src/src/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build --check-stamp-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-build/src/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/planetsimulator -BC:/Users/glimm/Documents/Projects/planetsimulator/build --check-stamp-file C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-build/src/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -248,11 +248,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-src/src/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-src/src/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build --check-stamp-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-build/src/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/planetsimulator -BC:/Users/glimm/Documents/Projects/planetsimulator/build --check-stamp-file C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-build/src/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -261,11 +261,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-src/src/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-src/src/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build --check-stamp-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-build/src/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/planetsimulator -BC:/Users/glimm/Documents/Projects/planetsimulator/build --check-stamp-file C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-build/src/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -274,11 +274,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-src/src/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-src/src/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build --check-stamp-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/glfw-build/src/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/planetsimulator -BC:/Users/glimm/Documents/Projects/planetsimulator/build --check-stamp-file C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/glfw-build/src/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -287,41 +287,41 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\context.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\init.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\input.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\monitor.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\vulkan.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\window.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\win32_init.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\win32_joystick.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\win32_monitor.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\win32_time.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\win32_thread.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\win32_window.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\wgl_context.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\egl_context.c" />
-    <ClCompile Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\osmesa_context.c" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\internal.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\mappings.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-build\src\glfw_config.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include\GLFW\glfw3.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\include\GLFW\glfw3native.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\win32_platform.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\win32_joystick.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\wgl_context.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\egl_context.h" />
-    <ClInclude Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\glfw-src\src\osmesa_context.h" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\context.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\init.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\input.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\monitor.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\vulkan.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\window.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\win32_init.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\win32_joystick.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\win32_monitor.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\win32_time.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\win32_thread.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\win32_window.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\wgl_context.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\egl_context.c" />
+    <ClCompile Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\osmesa_context.c" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\internal.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\mappings.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-build\src\glfw_config.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include\GLFW\glfw3.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\include\GLFW\glfw3native.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\win32_platform.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\win32_joystick.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\wgl_context.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\egl_context.h" />
+    <ClInclude Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\glfw-src\src\osmesa_context.h" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\ZERO_CHECK.vcxproj">
-      <Project>{A522DD1A-9B28-37FA-8A21-F726181967EB}</Project>
+    <ProjectReference Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\ZERO_CHECK.vcxproj">
+      <Project>{C77B0329-1163-321B-AA7E-0543DB84986B}</Project>
       <Name>ZERO_CHECK</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>

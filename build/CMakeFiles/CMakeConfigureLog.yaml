@@ -35,6 +35,7 @@ events:
     found: "C:/Program Files/CMake/share/cmake-4.1/Modules/CMakeCXXCompilerId.cpp.in"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -58,7 +59,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -69,6 +69,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -92,7 +95,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -103,8 +105,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
   -
     kind: "message-v1"
     backtrace:
@@ -121,9 +126,9 @@ events:
       The output was:
       0
       MSBuild version 17.14.18+a338add32 for .NET Framework
-      Build started 2025-08-06 08:39:57.
+      Build started 2025-08-06 15:25:44.
       
-      Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
+      Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
         Creating directory "Debug\\".
         Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
@@ -136,7 +141,7 @@ events:
         CMakeCXXCompilerId.cpp
       Link:
         C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdCXX.lib" /MACHINE:X64 Debug\\CMakeCXXCompilerId.obj
-        CompilerIdCXX.vcxproj -> C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdCXX\\CompilerIdCXX.exe
+        CompilerIdCXX.vcxproj -> C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdCXX\\CompilerIdCXX.exe
       PostBuildEvent:
         for %%i in (cl.exe) do @echo CMAKE_CXX_COMPILER=%%~$PATH:i
         :VCEnd
@@ -144,13 +149,13 @@ events:
       FinalizeBuildStatus:
         Deleting file "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
         Touching "Debug\\CompilerIdCXX.tlog\\CompilerIdCXX.lastbuildstate".
-      Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (default targets).
+      Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (default targets).
       
       Build succeeded.
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.68
+      Time Elapsed 00:00:00.91
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -158,7 +163,7 @@ events:
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.vcxproj"
       
       The CXX compiler identification is MSVC, found in:
-        C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/4.1.0-rc4/CompilerIdCXX/CompilerIdCXX.exe
+        C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/4.1.0-rc4/CompilerIdCXX/CompilerIdCXX.exe
       
   -
     kind: "find-v1"
@@ -183,6 +188,7 @@ events:
       - "link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -201,7 +207,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -212,13 +217,17 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -242,7 +251,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -253,6 +261,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -276,7 +287,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -287,8 +297,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -312,6 +325,7 @@ events:
       - "lld-link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -330,7 +344,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -341,12 +354,18 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link"
+      - "C:/VulkanSDK/1.4.321.1/Bin/lld-link.com"
+      - "C:/VulkanSDK/1.4.321.1/Bin/lld-link.exe"
+      - "C:/VulkanSDK/1.4.321.1/Bin/lld-link"
       - "C:/Program Files/Oculus/Support/oculus-runtime/lld-link.com"
       - "C:/Program Files/Oculus/Support/oculus-runtime/lld-link.exe"
       - "C:/Program Files/Oculus/Support/oculus-runtime/lld-link"
@@ -401,9 +420,6 @@ events:
       - "C:/Users/glimm/adb-fastboot/platform-tools/lld-link.com"
       - "C:/Users/glimm/adb-fastboot/platform-tools/lld-link.exe"
       - "C:/Users/glimm/adb-fastboot/platform-tools/lld-link"
-      - "C:/Program Files/Go/bin/lld-link.com"
-      - "C:/Program Files/Go/bin/lld-link.exe"
-      - "C:/Program Files/Go/bin/lld-link"
       - "C:/Program Files/Docker/Docker/resources/bin/lld-link.com"
       - "C:/Program Files/Docker/Docker/resources/bin/lld-link.exe"
       - "C:/Program Files/Docker/Docker/resources/bin/lld-link"
@@ -434,15 +450,25 @@ events:
       - "C:/glsl/lld-link.com"
       - "C:/glsl/lld-link.exe"
       - "C:/glsl/lld-link"
+      - "C:/Program Files/Go/bin/lld-link.com"
+      - "C:/Program Files/Go/bin/lld-link.exe"
+      - "C:/Program Files/Go/bin/lld-link"
+      - "C:/Program Files/CMake/bin/lld-link.com"
+      - "C:/Program Files/CMake/bin/lld-link.exe"
+      - "C:/Program Files/CMake/bin/lld-link"
       - "C:/msys64/mingw64/bin/lld-link.com"
       - "C:/msys64/mingw64/bin/lld-link.exe"
       - "C:/msys64/mingw64/bin/lld-link"
       - "C:/msys64/usr/bin/lld-link.com"
       - "C:/msys64/usr/bin/lld-link.exe"
       - "C:/msys64/usr/bin/lld-link"
+      - "C:/Users/glimm/go/bin/lld-link.com"
+      - "C:/Users/glimm/go/bin/lld-link.exe"
+      - "C:/Users/glimm/go/bin/lld-link"
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -466,7 +492,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -477,6 +502,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -500,7 +528,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -511,8 +538,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -534,6 +564,7 @@ events:
       - "link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -552,7 +583,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -563,13 +593,17 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -593,7 +627,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -604,6 +637,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -627,7 +663,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -638,8 +673,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -661,6 +699,7 @@ events:
       - "mt"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -679,7 +718,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -690,12 +728,18 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.exe"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt"
+      - "C:/VulkanSDK/1.4.321.1/Bin/mt.com"
+      - "C:/VulkanSDK/1.4.321.1/Bin/mt.exe"
+      - "C:/VulkanSDK/1.4.321.1/Bin/mt"
       - "C:/Program Files/Oculus/Support/oculus-runtime/mt.com"
       - "C:/Program Files/Oculus/Support/oculus-runtime/mt.exe"
       - "C:/Program Files/Oculus/Support/oculus-runtime/mt"
@@ -750,9 +794,6 @@ events:
       - "C:/Users/glimm/adb-fastboot/platform-tools/mt.com"
       - "C:/Users/glimm/adb-fastboot/platform-tools/mt.exe"
       - "C:/Users/glimm/adb-fastboot/platform-tools/mt"
-      - "C:/Program Files/Go/bin/mt.com"
-      - "C:/Program Files/Go/bin/mt.exe"
-      - "C:/Program Files/Go/bin/mt"
       - "C:/Program Files/Docker/Docker/resources/bin/mt.com"
       - "C:/Program Files/Docker/Docker/resources/bin/mt.exe"
       - "C:/Program Files/Docker/Docker/resources/bin/mt"
@@ -783,15 +824,25 @@ events:
       - "C:/glsl/mt.com"
       - "C:/glsl/mt.exe"
       - "C:/glsl/mt"
+      - "C:/Program Files/Go/bin/mt.com"
+      - "C:/Program Files/Go/bin/mt.exe"
+      - "C:/Program Files/Go/bin/mt"
+      - "C:/Program Files/CMake/bin/mt.com"
+      - "C:/Program Files/CMake/bin/mt.exe"
+      - "C:/Program Files/CMake/bin/mt"
       - "C:/msys64/mingw64/bin/mt.com"
       - "C:/msys64/mingw64/bin/mt.exe"
       - "C:/msys64/mingw64/bin/mt"
       - "C:/msys64/usr/bin/mt.com"
       - "C:/msys64/usr/bin/mt.exe"
       - "C:/msys64/usr/bin/mt"
+      - "C:/Users/glimm/go/bin/mt.com"
+      - "C:/Users/glimm/go/bin/mt.exe"
+      - "C:/Users/glimm/go/bin/mt"
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -815,7 +866,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -826,6 +876,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -849,7 +902,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -860,8 +912,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -883,6 +938,7 @@ events:
       - "lib"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -901,7 +957,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -912,13 +967,17 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -942,7 +1001,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -953,6 +1011,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -976,7 +1037,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -987,8 +1047,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -1012,6 +1075,7 @@ events:
     names:
       - "rc"
     candidate_directories:
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -1030,7 +1094,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -1041,8 +1104,11 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
       - "C:/Program Files/bin/"
       - "C:/Program Files/sbin/"
       - "C:/Program Files/"
@@ -1056,6 +1122,9 @@ events:
       - "C:/Program Files/OctreePlanet/sbin/"
       - "C:/Program Files/OctreePlanet/"
     searched_directories:
+      - "C:/VulkanSDK/1.4.321.1/Bin/rc.com"
+      - "C:/VulkanSDK/1.4.321.1/Bin/rc.exe"
+      - "C:/VulkanSDK/1.4.321.1/Bin/rc"
       - "C:/Program Files/Oculus/Support/oculus-runtime/rc.com"
       - "C:/Program Files/Oculus/Support/oculus-runtime/rc.exe"
       - "C:/Program Files/Oculus/Support/oculus-runtime/rc"
@@ -1110,9 +1179,6 @@ events:
       - "C:/Users/glimm/adb-fastboot/platform-tools/rc.com"
       - "C:/Users/glimm/adb-fastboot/platform-tools/rc.exe"
       - "C:/Users/glimm/adb-fastboot/platform-tools/rc"
-      - "C:/Program Files/Go/bin/rc.com"
-      - "C:/Program Files/Go/bin/rc.exe"
-      - "C:/Program Files/Go/bin/rc"
       - "C:/Program Files/Docker/Docker/resources/bin/rc.com"
       - "C:/Program Files/Docker/Docker/resources/bin/rc.exe"
       - "C:/Program Files/Docker/Docker/resources/bin/rc"
@@ -1143,12 +1209,21 @@ events:
       - "C:/glsl/rc.com"
       - "C:/glsl/rc.exe"
       - "C:/glsl/rc"
+      - "C:/Program Files/Go/bin/rc.com"
+      - "C:/Program Files/Go/bin/rc.exe"
+      - "C:/Program Files/Go/bin/rc"
+      - "C:/Program Files/CMake/bin/rc.com"
+      - "C:/Program Files/CMake/bin/rc.exe"
+      - "C:/Program Files/CMake/bin/rc"
       - "C:/msys64/mingw64/bin/rc.com"
       - "C:/msys64/mingw64/bin/rc.exe"
       - "C:/msys64/mingw64/bin/rc"
       - "C:/msys64/usr/bin/rc.com"
       - "C:/msys64/usr/bin/rc.exe"
       - "C:/msys64/usr/bin/rc"
+      - "C:/Users/glimm/go/bin/rc.com"
+      - "C:/Users/glimm/go/bin/rc.exe"
+      - "C:/Users/glimm/go/bin/rc"
       - "C:/Program Files/bin/rc.com"
       - "C:/Program Files/bin/rc.exe"
       - "C:/Program Files/bin/rc"
@@ -1188,6 +1263,7 @@ events:
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1211,7 +1287,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1222,6 +1297,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1245,7 +1323,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1256,8 +1333,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/OctreePlanet"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1273,8 +1353,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-yv70jd"
-      binary: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-yv70jd"
+      source: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-6oo0bm"
+      binary: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-6oo0bm"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1284,40 +1364,40 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-yv70jd'
+        Change Dir: 'C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-6oo0bm'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7ee0d.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_4716a.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.18+a338add32 for .NET Framework
-        Build started 2025-08-06 08:39:58.
+        Build started 2025-08-06 15:25:45.
         
-        Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yv70jd\\cmTC_7ee0d.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6oo0bm\\cmTC_4716a.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_7ee0d.dir\\Debug\\".
+          Creating directory "cmTC_4716a.dir\\Debug\\".
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yv70jd\\Debug\\".
-          Creating directory "cmTC_7ee0d.dir\\Debug\\cmTC_7ee0d.tlog\\".
+          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6oo0bm\\Debug\\".
+          Creating directory "cmTC_4716a.dir\\Debug\\cmTC_4716a.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_7ee0d.dir\\Debug\\cmTC_7ee0d.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_7ee0d.dir\\Debug\\cmTC_7ee0d.tlog\\unsuccessfulbuild".
+          Creating "cmTC_4716a.dir\\Debug\\cmTC_4716a.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_4716a.dir\\Debug\\cmTC_4716a.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Fo"cmTC_7ee0d.dir\\Debug\\\\" /Fd"cmTC_7ee0d.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Fo"cmTC_4716a.dir\\Debug\\\\" /Fd"cmTC_4716a.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35213 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Fo"cmTC_7ee0d.dir\\Debug\\\\" /Fd"cmTC_7ee0d.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /Fo"cmTC_4716a.dir\\Debug\\\\" /Fd"cmTC_4716a.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yv70jd\\Debug\\cmTC_7ee0d.exe" /INCREMENTAL /ILK:"cmTC_7ee0d.dir\\Debug\\cmTC_7ee0d.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-yv70jd/Debug/cmTC_7ee0d.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-yv70jd/Debug/cmTC_7ee0d.lib" /MACHINE:X64  /machine:x64 cmTC_7ee0d.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_7ee0d.vcxproj -> C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yv70jd\\Debug\\cmTC_7ee0d.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6oo0bm\\Debug\\cmTC_4716a.exe" /INCREMENTAL /ILK:"cmTC_4716a.dir\\Debug\\cmTC_4716a.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-6oo0bm/Debug/cmTC_4716a.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-6oo0bm/Debug/cmTC_4716a.lib" /MACHINE:X64  /machine:x64 cmTC_4716a.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_4716a.vcxproj -> C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6oo0bm\\Debug\\cmTC_4716a.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_7ee0d.dir\\Debug\\cmTC_7ee0d.tlog\\unsuccessfulbuild".
-          Touching "cmTC_7ee0d.dir\\Debug\\cmTC_7ee0d.tlog\\cmTC_7ee0d.lastbuildstate".
-        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yv70jd\\cmTC_7ee0d.vcxproj" (default targets).
+          Deleting file "cmTC_4716a.dir\\Debug\\cmTC_4716a.tlog\\unsuccessfulbuild".
+          Touching "cmTC_4716a.dir\\Debug\\cmTC_4716a.tlog\\cmTC_4716a.lastbuildstate".
+        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6oo0bm\\cmTC_4716a.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.62
+        Time Elapsed 00:00:00.61
         
       exitCode: 0
   -
@@ -1368,6 +1448,7 @@ events:
       - "vulkan/vulkan.h"
     candidate_directories:
       - "C:/VulkanSDK/1.4.321.1/include/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -1386,7 +1467,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -1397,8 +1477,11 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
       - "C:/Program Files/include/"
       - "C:/Program Files/"
       - "C:/Program Files (x86)/include/"
@@ -1410,6 +1493,7 @@ events:
     found: "C:/VulkanSDK/1.4.321.1/include/"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1433,7 +1517,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1444,6 +1527,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1467,7 +1553,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1478,8 +1563,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/OctreePlanet"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1507,6 +1595,7 @@ events:
     candidate_directories:
       - "C:/VulkanSDK/1.4.321.1/lib/"
       - "C:/VulkanSDK/1.4.321.1/bin/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -1525,7 +1614,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -1536,8 +1624,11 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
       - "C:/Program Files/lib/"
       - "C:/Program Files/"
       - "C:/Program Files (x86)/lib/"
@@ -1547,11 +1638,11 @@ events:
       - "C:/Program Files/OctreePlanet/lib/"
       - "C:/Program Files/OctreePlanet/"
       - "C:/Program Files/OctreePlanet/bin/"
-      - "C:/Program Files/CMake/bin/"
       - "/bin/"
     found: "C:/VulkanSDK/1.4.321.1/Lib/vulkan-1.lib"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1575,7 +1666,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1586,6 +1676,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1609,7 +1702,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1620,8 +1712,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/OctreePlanet"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1652,6 +1747,7 @@ events:
       - "glslc"
     candidate_directories:
       - "C:/VulkanSDK/1.4.321.1/bin/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -1670,7 +1766,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -1681,8 +1776,11 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
       - "C:/Program Files/bin/"
       - "C:/Program Files/sbin/"
       - "C:/Program Files/"
@@ -1700,6 +1798,7 @@ events:
     found: "C:/VulkanSDK/1.4.321.1/Bin/glslc.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1723,7 +1822,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1734,6 +1832,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1757,7 +1858,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1768,8 +1868,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/OctreePlanet"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1796,6 +1899,7 @@ events:
       - "glslangValidator"
     candidate_directories:
       - "C:/VulkanSDK/1.4.321.1/bin/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -1814,7 +1918,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -1825,8 +1928,11 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
       - "C:/Program Files/bin/"
       - "C:/Program Files/sbin/"
       - "C:/Program Files/"
@@ -1844,6 +1950,7 @@ events:
     found: "C:/VulkanSDK/1.4.321.1/Bin/glslangValidator.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1867,7 +1974,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1878,6 +1984,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -1901,7 +2010,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -1912,8 +2020,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/OctreePlanet"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1931,8 +2042,8 @@ events:
     checks:
       - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
     directories:
-      source: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-w599zr"
-      binary: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-w599zr"
+      source: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-qkp0d1"
+      binary: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-qkp0d1"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1941,40 +2052,40 @@ events:
       variable: "CMAKE_HAVE_LIBC_PTHREAD"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-w599zr'
+        Change Dir: 'C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-qkp0d1'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_bf064.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7bcb3.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.18+a338add32 for .NET Framework
-        Build started 2025-08-06 08:39:59.
+        Build started 2025-08-06 15:25:46.
         
-        Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\cmTC_bf064.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\cmTC_7bcb3.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_bf064.dir\\Debug\\".
+          Creating directory "cmTC_7bcb3.dir\\Debug\\".
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\Debug\\".
-          Creating directory "cmTC_bf064.dir\\Debug\\cmTC_bf064.tlog\\".
+          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\Debug\\".
+          Creating directory "cmTC_7bcb3.dir\\Debug\\cmTC_7bcb3.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_bf064.dir\\Debug\\cmTC_bf064.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_bf064.dir\\Debug\\cmTC_bf064.tlog\\unsuccessfulbuild".
+          Creating "cmTC_7bcb3.dir\\Debug\\cmTC_7bcb3.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_7bcb3.dir\\Debug\\cmTC_7bcb3.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_bf064.dir\\Debug\\\\" /Fd"cmTC_bf064.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\src.cxx"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_7bcb3.dir\\Debug\\\\" /Fd"cmTC_7bcb3.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\src.cxx"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35213 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_bf064.dir\\Debug\\\\" /Fd"cmTC_bf064.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\src.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_7bcb3.dir\\Debug\\\\" /Fd"cmTC_7bcb3.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\src.cxx"
           src.cxx
-        C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\src.cxx(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\cmTC_bf064.vcxproj]
-        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\cmTC_bf064.vcxproj" (default targets) -- FAILED.
+        C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\src.cxx(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\cmTC_7bcb3.vcxproj]
+        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\cmTC_7bcb3.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\cmTC_bf064.vcxproj" (default target) (1) ->
+        "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\cmTC_7bcb3.vcxproj" (default target) (1) ->
         (ClCompile target) -> 
-          C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\src.cxx(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-w599zr\\cmTC_bf064.vcxproj]
+          C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\src.cxx(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qkp0d1\\cmTC_7bcb3.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.39
+        Time Elapsed 00:00:00.36
         
       exitCode: 1
   -
@@ -1987,8 +2098,8 @@ events:
     checks:
       - "Looking for pthread_create in pthreads"
     directories:
-      source: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-kstc5n"
-      binary: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-kstc5n"
+      source: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-uci39b"
+      binary: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-uci39b"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1997,42 +2108,42 @@ events:
       variable: "CMAKE_HAVE_PTHREADS_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-kstc5n'
+        Change Dir: 'C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-uci39b'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_33a53.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_0b244.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.18+a338add32 for .NET Framework
-        Build started 2025-08-06 08:40:00.
+        Build started 2025-08-06 15:25:47.
         
-        Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\cmTC_33a53.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\cmTC_0b244.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_33a53.dir\\Debug\\".
+          Creating directory "cmTC_0b244.dir\\Debug\\".
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\Debug\\".
-          Creating directory "cmTC_33a53.dir\\Debug\\cmTC_33a53.tlog\\".
+          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\Debug\\".
+          Creating directory "cmTC_0b244.dir\\Debug\\cmTC_0b244.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_33a53.dir\\Debug\\cmTC_33a53.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_33a53.dir\\Debug\\cmTC_33a53.tlog\\unsuccessfulbuild".
+          Creating "cmTC_0b244.dir\\Debug\\cmTC_0b244.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_0b244.dir\\Debug\\cmTC_0b244.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_33a53.dir\\Debug\\\\" /Fd"cmTC_33a53.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\CheckFunctionExists.cxx"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_0b244.dir\\Debug\\\\" /Fd"cmTC_0b244.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\CheckFunctionExists.cxx"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35213 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_33a53.dir\\Debug\\\\" /Fd"cmTC_33a53.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\CheckFunctionExists.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_0b244.dir\\Debug\\\\" /Fd"cmTC_0b244.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\CheckFunctionExists.cxx"
           CheckFunctionExists.cxx
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\Debug\\cmTC_33a53.exe" /INCREMENTAL /ILK:"cmTC_33a53.dir\\Debug\\cmTC_33a53.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-kstc5n/Debug/cmTC_33a53.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-kstc5n/Debug/cmTC_33a53.lib" /MACHINE:X64  /machine:x64 cmTC_33a53.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\cmTC_33a53.vcxproj]
-        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\cmTC_33a53.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\Debug\\cmTC_0b244.exe" /INCREMENTAL /ILK:"cmTC_0b244.dir\\Debug\\cmTC_0b244.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-uci39b/Debug/cmTC_0b244.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-uci39b/Debug/cmTC_0b244.lib" /MACHINE:X64  /machine:x64 cmTC_0b244.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\cmTC_0b244.vcxproj]
+        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\cmTC_0b244.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\cmTC_33a53.vcxproj" (default target) (1) ->
+        "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\cmTC_0b244.vcxproj" (default target) (1) ->
         (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kstc5n\\cmTC_33a53.vcxproj]
+          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uci39b\\cmTC_0b244.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.52
+        Time Elapsed 00:00:00.44
         
       exitCode: 1
   -
@@ -2045,8 +2156,8 @@ events:
     checks:
       - "Looking for pthread_create in pthread"
     directories:
-      source: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-ot5t17"
-      binary: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-ot5t17"
+      source: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-9l5k1p"
+      binary: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-9l5k1p"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2055,42 +2166,42 @@ events:
       variable: "CMAKE_HAVE_PTHREAD_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-ot5t17'
+        Change Dir: 'C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-9l5k1p'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_23a5e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_d0ca4.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.18+a338add32 for .NET Framework
-        Build started 2025-08-06 08:40:00.
+        Build started 2025-08-06 15:25:47.
         
-        Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\cmTC_23a5e.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\cmTC_d0ca4.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_23a5e.dir\\Debug\\".
+          Creating directory "cmTC_d0ca4.dir\\Debug\\".
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\Debug\\".
-          Creating directory "cmTC_23a5e.dir\\Debug\\cmTC_23a5e.tlog\\".
+          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\Debug\\".
+          Creating directory "cmTC_d0ca4.dir\\Debug\\cmTC_d0ca4.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_23a5e.dir\\Debug\\cmTC_23a5e.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_23a5e.dir\\Debug\\cmTC_23a5e.tlog\\unsuccessfulbuild".
+          Creating "cmTC_d0ca4.dir\\Debug\\cmTC_d0ca4.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_d0ca4.dir\\Debug\\cmTC_d0ca4.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_23a5e.dir\\Debug\\\\" /Fd"cmTC_23a5e.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\CheckFunctionExists.cxx"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_d0ca4.dir\\Debug\\\\" /Fd"cmTC_d0ca4.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\CheckFunctionExists.cxx"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35213 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_23a5e.dir\\Debug\\\\" /Fd"cmTC_23a5e.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\CheckFunctionExists.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /std:c++17 /Fo"cmTC_d0ca4.dir\\Debug\\\\" /Fd"cmTC_d0ca4.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /errorReport:queue "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\CheckFunctionExists.cxx"
           CheckFunctionExists.cxx
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\Debug\\cmTC_23a5e.exe" /INCREMENTAL /ILK:"cmTC_23a5e.dir\\Debug\\cmTC_23a5e.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-ot5t17/Debug/cmTC_23a5e.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-ot5t17/Debug/cmTC_23a5e.lib" /MACHINE:X64  /machine:x64 cmTC_23a5e.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\cmTC_23a5e.vcxproj]
-        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\cmTC_23a5e.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\Debug\\cmTC_d0ca4.exe" /INCREMENTAL /ILK:"cmTC_d0ca4.dir\\Debug\\cmTC_d0ca4.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-9l5k1p/Debug/cmTC_d0ca4.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-9l5k1p/Debug/cmTC_d0ca4.lib" /MACHINE:X64  /machine:x64 cmTC_d0ca4.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\cmTC_d0ca4.vcxproj]
+        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\cmTC_d0ca4.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\cmTC_23a5e.vcxproj" (default target) (1) ->
+        "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\cmTC_d0ca4.vcxproj" (default target) (1) ->
         (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ot5t17\\cmTC_23a5e.vcxproj]
+          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9l5k1p\\cmTC_d0ca4.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.49
+        Time Elapsed 00:00:00.48
         
       exitCode: 1
   -
@@ -2102,7 +2213,7 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.1/Modules/FetchContent.cmake:2145:EVAL:2 (__FetchContent_doPopulation)"
       - "C:/Program Files/CMake/share/cmake-4.1/Modules/FetchContent.cmake:2145 (cmake_language)"
       - "C:/Program Files/CMake/share/cmake-4.1/Modules/FetchContent.cmake:2384 (__FetchContent_Populate)"
-      - "CMakeLists.txt:92 (FetchContent_MakeAvailable)"
+      - "CMakeLists.txt:102 (FetchContent_MakeAvailable)"
     mode: "program"
     variable: "GIT_EXECUTABLE"
     description: "Git command line client"
@@ -2118,6 +2229,7 @@ events:
       - "git.cmd"
       - "git"
     candidate_directories:
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -2136,7 +2248,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -2147,8 +2258,11 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
       - "C:/Program Files/bin/"
       - "C:/Program Files/sbin/"
       - "C:/Program Files/"
@@ -2163,6 +2277,9 @@ events:
       - "C:/Program Files/OctreePlanet/"
       - "C:/Users/glimm/AppData/Local/Atlassian/SourceTree/git_local/bin/"
     searched_directories:
+      - "C:/VulkanSDK/1.4.321.1/Bin/git.cmd.com"
+      - "C:/VulkanSDK/1.4.321.1/Bin/git.cmd.exe"
+      - "C:/VulkanSDK/1.4.321.1/Bin/git.cmd"
       - "C:/Program Files/Oculus/Support/oculus-runtime/git.cmd.com"
       - "C:/Program Files/Oculus/Support/oculus-runtime/git.cmd.exe"
       - "C:/Program Files/Oculus/Support/oculus-runtime/git.cmd"
@@ -2217,9 +2334,6 @@ events:
       - "C:/Users/glimm/adb-fastboot/platform-tools/git.cmd.com"
       - "C:/Users/glimm/adb-fastboot/platform-tools/git.cmd.exe"
       - "C:/Users/glimm/adb-fastboot/platform-tools/git.cmd"
-      - "C:/Program Files/Go/bin/git.cmd.com"
-      - "C:/Program Files/Go/bin/git.cmd.exe"
-      - "C:/Program Files/Go/bin/git.cmd"
       - "C:/Program Files/Docker/Docker/resources/bin/git.cmd.com"
       - "C:/Program Files/Docker/Docker/resources/bin/git.cmd.exe"
       - "C:/Program Files/Docker/Docker/resources/bin/git.cmd"
@@ -2250,12 +2364,21 @@ events:
       - "C:/glsl/git.cmd.com"
       - "C:/glsl/git.cmd.exe"
       - "C:/glsl/git.cmd"
+      - "C:/Program Files/Go/bin/git.cmd.com"
+      - "C:/Program Files/Go/bin/git.cmd.exe"
+      - "C:/Program Files/Go/bin/git.cmd"
+      - "C:/Program Files/CMake/bin/git.cmd.com"
+      - "C:/Program Files/CMake/bin/git.cmd.exe"
+      - "C:/Program Files/CMake/bin/git.cmd"
       - "C:/msys64/mingw64/bin/git.cmd.com"
       - "C:/msys64/mingw64/bin/git.cmd.exe"
       - "C:/msys64/mingw64/bin/git.cmd"
       - "C:/msys64/usr/bin/git.cmd.com"
       - "C:/msys64/usr/bin/git.cmd.exe"
       - "C:/msys64/usr/bin/git.cmd"
+      - "C:/Users/glimm/go/bin/git.cmd.com"
+      - "C:/Users/glimm/go/bin/git.cmd.exe"
+      - "C:/Users/glimm/go/bin/git.cmd"
       - "C:/Program Files/bin/git.cmd.com"
       - "C:/Program Files/bin/git.cmd.exe"
       - "C:/Program Files/bin/git.cmd"
@@ -2295,6 +2418,9 @@ events:
       - "C:/Users/glimm/AppData/Local/Atlassian/SourceTree/git_local/bin/git.cmd.com"
       - "C:/Users/glimm/AppData/Local/Atlassian/SourceTree/git_local/bin/git.cmd.exe"
       - "C:/Users/glimm/AppData/Local/Atlassian/SourceTree/git_local/bin/git.cmd"
+      - "C:/VulkanSDK/1.4.321.1/Bin/git.com"
+      - "C:/VulkanSDK/1.4.321.1/Bin/git.exe"
+      - "C:/VulkanSDK/1.4.321.1/Bin/git"
       - "C:/Program Files/Oculus/Support/oculus-runtime/git.com"
       - "C:/Program Files/Oculus/Support/oculus-runtime/git.exe"
       - "C:/Program Files/Oculus/Support/oculus-runtime/git"
@@ -2349,9 +2475,6 @@ events:
       - "C:/Users/glimm/adb-fastboot/platform-tools/git.com"
       - "C:/Users/glimm/adb-fastboot/platform-tools/git.exe"
       - "C:/Users/glimm/adb-fastboot/platform-tools/git"
-      - "C:/Program Files/Go/bin/git.com"
-      - "C:/Program Files/Go/bin/git.exe"
-      - "C:/Program Files/Go/bin/git"
       - "C:/Program Files/Docker/Docker/resources/bin/git.com"
       - "C:/Program Files/Docker/Docker/resources/bin/git.exe"
       - "C:/Program Files/Docker/Docker/resources/bin/git"
@@ -2374,6 +2497,7 @@ events:
     found: "C:/Program Files/Git/cmd/git.exe"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -2397,7 +2521,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -2408,6 +2531,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -2431,7 +2557,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -2442,8 +2567,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/OctreePlanet"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -2477,6 +2605,7 @@ events:
     found: "C:/Program Files/CMake/share/cmake-4.1/Modules/CMakeCCompilerId.c.in"
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -2500,7 +2629,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -2511,6 +2639,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -2534,7 +2665,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -2545,8 +2675,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/OctreePlanet"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -2569,9 +2702,9 @@ events:
       The output was:
       0
       MSBuild version 17.14.18+a338add32 for .NET Framework
-      Build started 2025-08-06 08:40:06.
+      Build started 2025-08-06 15:25:53.
       
-      Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
+      Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
       PrepareForBuild:
         Creating directory "Debug\\".
         Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
@@ -2584,7 +2717,7 @@ events:
         CMakeCCompilerId.c
       Link:
         C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdC.lib" /MACHINE:X64 Debug\\CMakeCCompilerId.obj
-        CompilerIdC.vcxproj -> C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdC\\CompilerIdC.exe
+        CompilerIdC.vcxproj -> C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdC\\CompilerIdC.exe
       PostBuildEvent:
         for %%i in (cl.exe) do @echo CMAKE_C_COMPILER=%%~$PATH:i
         :VCEnd
@@ -2592,13 +2725,13 @@ events:
       FinalizeBuildStatus:
         Deleting file "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
         Touching "Debug\\CompilerIdC.tlog\\CompilerIdC.lastbuildstate".
-      Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdC\\CompilerIdC.vcxproj" (default targets).
+      Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\4.1.0-rc4\\CompilerIdC\\CompilerIdC.vcxproj" (default targets).
       
       Build succeeded.
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.66
+      Time Elapsed 00:00:00.60
       
       
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -2606,7 +2739,7 @@ events:
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.vcxproj"
       
       The C compiler identification is MSVC, found in:
-        C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/4.1.0-rc4/CompilerIdC/CompilerIdC.exe
+        C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/4.1.0-rc4/CompilerIdC/CompilerIdC.exe
       
   -
     kind: "find-v1"
@@ -2631,6 +2764,7 @@ events:
       - "lld-link"
     candidate_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/VulkanSDK/1.4.321.1/Bin/"
       - "C:/Program Files/Oculus/Support/oculus-runtime/"
       - "C:/Program Files/Microsoft MPI/Bin/"
       - "C:/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin/"
@@ -2649,7 +2783,6 @@ events:
       - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
       - "C:/Users/glimm/AppData/Local/NVIDIA/ChatWithRTX/env_nvd_rag/Lib/site-packages/torch/lib/"
       - "C:/Users/glimm/adb-fastboot/platform-tools/"
-      - "C:/Program Files/Go/bin/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
       - "C:/Program Files (x86)/NoteBook FanControl/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
@@ -2660,8 +2793,11 @@ events:
       - "C:/Users/glimm/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0/LocalCache/local-packages/Python312/Scripts/"
       - "C:/Users/glimm/AppData/Local/Microsoft/WindowsApps/"
       - "C:/glsl/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/CMake/bin/"
       - "C:/msys64/mingw64/bin/"
       - "C:/msys64/usr/bin/"
+      - "C:/Users/glimm/go/bin/"
       - "C:/Program Files/bin/"
       - "C:/Program Files/sbin/"
       - "C:/Program Files/"
@@ -2678,6 +2814,9 @@ events:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link"
+      - "C:/VulkanSDK/1.4.321.1/Bin/lld-link.com"
+      - "C:/VulkanSDK/1.4.321.1/Bin/lld-link.exe"
+      - "C:/VulkanSDK/1.4.321.1/Bin/lld-link"
       - "C:/Program Files/Oculus/Support/oculus-runtime/lld-link.com"
       - "C:/Program Files/Oculus/Support/oculus-runtime/lld-link.exe"
       - "C:/Program Files/Oculus/Support/oculus-runtime/lld-link"
@@ -2732,9 +2871,6 @@ events:
       - "C:/Users/glimm/adb-fastboot/platform-tools/lld-link.com"
       - "C:/Users/glimm/adb-fastboot/platform-tools/lld-link.exe"
       - "C:/Users/glimm/adb-fastboot/platform-tools/lld-link"
-      - "C:/Program Files/Go/bin/lld-link.com"
-      - "C:/Program Files/Go/bin/lld-link.exe"
-      - "C:/Program Files/Go/bin/lld-link"
       - "C:/Program Files/Docker/Docker/resources/bin/lld-link.com"
       - "C:/Program Files/Docker/Docker/resources/bin/lld-link.exe"
       - "C:/Program Files/Docker/Docker/resources/bin/lld-link"
@@ -2765,12 +2901,21 @@ events:
       - "C:/glsl/lld-link.com"
       - "C:/glsl/lld-link.exe"
       - "C:/glsl/lld-link"
+      - "C:/Program Files/Go/bin/lld-link.com"
+      - "C:/Program Files/Go/bin/lld-link.exe"
+      - "C:/Program Files/Go/bin/lld-link"
+      - "C:/Program Files/CMake/bin/lld-link.com"
+      - "C:/Program Files/CMake/bin/lld-link.exe"
+      - "C:/Program Files/CMake/bin/lld-link"
       - "C:/msys64/mingw64/bin/lld-link.com"
       - "C:/msys64/mingw64/bin/lld-link.exe"
       - "C:/msys64/mingw64/bin/lld-link"
       - "C:/msys64/usr/bin/lld-link.com"
       - "C:/msys64/usr/bin/lld-link.exe"
       - "C:/msys64/usr/bin/lld-link"
+      - "C:/Users/glimm/go/bin/lld-link.com"
+      - "C:/Users/glimm/go/bin/lld-link.exe"
+      - "C:/Users/glimm/go/bin/lld-link"
       - "C:/Program Files/bin/lld-link.com"
       - "C:/Program Files/bin/lld-link.exe"
       - "C:/Program Files/bin/lld-link"
@@ -2810,6 +2955,7 @@ events:
     found: false
     search_context:
       ENV{PATH}:
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -2833,7 +2979,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -2844,6 +2989,9 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\VulkanSDK\\1.4.321.1\\Bin"
         - "C:\\Program Files\\Oculus\\Support\\oculus-runtime"
         - "C:\\Program Files\\Microsoft MPI\\Bin\\"
         - "C:\\Program Files\\Microsoft\\jdk-11.0.12.7-hotspot\\bin"
@@ -2867,7 +3015,6 @@ events:
         - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\"
         - "C:\\Users\\glimm\\AppData\\Local\\NVIDIA\\ChatWithRTX\\env_nvd_rag\\Lib\\site-packages\\torch\\lib"
         - "C:\\Users\\glimm\\adb-fastboot\\platform-tools"
-        - "C:\\Program Files\\Go\\bin"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
         - "C:\\Program Files (x86)\\NoteBook FanControl\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
@@ -2878,8 +3025,11 @@ events:
         - "C:\\Users\\glimm\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python312\\Scripts"
         - "C:\\Users\\glimm\\AppData\\Local\\Microsoft\\WindowsApps\\"
         - "C:\\glsl"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\CMake\\bin"
         - "C:\\msys64\\mingw64\\bin"
         - "C:\\msys64\\usr\\bin"
+        - "C:\\Users\\glimm\\go\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/OctreePlanet"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -2895,8 +3045,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-60sa3b"
-      binary: "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-60sa3b"
+      source: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-163fbq"
+      binary: "C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-163fbq"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2905,40 +3055,40 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-60sa3b'
+        Change Dir: 'C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-163fbq'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_f6a29.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7de09.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.18+a338add32 for .NET Framework
-        Build started 2025-08-06 08:40:07.
+        Build started 2025-08-06 15:25:54.
         
-        Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-60sa3b\\cmTC_f6a29.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-163fbq\\cmTC_7de09.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_f6a29.dir\\Debug\\".
+          Creating directory "cmTC_7de09.dir\\Debug\\".
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-60sa3b\\Debug\\".
-          Creating directory "cmTC_f6a29.dir\\Debug\\cmTC_f6a29.tlog\\".
+          Creating directory "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-163fbq\\Debug\\".
+          Creating directory "cmTC_7de09.dir\\Debug\\cmTC_7de09.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_f6a29.dir\\Debug\\cmTC_f6a29.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_f6a29.dir\\Debug\\cmTC_f6a29.tlog\\unsuccessfulbuild".
+          Creating "cmTC_7de09.dir\\Debug\\cmTC_7de09.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_7de09.dir\\Debug\\cmTC_7de09.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Fo"cmTC_f6a29.dir\\Debug\\\\" /Fd"cmTC_f6a29.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Fo"cmTC_7de09.dir\\Debug\\\\" /Fd"cmTC_7de09.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35213 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Fo"cmTC_f6a29.dir\\Debug\\\\" /Fd"cmTC_f6a29.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Fo"cmTC_7de09.dir\\Debug\\\\" /Fd"cmTC_7de09.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
           CMakeCCompilerABI.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-60sa3b\\Debug\\cmTC_f6a29.exe" /INCREMENTAL /ILK:"cmTC_f6a29.dir\\Debug\\cmTC_f6a29.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-60sa3b/Debug/cmTC_f6a29.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/CMakeFiles/CMakeScratch/TryCompile-60sa3b/Debug/cmTC_f6a29.lib" /MACHINE:X64  /machine:x64 cmTC_f6a29.dir\\Debug\\CMakeCCompilerABI.obj
-          cmTC_f6a29.vcxproj -> C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-60sa3b\\Debug\\cmTC_f6a29.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-163fbq\\Debug\\cmTC_7de09.exe" /INCREMENTAL /ILK:"cmTC_7de09.dir\\Debug\\cmTC_7de09.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-163fbq/Debug/cmTC_7de09.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/glimm/Documents/Projects/planetsimulator/build/CMakeFiles/CMakeScratch/TryCompile-163fbq/Debug/cmTC_7de09.lib" /MACHINE:X64  /machine:x64 cmTC_7de09.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_7de09.vcxproj -> C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-163fbq\\Debug\\cmTC_7de09.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_f6a29.dir\\Debug\\cmTC_f6a29.tlog\\unsuccessfulbuild".
-          Touching "cmTC_f6a29.dir\\Debug\\cmTC_f6a29.tlog\\cmTC_f6a29.lastbuildstate".
-        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\worldgenerator_go\\cpp\\build\\CMakeFiles\\CMakeScratch\\TryCompile-60sa3b\\cmTC_f6a29.vcxproj" (default targets).
+          Deleting file "cmTC_7de09.dir\\Debug\\cmTC_7de09.tlog\\unsuccessfulbuild".
+          Touching "cmTC_7de09.dir\\Debug\\cmTC_7de09.tlog\\cmTC_7de09.lastbuildstate".
+        Done Building Project "C:\\Users\\glimm\\Documents\\Projects\\planetsimulator\\build\\CMakeFiles\\CMakeScratch\\TryCompile-163fbq\\cmTC_7de09.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.67
+        Time Elapsed 00:00:00.60
         
       exitCode: 0
   -

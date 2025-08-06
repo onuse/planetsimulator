@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src
+# Install script for directory: C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,58 +34,58 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/lib/Debug/FastNoiseD.lib")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/lib/Debug/FastNoiseD.lib")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/lib/Release/FastNoise.lib")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/lib/Release/FastNoise.lib")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/lib/MinSizeRel/FastNoise.lib")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/lib/MinSizeRel/FastNoise.lib")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ww][Ii][Tt][Hh][Dd][Ee][Bb][Ii][Nn][Ff][Oo])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/lib/RelWithDebInfo/FastNoise.lib")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/lib/RelWithDebInfo/FastNoise.lib")
   endif()
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FastSIMD" TYPE FILE FILES
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastSIMD/FastSIMD.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastSIMD/FastSIMD_Config.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastSIMD/FastSIMD_Export.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastSIMD/FunctionList.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastSIMD/InlInclude.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastSIMD/SIMDTypeList.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastSIMD/FastSIMD.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastSIMD/FastSIMD_Config.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastSIMD/FastSIMD_Export.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastSIMD/FunctionList.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastSIMD/InlInclude.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastSIMD/SIMDTypeList.h"
     )
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FastNoise" TYPE FILE FILES
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/FastNoise.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/FastNoise_C.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/FastNoise_Config.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/FastNoise_Export.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Metadata.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/SmartNode.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/FastNoise.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/FastNoise_C.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/FastNoise_Config.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/FastNoise_Export.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Metadata.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/SmartNode.h"
     )
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FastNoise/Generators" TYPE FILE FILES
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/BasicGenerators.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Blends.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Cellular.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/DomainWarp.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/DomainWarpFractal.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Fractal.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Generator.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Modifiers.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Perlin.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Simplex.h"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Value.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/BasicGenerators.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Blends.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Cellular.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/DomainWarp.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/DomainWarpFractal.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Fractal.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Generator.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Modifiers.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Perlin.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Simplex.h"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-src/src/../include/FastNoise/Generators/Value.h"
     )
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/generated/FastNoise2Config.cmake"
-    "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/generated/FastNoise2ConfigVersion.cmake"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/generated/FastNoise2Config.cmake"
+    "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/generated/FastNoise2ConfigVersion.cmake"
     )
 endif()
 
@@ -93,7 +93,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2/FastNoise2Targets.cmake")
     file(DIFFERENT _cmake_export_file_changed FILES
          "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2/FastNoise2Targets.cmake"
-         "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets.cmake")
+         "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets.cmake")
     if(_cmake_export_file_changed)
       file(GLOB _cmake_old_config_files "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2/FastNoise2Targets-*.cmake")
       if(_cmake_old_config_files)
@@ -106,42 +106,42 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
     endif()
     unset(_cmake_export_file_changed)
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets.cmake")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets.cmake")
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets-debug.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets-debug.cmake")
   endif()
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets-minsizerel.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets-minsizerel.cmake")
   endif()
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ww][Ii][Tt][Hh][Dd][Ee][Bb][Ii][Nn][Ff][Oo])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets-relwithdebinfo.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets-relwithdebinfo.cmake")
   endif()
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets-release.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/cmake/FastNoise2" TYPE FILE FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/CMakeFiles/Export/685b7b2fe36c8f3a2e6ec6f0a6279b14/FastNoise2Targets-release.cmake")
   endif()
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/pdb-files/Debug/")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/pdb-files/Debug/")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/pdb-files/Release/")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/pdb-files/Release/")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/pdb-files/MinSizeRel/")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/pdb-files/MinSizeRel/")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ww][Ii][Tt][Hh][Dd][Ee][Bb][Ii][Nn][Ff][Oo])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/pdb-files/RelWithDebInfo/")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE DIRECTORY FILES "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/pdb-files/RelWithDebInfo/")
   endif()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/src/cmake_install.cmake")
+  include("C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/src/cmake_install.cmake")
 
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/fastnoise2-build/install_local_manifest.txt"
+  file(WRITE "C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/fastnoise2-build/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

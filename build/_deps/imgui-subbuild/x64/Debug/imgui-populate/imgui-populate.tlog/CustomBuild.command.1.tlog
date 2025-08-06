@@ -1,8 +1,8 @@
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\670E7EBB176C03759C984C248D50BF3C\IMGUI-POPULATE-MKDIR.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\DA559E786B9F0562C39CC8696C479405\IMGUI-POPULATE-MKDIR.RULE
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/tmp/imgui-populate-mkdirs.cmake
+"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/tmp/imgui-populate-mkdirs.cmake
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-mkdir
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-mkdir
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -10,15 +10,15 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\670E7EBB176C03759C984C248D50BF3C\IMGUI-POPULATE-DOWNLOAD.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\DA559E786B9F0562C39CC8696C479405\IMGUI-POPULATE-DOWNLOAD.RULE
 setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/tmp/imgui-populate-gitclone.cmake
+"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/tmp/imgui-populate-gitclone.cmake
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-download
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-download
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -26,13 +26,13 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\670E7EBB176C03759C984C248D50BF3C\IMGUI-POPULATE-UPDATE.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\DA559E786B9F0562C39CC8696C479405\IMGUI-POPULATE-UPDATE.RULE
 setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-src
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-src
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/tmp/imgui-populate-gitupdate.cmake
+"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/tmp/imgui-populate-gitupdate.cmake
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -40,11 +40,11 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\670E7EBB176C03759C984C248D50BF3C\IMGUI-POPULATE-PATCH.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\DA559E786B9F0562C39CC8696C479405\IMGUI-POPULATE-PATCH.RULE
 setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-patch
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-patch
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -52,31 +52,15 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\670E7EBB176C03759C984C248D50BF3C\IMGUI-POPULATE-CONFIGURE.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\DA559E786B9F0562C39CC8696C479405\IMGUI-POPULATE-CONFIGURE.RULE
 setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-build
-if %errorlevel% neq 0 goto :cmEnd
-C:
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-configure
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\670E7EBB176C03759C984C248D50BF3C\IMGUI-POPULATE-BUILD.RULE
-setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-build
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-build
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-build
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-configure
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -84,15 +68,15 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\670E7EBB176C03759C984C248D50BF3C\IMGUI-POPULATE-INSTALL.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\DA559E786B9F0562C39CC8696C479405\IMGUI-POPULATE-BUILD.RULE
 setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-build
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-build
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-install
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-build
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -100,15 +84,15 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\670E7EBB176C03759C984C248D50BF3C\IMGUI-POPULATE-TEST.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\DA559E786B9F0562C39CC8696C479405\IMGUI-POPULATE-INSTALL.RULE
 setlocal
-cd C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\_deps\imgui-build
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-build
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E echo_append
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-test
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-install
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -116,13 +100,15 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\9AB4968CD378698A6EABE0ED5CEAED05\IMGUI-POPULATE-COMPLETE.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\DA559E786B9F0562C39CC8696C479405\IMGUI-POPULATE-TEST.RULE
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/CMakeFiles/Debug
+cd C:\Users\glimm\Documents\Projects\planetsimulator\build\_deps\imgui-build
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/CMakeFiles/Debug/imgui-populate-complete
+C:
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-done
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-test
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -130,7 +116,21 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\7F843F86CCA7FA54C9414C52623893A8\IMGUI-POPULATE.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\B393D81158BC33F0EAB37B5147B3145C\IMGUI-POPULATE-COMPLETE.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/CMakeFiles/Debug
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/CMakeFiles/Debug/imgui-populate-complete
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate-prefix/src/imgui-populate-stamp/Debug/imgui-populate-done
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\4338696ECA557CC3D2127BE1102A8409\IMGUI-POPULATE.RULE
 setlocal
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
@@ -138,9 +138,9 @@ endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKELISTS.TXT
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKELISTS.TXT
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild --check-stamp-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild -BC:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild --check-stamp-file C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

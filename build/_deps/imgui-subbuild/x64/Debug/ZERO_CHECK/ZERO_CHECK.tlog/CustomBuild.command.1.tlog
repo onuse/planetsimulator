@@ -1,6 +1,6 @@
-^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\WORLDGENERATOR_GO\CPP\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\7F843F86CCA7FA54C9414C52623893A8\GENERATE.STAMP.RULE
+^C:\USERS\GLIMM\DOCUMENTS\PROJECTS\PLANETSIMULATOR\BUILD\_DEPS\IMGUI-SUBBUILD\CMAKEFILES\4338696ECA557CC3D2127BE1102A8409\GENERATE.STAMP.RULE
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild -BC:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/glimm/Documents/Projects/worldgenerator_go/cpp/build/_deps/imgui-subbuild/imgui-populate.sln
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild -BC:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/glimm/Documents/Projects/planetsimulator/build/_deps/imgui-subbuild/imgui-populate.sln
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

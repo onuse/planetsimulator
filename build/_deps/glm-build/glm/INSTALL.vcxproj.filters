@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\glimm\Documents\Projects\worldgenerator_go\cpp\build\CMakeFiles\9811f5ab605a8e461b8d1f7b95ffc422\INSTALL_force.rule">
+    <CustomBuild Include="C:\Users\glimm\Documents\Projects\planetsimulator\build\CMakeFiles\f69d5c364848b9e7216ecff9d6839b85\INSTALL_force.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{7849A1AB-2A84-3C2F-8C92-0F49D166ACA1}</UniqueIdentifier>
+      <UniqueIdentifier>{8835F674-B46E-349A-BED2-23F63AFBC400}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

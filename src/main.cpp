@@ -15,7 +15,7 @@
 // Command line arguments
 struct Config {
     float radius = 6371000.0f;  // Earth radius in meters
-    int maxDepth = 10;           // Octree depth
+    int maxDepth = 7;            // Octree depth (7 gives ~40K nodes at 40+ FPS)
     uint32_t seed = 42;          // Random seed
     int width = 1280;            // Window width
     int height = 720;            // Window height
