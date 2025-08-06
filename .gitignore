@@ -40,3 +40,38 @@
 
 # debug information files
 *.dwo
+
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Compiled shaders
+*.spv
+shaders/*.spv
+
+# Screenshots
+screenshot_dev/
+screenshots/
+*.png
+*.jpg
+
+# ImGui configuration
+imgui.ini
+
+# IDE and editor files
+.vs/
+.vscode/
+*.swp
+*.bak
+*~
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Windows specific
+Thumbs.db
+Desktop.ini

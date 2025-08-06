@@ -662,6 +662,15 @@ OctreePlanet::RenderData OctreePlanet::prepareRenderData(const glm::vec3& viewPo
         
         // Only process leaf nodes for rendering
         if (node->isLeaf()) {
+            // Simple LOD: skip small distant nodes
+            float distanceToCamera = glm::length(viewPos - node->center);
+            float nodeScreenSize = node->halfSize / distanceToCamera;
+            
+            // Skip nodes that would be smaller than 0.5 pixels
+            if (nodeScreenSize < 0.0005f) {
+                return true; // Skip but continue traversal
+            }
+            
             // Check if this node contains non-air material
             bool hasNonAir = false;
             for (const auto& voxel : node->voxels) {
