@@ -230,6 +230,21 @@ set_target_properties(test_octree_core PROPERTIES
 )
 add_test(NAME OctreeCore COMMAND test_octree_core)
 
+# Test 1b: Material table functionality
+add_executable(test_material_table
+    tests/test_material_table.cpp
+    src/core/material_table.cpp
+)
+target_include_directories(test_material_table PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_material_table PRIVATE glm::glm)
+set_target_properties(test_material_table PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME MaterialTable COMMAND test_material_table)
+
 # Test 2: Material system
 add_executable(test_materials
     tests/test_materials.cpp
@@ -265,7 +280,7 @@ add_test(NAME GPURendering COMMAND test_gpu_rendering)
 # Add custom target to run tests (can be run manually with: cmake --build . --target run_tests)
 add_custom_target(run_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-    DEPENDS test_octree_core test_materials test_gpu_rendering
+    DEPENDS test_octree_core test_material_table test_materials test_gpu_rendering
             test_material_pipeline test_hierarchical_octree
             test_frustum_culling test_lod_selection
             test_mixed_voxel test_mixed_voxel_integration
