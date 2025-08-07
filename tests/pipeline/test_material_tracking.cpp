@@ -41,12 +41,12 @@ public:
                 if (voxelIdx != 0xFFFFFFFF && voxelIdx + 8 <= renderData.voxels.size()) {
                     for (int i = 0; i < 8; i++) {
                         const auto& voxel = renderData.voxels[voxelIdx + i];
-                        switch (voxel.material) {
-                            case octree::MaterialType::Air: result.airCount++; break;
-                            case octree::MaterialType::Rock: result.rockCount++; break;
-                            case octree::MaterialType::Water: result.waterCount++; break;
-                            case octree::MaterialType::Magma: result.magmaCount++; break;
-                        }
+                        // Check dominant material based on MixedVoxel components
+                        if (voxel.air > 127) result.airCount++;
+                        else if (voxel.rock > 127) result.rockCount++;
+                        else if (voxel.water > 127) result.waterCount++;
+                        else if (voxel.rock > voxel.water) result.rockCount++;
+                        else result.waterCount++;
                     }
                 }
             }

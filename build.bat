@@ -12,27 +12,12 @@ REM Check if shader directory exists
 if exist shaders (
     cd shaders
     
-    REM Check each shader source file
-    for %%f in (*.frag *.vert) do (
-        set shader_name=%%~nf
-        set shader_spv=!shader_name!.spv
-        
-        REM Check if .spv exists
-        if not exist "!shader_spv!" (
-            echo Shader !shader_spv! is missing - must recompile
+    REM Check if compiled shaders exist
+    set REQUIRED_SHADERS=hierarchical.vert.spv hierarchical.frag.spv octree_raymarch.vert.spv octree_raymarch.frag.spv
+    for %%s in (%REQUIRED_SHADERS%) do (
+        if not exist "compiled\%%s" (
+            echo Shader %%s is missing - must recompile
             set SHADER_STALE=1
-        ) else (
-            REM Use PowerShell to check file age (more reliable than forfiles)
-            for /f %%a in ('powershell -command "(Get-Date) - (Get-Item '!shader_spv!').LastWriteTime | %% TotalMinutes"') do (
-                set age=%%a
-                REM Check if older than 2 minutes
-                for /f %%b in ('powershell -command "if (!age! -gt 2) {echo 1} else {echo 0}"') do (
-                    if %%b==1 (
-                        echo Shader !shader_spv! is older than 2 minutes - must recompile
-                        set SHADER_STALE=1
-                    )
-                )
-            )
         )
     )
     
@@ -51,8 +36,10 @@ if exist shaders (
         
         REM Copy to build directory immediately
         echo Copying shaders to build directory...
-        if exist ..\build\bin\Release\shaders (
-            copy /Y *.spv ..\build\bin\Release\shaders\ >nul 2>&1
+        if not exist ..\build\bin\Release\shaders mkdir ..\build\bin\Release\shaders
+        copy /Y *.spv ..\build\bin\Release\shaders\ >nul 2>&1
+        if exist compiled\*.spv (
+            copy /Y compiled\*.spv ..\build\bin\Release\shaders\ >nul 2>&1
         )
     ) else (
         echo All shaders are fresh
@@ -90,9 +77,30 @@ REM Final shader copy to ensure they're fresh
 if exist ..\shaders (
     echo Ensuring shaders are up to date in build directory...
     if not exist bin\Release\shaders mkdir bin\Release\shaders
-    copy /Y ..\shaders\*.spv bin\Release\shaders\ >nul 2>&1
+    REM Copy from root shaders directory if they exist
+    if exist ..\shaders\*.spv (
+        copy /Y ..\shaders\*.spv bin\Release\shaders\ >nul 2>&1
+    )
+    REM Also copy from compiled subdirectory if they exist
+    if exist ..\shaders\compiled\*.spv (
+        copy /Y ..\shaders\compiled\*.spv bin\Release\shaders\ >nul 2>&1
+    )
 )
 
+REM Run tests automatically
+echo.
+echo Running tests...
+ctest -C Release --output-on-failure
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo ERROR: Tests failed!
+    cd ..
+    pause
+    exit /b 1
+)
+echo All tests passed!
+
+echo.
 echo Executable: build\bin\Release\OctreePlanet.exe
 echo.
 echo Run with: bin\Release\OctreePlanet.exe

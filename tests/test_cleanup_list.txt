@@ -1,0 +1,46 @@
+# Test Cleanup Plan
+
+## KEEP AND FIX (core functionality):
+- test_mixed_voxel.cpp - Core voxel type test
+- test_hierarchical_octree.cpp - Octree structure test  
+- test_frustum_culling.cpp - Rendering optimization test
+- test_lod_selection.cpp - Level of detail test
+
+## MERGE INTO ONE (too many similar material tests):
+- test_material_pipeline.cpp
+- test_material_stages.cpp  
+- test_material_tracking.cpp
+- test_material_method.cpp
+- test_material_isolation.cpp
+- test_octree_materials.cpp
+- test_planet_scale_materials.cpp
+→ Merge into: test_materials.cpp
+
+## MERGE INTO ONE (GPU/rendering tests):
+- test_gpu_fallback_heuristic.cpp
+- test_gpu_upload_fixed.cpp
+- test_gpu_validation.cpp
+- test_gpu_attributes.cpp
+- test_render_to_gpu_pipeline.cpp
+- test_render_black_planet.cpp
+- test_rendering_verification.cpp
+→ Merge into: test_gpu_rendering.cpp
+
+## REMOVE (redundant or broken beyond repair):
+- test_color_debug.cpp - No assertions
+- test_execution_order.cpp - Not needed
+- test_full_pipeline.cpp - No assertions, redundant
+- test_planet_visibility.cpp - Broken, accessing private members
+- test_voxel_data_flow.cpp - Redundant with other tests
+- test_water_rendering.cpp - Too specific
+- test_water_rendering_simple.cpp - Duplicate
+- test_shader_attributes.cpp - Shader testing not possible in C++
+- test_vertex_attributes.cpp - Too low level
+- test_grid_derivation.cpp - No assertions
+- test_voxel_positions.cpp - Broken, accessing private members
+
+## CREATE NEW (focused, working tests):
+1. test_octree_core.cpp - Basic octree operations
+2. test_materials.cpp - Material generation and averaging
+3. test_gpu_rendering.cpp - GPU pipeline and rendering
+4. test_performance.cpp - Performance and scaling tests

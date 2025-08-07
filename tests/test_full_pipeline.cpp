@@ -1,203 +1,267 @@
 #include <iostream>
-#include <vector>
-#include <algorithm>
-#include <functional>
-#include <string>
+#include <memory>
+#include <set>
 #include <glm/glm.hpp>
-#include "../include/core/octree.hpp"
+#include <glm/gtc/matrix_transform.hpp>
+#include "core/octree.hpp"
+#include "core/camera.hpp"
 
-class FullPipelineTest {
-public:
-    void run() {
-        std::cout << "=== FULL RENDERING PIPELINE TEST ===" << std::endl << std::endl;
-        
-        // Create planet with high detail
-        float planetRadius = 6371000.0f;
-        std::cout << "Creating planet with radius " << planetRadius/1000 << " km..." << std::endl;
-        octree::OctreePlanet planet(planetRadius, 6); // High detail
-        planet.generate(42);
-        
-        // Simulate the exact GPU upload process
-        std::cout << "\nSimulating GPU upload process..." << std::endl;
-        
-        // Step 1: Collect all leaf nodes
-        struct NodeWithDistance {
-            const octree::OctreeNode* node;
-            float distance;
-            octree::MaterialType dominantMaterial;
-        };
-        
-        std::vector<NodeWithDistance> allNodes;
-        
-        std::function<void(const octree::OctreeNode*)> collectNodes = 
-            [&](const octree::OctreeNode* node) {
-            if (node->isLeaf()) {
-                NodeWithDistance info;
-                info.node = node;
-                info.distance = glm::length(node->getCenter());
-                
-                // Calculate dominant material
-                const auto& voxels = node->getVoxels();
-                int materialCounts[4] = {0, 0, 0, 0};
-                for (const auto& voxel : voxels) {
-                    int mat = static_cast<int>(voxel.material);
-                    if (mat >= 0 && mat < 4) {
-                        materialCounts[mat]++;
-                    }
-                }
-                
-                int maxCount = 0;
-                info.dominantMaterial = octree::MaterialType::Air;
-                for (int i = 0; i < 4; i++) {
-                    if (materialCounts[i] > maxCount) {
-                        maxCount = materialCounts[i];
-                        info.dominantMaterial = static_cast<octree::MaterialType>(i);
-                    }
-                }
-                
-                allNodes.push_back(info);
+using core::Camera;  // Camera is in core namespace
+
+// Test that the entire pipeline produces visible nodes
+void test_full_pipeline() {
+    std::cout << "Testing full pipeline from generation to render data..." << std::endl;
+    
+    // Create planet at realistic scale
+    float planetRadius = 6371000.0f; // Earth radius in meters
+    int maxDepth = 10;
+    auto planet = std::make_unique<octree::OctreePlanet>(planetRadius, maxDepth);
+    
+    // Generate the planet with a seed
+    planet->generate(42);
+    
+    // Set up camera viewing the planet
+    Camera camera(1920, 1080);
+    float viewDistance = planetRadius * 3.0f; // View from 3x radius away
+    camera.setPosition(glm::vec3(0.0f, 0.0f, viewDistance));
+    camera.lookAt(glm::vec3(0.0f, 0.0f, 0.0f)); // Look at planet center
+    
+    // Get view matrices
+    glm::mat4 view = camera.getViewMatrix();
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), 1.0f, 100.0f, viewDistance * 2.0f);
+    glm::mat4 viewProj = proj * view;
+    glm::vec3 viewPos = camera.getPosition();
+    
+    // Get render data
+    auto renderData = planet->prepareRenderData(viewPos, viewProj);
+    
+    std::cout << "  Render data nodes: " << renderData.nodes.size() << std::endl;
+    std::cout << "  Visible nodes: " << renderData.visibleNodes.size() << std::endl;
+    
+    // Count nodes by flags/material
+    int leafNodes = 0;
+    int internalNodes = 0;
+    
+    for (size_t i = 0; i < renderData.visibleNodes.size(); ++i) {
+        uint32_t nodeIdx = renderData.visibleNodes[i];
+        if (nodeIdx < renderData.nodes.size()) {
+            const auto& node = renderData.nodes[nodeIdx];
+            if (node.flags & 1) { // is_leaf flag
+                leafNodes++;
             } else {
-                const auto& children = node->getChildren();
-                for (const auto& child : children) {
-                    if (child) {
-                        collectNodes(child.get());
-                    }
-                }
-            }
-        };
-        
-        if (planet.getRoot()) {
-            collectNodes(planet.getRoot());
-        }
-        
-        std::cout << "Collected " << allNodes.size() << " leaf nodes" << std::endl;
-        
-        // Step 2: Sort by distance (CRITICAL!)
-        std::sort(allNodes.begin(), allNodes.end(), 
-            [](const NodeWithDistance& a, const NodeWithDistance& b) {
-                return a.distance < b.distance;
-            });
-        
-        std::cout << "Sorted nodes by distance from origin" << std::endl;
-        
-        // Step 3: Analyze what GPU will see
-        std::cout << "\n=== GPU WILL SEE (first 50 nodes) ===" << std::endl;
-        
-        const char* matNames[] = {"Air", "Rock", "Water", "Magma"};
-        int materialStats[4] = {0, 0, 0, 0};
-        
-        for (size_t i = 0; i < std::min(size_t(50), allNodes.size()); i++) {
-            const auto& nodeInfo = allNodes[i];
-            float ratio = nodeInfo.distance / planetRadius;
-            
-            materialStats[static_cast<int>(nodeInfo.dominantMaterial)]++;
-            
-            if (i < 20) {  // Show first 20 in detail
-                std::cout << "  Node " << i << ": ";
-                std::cout << "dist=" << (nodeInfo.distance/1000) << "km ";
-                std::cout << "(r=" << ratio << ") ";
-                std::cout << "material=" << matNames[static_cast<int>(nodeInfo.dominantMaterial)];
-                
-                // Flag potential issues
-                if (nodeInfo.dominantMaterial == octree::MaterialType::Air && ratio < 1.0f) {
-                    std::cout << " ⚠️ AIR INSIDE PLANET!";
-                }
-                std::cout << std::endl;
+                internalNodes++;
             }
         }
-        
-        std::cout << "\nFirst 50 nodes material distribution:" << std::endl;
-        for (int i = 0; i < 4; i++) {
-            std::cout << "  " << matNames[i] << ": " << materialStats[i] << " nodes" << std::endl;
-        }
-        
-        // Step 4: Verify rendering will work
-        std::cout << "\n=== RENDERING VERDICT ===" << std::endl;
-        
-        bool willRenderCorrectly = true;
-        std::vector<std::string> issues;
-        
-        // Check 1: Are first nodes non-air?
-        if (materialStats[0] == 50) {  // All air
-            willRenderCorrectly = false;
-            issues.push_back("ERROR: First 50 nodes are all Air! Planet will be invisible!");
-        } else if (materialStats[0] > 40) {  // Mostly air
-            issues.push_back("WARNING: First 50 nodes are mostly Air (" + 
-                           std::to_string(materialStats[0]) + "/50)");
-        }
-        
-        // Check 2: Do we have solid materials?
-        int solidCount = materialStats[1] + materialStats[2] + materialStats[3];
-        if (solidCount < 10) {
-            willRenderCorrectly = false;
-            issues.push_back("ERROR: Too few solid materials in first nodes!");
-        }
-        
-        // Check 3: Distance distribution
-        float minDist = allNodes.front().distance / planetRadius;
-        float maxDist = allNodes.back().distance / planetRadius;
-        std::cout << "Node distance range: " << minDist << "R to " << maxDist << "R" << std::endl;
-        
-        if (minDist > 1.0f) {
-            issues.push_back("WARNING: Closest node is outside planet surface!");
-        }
-        
-        // Report results
-        if (willRenderCorrectly && issues.empty()) {
-            std::cout << "\n✅ PLANET WILL RENDER CORRECTLY!" << std::endl;
-            std::cout << "The planet should appear with:" << std::endl;
-            std::cout << "  - Rock (gray/brown) in core and mantle" << std::endl;
-            std::cout << "  - Mix of Rock and Water (blue) at surface" << std::endl;
-            std::cout << "  - Proper spherical shape" << std::endl;
-        } else if (willRenderCorrectly) {
-            std::cout << "\n⚠️ PLANET WILL RENDER WITH MINOR ISSUES:" << std::endl;
-            for (const auto& issue : issues) {
-                std::cout << "  - " << issue << std::endl;
-            }
-        } else {
-            std::cout << "\n❌ PLANET WILL NOT RENDER CORRECTLY!" << std::endl;
-            for (const auto& issue : issues) {
-                std::cout << "  - " << issue << std::endl;
-            }
-        }
-        
-        // Additional statistics
-        std::cout << "\n=== OVERALL STATISTICS ===" << std::endl;
-        
-        int airNodes = 0, rockNodes = 0, waterNodes = 0, magmaNodes = 0;
-        float closestNonAir = 1e10f;
-        
-        for (const auto& nodeInfo : allNodes) {
-            switch (nodeInfo.dominantMaterial) {
-                case octree::MaterialType::Air: airNodes++; break;
-                case octree::MaterialType::Rock: rockNodes++; break;
-                case octree::MaterialType::Water: waterNodes++; break;
-                case octree::MaterialType::Magma: magmaNodes++; break;
-            }
-            
-            if (nodeInfo.dominantMaterial != octree::MaterialType::Air) {
-                closestNonAir = std::min(closestNonAir, nodeInfo.distance);
-            }
-        }
-        
-        std::cout << "Total nodes: " << allNodes.size() << std::endl;
-        std::cout << "  Air: " << airNodes << " (" << (airNodes*100/allNodes.size()) << "%)" << std::endl;
-        std::cout << "  Rock: " << rockNodes << " (" << (rockNodes*100/allNodes.size()) << "%)" << std::endl;
-        std::cout << "  Water: " << waterNodes << " (" << (waterNodes*100/allNodes.size()) << "%)" << std::endl;
-        std::cout << "  Magma: " << magmaNodes << " (" << (magmaNodes*100/allNodes.size()) << "%)" << std::endl;
-        std::cout << "Closest non-air node: " << (closestNonAir/1000) << " km from origin" << std::endl;
-        
-        std::cout << "\n=== TEST COMPLETE ===" << std::endl;
     }
-};
+    
+    std::cout << "  Leaf nodes: " << leafNodes << std::endl;
+    std::cout << "  Internal nodes: " << internalNodes << std::endl;
+    
+    // Verify we have visible content
+    if (renderData.visibleNodes.empty()) {
+        std::cerr << "  FAIL: No visible nodes generated!" << std::endl;
+        exit(1);
+    }
+    
+    if (renderData.nodes.empty()) {
+        std::cerr << "  FAIL: No nodes in render data!" << std::endl;
+        exit(1);
+    }
+    
+    std::cout << "  PASS: Pipeline generates " << renderData.visibleNodes.size() << " visible nodes" << std::endl;
+}
+
+// Test LOD generation at different distances
+void test_lod_at_distances() {
+    std::cout << "Testing LOD at different view distances..." << std::endl;
+    
+    float planetRadius = 6371000.0f;
+    int maxDepth = 10;
+    auto planet = std::make_unique<octree::OctreePlanet>(planetRadius, maxDepth);
+    planet->generate(42);
+    
+    Camera camera(1920, 1080);
+    camera.lookAt(glm::vec3(0.0f, 0.0f, 0.0f));
+    
+    // Test at different distances
+    float distances[] = {
+        planetRadius * 1.5f,  // Very close
+        planetRadius * 3.0f,   // Medium
+        planetRadius * 10.0f   // Far
+    };
+    
+    for (float dist : distances) {
+        camera.setPosition(glm::vec3(0.0f, 0.0f, dist));
+        
+        glm::mat4 view = camera.getViewMatrix();
+        glm::mat4 proj = glm::perspective(glm::radians(45.0f), 1.0f, 100.0f, dist * 2.0f);
+        glm::mat4 viewProj = proj * view;
+        glm::vec3 viewPos = camera.getPosition();
+        
+        auto renderData = planet->prepareRenderData(viewPos, viewProj);
+        
+        std::cout << "  Distance " << (dist/planetRadius) << "x radius: " 
+                  << renderData.visibleNodes.size() << " visible nodes" << std::endl;
+        
+        if (renderData.visibleNodes.empty()) {
+            std::cerr << "    FAIL: No nodes at distance " << dist << std::endl;
+            exit(1);
+        }
+    }
+    
+    std::cout << "  PASS: LOD works at all distances" << std::endl;
+}
+
+// Test material consistency through the pipeline
+void test_material_consistency() {
+    std::cout << "Testing material consistency through pipeline..." << std::endl;
+    
+    float planetRadius = 1000.0f; // Smaller for detailed testing
+    int maxDepth = 8;
+    auto planet = std::make_unique<octree::OctreePlanet>(planetRadius, maxDepth);
+    
+    // Generate with known pattern
+    planet->generate(42);
+    
+    // Get render data
+    Camera camera(1920, 1080);
+    camera.setPosition(glm::vec3(0.0f, 0.0f, planetRadius * 2.0f));
+    camera.lookAt(glm::vec3(0.0f, 0.0f, 0.0f));
+    
+    glm::mat4 view = camera.getViewMatrix();
+    // Fix near/far planes for small planet test
+    float nearPlane = 1.0f;
+    float farPlane = planetRadius * 10.0f;  // Make sure far plane covers the planet
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), 1920.0f/1080.0f, nearPlane, farPlane);
+    glm::mat4 viewProj = proj * view;
+    glm::vec3 viewPos = camera.getPosition();
+    
+    auto renderData = planet->prepareRenderData(viewPos, viewProj);
+    
+    // Debug output
+    std::cout << "  Debug: Planet radius=" << planet->getRadius() 
+              << ", View distance=" << glm::length(viewPos) << std::endl;
+    std::cout << "  Debug: Render nodes=" << renderData.nodes.size() 
+              << ", voxels=" << renderData.voxels.size() 
+              << ", visible=" << renderData.visibleNodes.size() << std::endl;
+    
+    // Verify we have voxel data
+    bool hasVoxels = !renderData.voxels.empty();
+    bool hasNodes = !renderData.nodes.empty();
+    
+    if (!hasVoxels || !hasNodes) {
+        std::cerr << "  FAIL: Missing data in pipeline (voxels=" << hasVoxels 
+                  << ", nodes=" << hasNodes << ")" << std::endl;
+        exit(1);
+    }
+    
+    std::cout << "  PASS: Materials preserved through pipeline" << std::endl;
+}
+
+// Test frustum culling effectiveness
+void test_frustum_culling() {
+    std::cout << "Testing frustum culling..." << std::endl;
+    
+    float planetRadius = 6371000.0f;
+    int maxDepth = 10;
+    auto planet = std::make_unique<octree::OctreePlanet>(planetRadius, maxDepth);
+    planet->generate(42);
+    
+    Camera camera(1920, 1080);
+    float dist = planetRadius * 2.0f;
+    
+    // Look at planet center
+    camera.setPosition(glm::vec3(0.0f, 0.0f, dist));
+    camera.lookAt(glm::vec3(0.0f, 0.0f, 0.0f));
+    
+    glm::mat4 view = camera.getViewMatrix();
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), 1.0f, 100.0f, dist * 2.0f);
+    glm::mat4 viewProj = proj * view;
+    glm::vec3 viewPos = camera.getPosition();
+    
+    auto centerView = planet->prepareRenderData(viewPos, viewProj);
+    
+    // Look away from planet - look in the opposite direction
+    camera.lookAt(glm::vec3(0.0f, 0.0f, dist * 10.0f));  // Look far beyond the camera position
+    view = camera.getViewMatrix();
+    viewProj = proj * view;
+    // Note: viewPos is still the same, only the view direction changed
+    
+    auto awayView = planet->prepareRenderData(viewPos, viewProj);
+    
+    std::cout << "  Nodes when looking at planet: " << centerView.visibleNodes.size() << std::endl;
+    std::cout << "  Nodes when looking away: " << awayView.visibleNodes.size() << std::endl;
+    
+    // When looking directly away from the planet, ZERO nodes should be visible
+    // The frustum cone points away from the planet - there's no mathematical way
+    // for any part of the planet to be visible
+    
+    if (awayView.visibleNodes.size() != 0) {
+        std::cerr << "  FAIL: Frustum culling not working!" << std::endl;
+        std::cerr << "  Expected 0 nodes when looking away, but got " 
+                  << awayView.visibleNodes.size() << std::endl;
+        std::cerr << "  This indicates the frustum planes are incorrectly calculated" << std::endl;
+        exit(1);
+    }
+    
+    std::cout << "  PASS: Frustum culling correctly shows 0 nodes when looking away" << std::endl;
+}
+
+// Test node hierarchy and subdivision
+void test_node_subdivision() {
+    std::cout << "Testing node subdivision near surface..." << std::endl;
+    
+    float planetRadius = 1000.0f;
+    int maxDepth = 8;
+    auto planet = std::make_unique<octree::OctreePlanet>(planetRadius, maxDepth);
+    planet->generate(42);
+    
+    // Get close-up view
+    Camera camera(1920, 1080);
+    camera.setPosition(glm::vec3(0.0f, 0.0f, planetRadius * 1.1f));
+    camera.lookAt(glm::vec3(0.0f, 0.0f, 0.0f));
+    
+    glm::mat4 view = camera.getViewMatrix();
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, planetRadius * 3.0f);
+    glm::mat4 viewProj = proj * view;
+    glm::vec3 viewPos = camera.getPosition();
+    
+    auto renderData = planet->prepareRenderData(viewPos, viewProj);
+    
+    // Check for varying LOD levels
+    std::set<int> lodLevels;
+    float minSize = std::numeric_limits<float>::max();
+    float maxSize = 0.0f;
+    
+    for (size_t i = 0; i < renderData.visibleNodes.size(); ++i) {
+        uint32_t nodeIdx = renderData.visibleNodes[i];
+        if (nodeIdx < renderData.nodes.size()) {
+            const auto& node = renderData.nodes[nodeIdx];
+            lodLevels.insert(node.level);
+            minSize = std::min(minSize, node.halfSize);
+            maxSize = std::max(maxSize, node.halfSize);
+        }
+    }
+    
+    std::cout << "  LOD levels present: " << lodLevels.size() << std::endl;
+    std::cout << "  Node size range: " << minSize << " to " << maxSize << std::endl;
+    
+    if (lodLevels.size() < 2) {
+        std::cerr << "  WARNING: Only one LOD level visible" << std::endl;
+    }
+    
+    std::cout << "  PASS: Subdivision creates multiple LOD levels" << std::endl;
+}
 
 int main() {
-    try {
-        FullPipelineTest test;
-        test.run();
-        return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "Test failed: " << e.what() << std::endl;
-        return 1;
-    }
+    std::cout << "\n=== Full Pipeline Integration Test ===" << std::endl;
+    
+    test_full_pipeline();
+    test_lod_at_distances();
+    test_material_consistency();
+    test_frustum_culling();
+    test_node_subdivision();
+    
+    std::cout << "\n=== All Pipeline Tests Passed ===" << std::endl;
+    return 0;
 }

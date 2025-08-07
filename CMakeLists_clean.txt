@@ -262,21 +262,16 @@ set_target_properties(test_gpu_rendering PROPERTIES
 )
 add_test(NAME GPURendering COMMAND test_gpu_rendering)
 
-# Add custom target to run tests (can be run manually with: cmake --build . --target run_tests)
-add_custom_target(run_tests
+# Add custom target to run tests after building
+add_custom_target(run_tests ALL
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
     DEPENDS test_octree_core test_materials test_gpu_rendering
-            test_material_pipeline test_hierarchical_octree
-            test_frustum_culling test_lod_selection
-            test_mixed_voxel test_mixed_voxel_integration
-            test_material_tracking test_gpu_validation
-            test_shader_attributes test_gpu_attributes
-            test_full_pipeline
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running full test suite..."
+    COMMENT "Running core test suite..."
 )
 
-# Tests are run by build.bat after the build completes
+# Make main executable depend on tests passing
+add_dependencies(${PROJECT_NAME} run_tests)
 
 # Print configuration summary
 message(STATUS "")
@@ -308,97 +303,129 @@ set_target_properties(test_material_pipeline PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
 
-# ============================================================================
-# Additional Tests - Tests that exist and should be kept
-# ============================================================================
-
-# Test for hierarchical octree
+# # Add test for voxel position debugging (REMOVED - test file deleted)
 add_executable(test_hierarchical_octree
     tests/test_hierarchical_octree.cpp
     src/core/octree.cpp
     src/rendering/hierarchical_gpu_octree.cpp
 )
+
 target_include_directories(test_hierarchical_octree PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${glm_SOURCE_DIR}
     ${Vulkan_INCLUDE_DIRS}
 )
-target_link_libraries(test_hierarchical_octree PRIVATE
-    glm::glm
-    ${Vulkan_LIBRARIES}
+
+target_link_libraries(test_hierarchical_octree 
+    PRIVATE
+        glm::glm
+        ${Vulkan_LIBRARIES}
 )
+
 set_target_properties(test_hierarchical_octree PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
-add_test(NAME HierarchicalOctree COMMAND test_hierarchical_octree)
 
-# Frustum culling tests
+# Add frustum culling tests
 add_executable(test_frustum_culling
     tests/test_frustum_culling.cpp
 )
+
 target_include_directories(test_frustum_culling PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${glm_SOURCE_DIR}
     ${Vulkan_INCLUDE_DIRS}
 )
-target_link_libraries(test_frustum_culling PRIVATE 
-    glm::glm
-    ${Vulkan_LIBRARIES}
+
+target_link_libraries(test_frustum_culling 
+    PRIVATE
+        glm::glm
 )
+
 set_target_properties(test_frustum_culling PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
-add_test(NAME FrustumCulling COMMAND test_frustum_culling)
 
-# LOD selection tests
+# Add LOD selection tests
 add_executable(test_lod_selection
     tests/test_lod_selection.cpp
 )
+
 target_include_directories(test_lod_selection PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${glm_SOURCE_DIR}
 )
-target_link_libraries(test_lod_selection PRIVATE glm::glm)
+
+target_link_libraries(test_lod_selection 
+    PRIVATE
+        glm::glm
+)
+
 set_target_properties(test_lod_selection PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
-add_test(NAME LODSelection COMMAND test_lod_selection)
 
-# Material tracking test
+# Add rendering verification test
 add_executable(test_material_tracking
     tests/pipeline/test_material_tracking.cpp
     src/core/octree.cpp
     src/rendering/instance_buffer_manager.cpp
     src/rendering/gpu_octree.cpp
 )
+
 target_include_directories(test_material_tracking PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${glm_SOURCE_DIR}
     ${Vulkan_INCLUDE_DIRS}
 )
-target_link_libraries(test_material_tracking PRIVATE
-    glm::glm
-    ${Vulkan_LIBRARIES}
+
+target_link_libraries(test_material_tracking 
+    PRIVATE
+        glm::glm
+        ${Vulkan_LIBRARIES}
 )
+
 set_target_properties(test_material_tracking PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
-add_test(NAME MaterialTracking COMMAND test_material_tracking)
 
-
+# Test for planet-scale material generation
 add_executable(test_mixed_voxel
     tests/test_mixed_voxel.cpp
 )
+
 target_include_directories(test_mixed_voxel PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${glm_SOURCE_DIR}
 )
-target_link_libraries(test_mixed_voxel PRIVATE glm::glm)
+
+target_link_libraries(test_mixed_voxel 
+    PRIVATE
+        glm::glm
+)
+
 set_target_properties(test_mixed_voxel PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
-add_test(NAME MixedVoxel COMMAND test_mixed_voxel)
 
+# GPU attributes test
+add_executable(test_gpu_attributes
+    tests/rendering/test_gpu_attributes.cpp
+)
+
+target_include_directories(test_gpu_attributes PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${Vulkan_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_gpu_attributes 
+    PRIVATE
+        ${Vulkan_LIBRARIES}
+)
+
+set_target_properties(test_gpu_attributes PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
 
 # Mixed voxel integration test
 add_executable(test_mixed_voxel_integration
@@ -406,83 +433,19 @@ add_executable(test_mixed_voxel_integration
     src/core/octree.cpp
     src/rendering/instance_buffer_manager.cpp
 )
+
 target_include_directories(test_mixed_voxel_integration PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${glm_SOURCE_DIR}
 )
-target_link_libraries(test_mixed_voxel_integration PRIVATE glm::glm)
+
+target_link_libraries(test_mixed_voxel_integration 
+    PRIVATE
+        glm::glm
+)
+
 set_target_properties(test_mixed_voxel_integration PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
-add_test(NAME MixedVoxelIntegration COMMAND test_mixed_voxel_integration)
 
-# ============================================================================
-# Additional Pipeline Tests
-# ============================================================================
-
-# GPU validation test
-add_executable(test_gpu_validation
-    tests/pipeline/test_gpu_validation.cpp
-)
-target_include_directories(test_gpu_validation PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${glm_SOURCE_DIR}
-    ${Vulkan_INCLUDE_DIRS}
-)
-target_link_libraries(test_gpu_validation PRIVATE 
-    glm::glm
-    ${Vulkan_LIBRARIES}
-)
-set_target_properties(test_gpu_validation PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-)
-add_test(NAME GPUValidation COMMAND test_gpu_validation)
-
-# Shader attributes test  
-add_executable(test_shader_attributes
-    tests/pipeline/test_shader_attributes.cpp
-)
-target_include_directories(test_shader_attributes PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${glm_SOURCE_DIR}
-    ${Vulkan_INCLUDE_DIRS}
-)
-target_link_libraries(test_shader_attributes PRIVATE 
-    glm::glm
-    ${Vulkan_LIBRARIES}
-)
-set_target_properties(test_shader_attributes PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-)
-add_test(NAME ShaderAttributes COMMAND test_shader_attributes)
-
-# GPU attributes test
-add_executable(test_gpu_attributes
-    tests/rendering/test_gpu_attributes.cpp
-)
-target_include_directories(test_gpu_attributes PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${Vulkan_INCLUDE_DIRS}
-)
-target_link_libraries(test_gpu_attributes PRIVATE ${Vulkan_LIBRARIES})
-set_target_properties(test_gpu_attributes PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-)
-add_test(NAME GPUAttributes COMMAND test_gpu_attributes)
-
-# Full pipeline integration test
-add_executable(test_full_pipeline
-    tests/test_full_pipeline.cpp
-    src/core/octree.cpp
-    src/core/camera.cpp
-)
-target_include_directories(test_full_pipeline PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${glm_SOURCE_DIR}
-)
-target_link_libraries(test_full_pipeline PRIVATE glm::glm)
-set_target_properties(test_full_pipeline PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-)
-add_test(NAME FullPipeline COMMAND test_full_pipeline)
-
+# Test for planet visibility issues

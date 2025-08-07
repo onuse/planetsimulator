@@ -1,0 +1,72 @@
+# ============================================================================
+# Tests Section - Place this after line 304 in CMakeLists.txt
+# ============================================================================
+
+# Comment out or remove all old test definitions from lines 305-654
+
+# Only keep these working tests that still have their source files:
+add_executable(test_hierarchical_octree
+    tests/test_hierarchical_octree.cpp
+    src/core/octree.cpp
+)
+target_include_directories(test_hierarchical_octree PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_hierarchical_octree PRIVATE glm::glm)
+set_target_properties(test_hierarchical_octree PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+
+add_executable(test_frustum_culling
+    tests/test_frustum_culling.cpp
+    src/core/octree.cpp
+    src/core/frustum.cpp
+    src/core/camera.cpp
+)
+target_include_directories(test_frustum_culling PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_frustum_culling PRIVATE glm::glm)
+set_target_properties(test_frustum_culling PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+
+add_executable(test_lod_selection
+    tests/test_lod_selection.cpp
+    src/core/octree.cpp
+)
+target_include_directories(test_lod_selection PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_lod_selection PRIVATE glm::glm)
+set_target_properties(test_lod_selection PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+
+add_executable(test_mixed_voxel
+    tests/test_mixed_voxel.cpp
+)
+target_include_directories(test_mixed_voxel PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_mixed_voxel PRIVATE glm::glm)
+set_target_properties(test_mixed_voxel PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+
+add_executable(test_mixed_voxel_integration
+    tests/test_mixed_voxel_integration.cpp
+    src/core/octree.cpp
+)
+target_include_directories(test_mixed_voxel_integration PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_mixed_voxel_integration PRIVATE glm::glm)
+set_target_properties(test_mixed_voxel_integration PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)

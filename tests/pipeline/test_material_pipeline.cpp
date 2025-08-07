@@ -31,11 +31,11 @@ private:
         // All voxels should start as Air
         int airCount = 0;
         for (int i = 0; i < 8; i++) {
-            if (voxels[i].material == MaterialType::Air) {
+            if (voxels[i].air > 127) {  // Check if air is dominant
                 airCount++;
             }
-            assert(voxels[i].density == 0.0f);
-            assert(voxels[i].temperature == 0.0f);
+            // MixedVoxel doesn't have density, check temperature is initialized
+            assert(voxels[i].temperature == 128);  // Default temperature
         }
         
         assert(airCount == 8);
@@ -120,7 +120,7 @@ private:
                 // Check if this leaf has non-air materials
                 const auto& voxels = node->getVoxels();
                 for (const auto& voxel : voxels) {
-                    if (voxel.material != MaterialType::Air) {
+                    if (voxel.air < 128) {  // Not pure air
                         nodesWithMaterials++;
                         break;
                     }
@@ -162,8 +162,10 @@ private:
         
         // Create a test voxel
         Voxel testVoxel;
-        testVoxel.material = MaterialType::Rock;
-        testVoxel.density = 2700.0f;
+        testVoxel.rock = 255;  // Pure rock
+        testVoxel.air = 0;
+        testVoxel.water = 0;
+        testVoxel.sediment = 0;
         
         // Set voxel at a specific position
         glm::vec3 voxelPos(500, 0, 0); // Within the node
@@ -172,14 +174,14 @@ private:
         // Retrieve and verify
         Voxel* retrieved = testNode.getVoxel(voxelPos);
         if (retrieved) {
-            assert(retrieved->material == MaterialType::Rock);
-            assert(retrieved->density == 2700.0f);
+            assert(retrieved->rock == 255);
+            assert(retrieved->air == 0);
             std::cout << "  ✓ Voxel persists after setting" << std::endl;
         } else {
             // If we can't retrieve by position, check the array directly
             bool foundRock = false;
             for (const auto& voxel : voxels) {
-                if (voxel.material == MaterialType::Rock) {
+                if (voxel.rock > 127) {  // Rock is dominant
                     foundRock = true;
                     break;
                 }
@@ -229,7 +231,7 @@ private:
             bool hasMaterial = false;
             
             for (const auto& voxel : voxels) {
-                if (voxel.material != MaterialType::Air) {
+                if (voxel.air < 128) {  // Not pure air
                     totalMaterialVoxels++;
                     hasMaterial = true;
                 }
@@ -257,7 +259,7 @@ private:
                 const auto& voxels = node->getVoxels();
                 std::cout << "      Materials: ";
                 for (int j = 0; j < 8; j++) {
-                    std::cout << static_cast<int>(voxels[j].material) << " ";
+                    std::cout << static_cast<int>(voxels[j].getDominantMaterial()) << " ";
                 }
                 std::cout << std::endl;
             }

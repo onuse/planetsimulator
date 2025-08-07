@@ -513,21 +513,46 @@ OctreePlanet::RenderData OctreePlanet::prepareRenderData(const glm::vec3& viewPo
         frustumPlanes[i] /= length;
     }
     
+    // Debug: Check if near plane normal points in the right direction
+    static int debugCallCount = 0;
+    if (debugCallCount++ < 2) {
+        std::cout << "  Frustum debug: Near plane normal=(" 
+                  << frustumPlanes[4].x << "," << frustumPlanes[4].y << "," << frustumPlanes[4].z 
+                  << ") d=" << frustumPlanes[4].w << std::endl;
+        
+        // Test planet center against near plane
+        float planetDist = glm::dot(glm::vec3(frustumPlanes[4]), glm::vec3(0,0,0)) + frustumPlanes[4].w;
+        std::cout << "  Planet center distance to near plane: " << planetDist << std::endl;
+    }
+    
+    // Debug counters for small planets
+    int nodesChecked = 0;
+    int nodesSkippedFrustum = 0;
+    int nodesSkippedLOD = 0;
+    int nodesSkippedAir = 0;
+    int nodesAdded = 0;
+    
     // Traverse octree and collect visible nodes with hierarchical frustum culling
     std::function<bool(OctreeNode*, uint32_t)> collectNodes = [&](OctreeNode* node, uint32_t parentIndex) -> bool {
+        nodesChecked++;
+        
         // Hierarchical frustum culling - if parent is rejected, don't check children
         bool inFrustum = true;
         
-        // Only do frustum culling for non-leaf nodes to enable early rejection
-        if (!node->isLeaf() || node->halfSize > 1000.0f) {  // Check internal nodes and large leaves
-            for (int i = 0; i < 6; i++) {
-                float distance = glm::dot(glm::vec3(frustumPlanes[i]), node->center) + frustumPlanes[i].w;
-                if (distance < -node->halfSize * 1.732f) { // sqrt(3) for diagonal
-                    inFrustum = false;
-                    break;
+        // For small test planets, disable frustum culling entirely
+        if (radius >= 10000.0f) {
+            // Always do frustum culling for internal nodes to enable hierarchical rejection
+            if (!node->isLeaf()) {  // Check all internal nodes
+                for (int i = 0; i < 6; i++) {
+                    float distance = glm::dot(glm::vec3(frustumPlanes[i]), node->center) + frustumPlanes[i].w;
+                    if (distance < -node->halfSize * 1.732f) { // sqrt(3) for diagonal
+                        inFrustum = false;
+                        nodesSkippedFrustum++;
+                        break;
+                    }
                 }
+                if (!inFrustum) return false;  // Early rejection - don't check children
             }
-            if (!inFrustum) return false;  // Early rejection - don't check children
         }
         
         // Only process leaf nodes for rendering
@@ -537,7 +562,10 @@ OctreePlanet::RenderData OctreePlanet::prepareRenderData(const glm::vec3& viewPo
             float nodeScreenSize = node->halfSize / distanceToCamera;
             
             // Skip nodes that would be smaller than 0.5 pixels
-            if (nodeScreenSize < 0.0005f) {
+            // For small test planets, be more lenient with LOD
+            float lodThreshold = (radius < 10000.0f) ? 0.00001f : 0.0005f;
+            if (nodeScreenSize < lodThreshold) {
+                nodesSkippedLOD++;
                 return true; // Skip but continue traversal
             }
             
@@ -577,6 +605,9 @@ OctreePlanet::RenderData OctreePlanet::prepareRenderData(const glm::vec3& viewPo
                     data.voxels.push_back(voxel);
                 }
                 data.visibleNodes.push_back(currentNodeIndex);
+                nodesAdded++;
+            } else {
+                nodesSkippedAir++;
             }
         } else {
             // Recurse to children (don't render parent nodes)
@@ -590,6 +621,15 @@ OctreePlanet::RenderData OctreePlanet::prepareRenderData(const glm::vec3& viewPo
     };
     
     collectNodes(root.get(), 0);
+    
+    // Debug output for small planets or when debugging
+    if (radius < 10000.0f || nodesSkippedFrustum > 0) {
+        std::cout << "  PrepareRenderData debug: checked=" << nodesChecked 
+                  << ", frustum_skip=" << nodesSkippedFrustum
+                  << ", lod_skip=" << nodesSkippedLOD
+                  << ", air_skip=" << nodesSkippedAir
+                  << ", added=" << nodesAdded << std::endl;
+    }
     
     return data;
 }
