@@ -179,6 +179,10 @@ void test_frustum_culling() {
     glm::mat4 viewProj = proj * view;
     glm::vec3 viewPos = camera.getPosition();
     
+    // Debug: Save view direction for comparison
+    glm::vec3 lookDirCenter = glm::vec3(view[0][2], view[1][2], view[2][2]);
+    std::cout << "  Looking at planet, view forward: (" << lookDirCenter.x << "," << lookDirCenter.y << "," << lookDirCenter.z << ")" << std::endl;
+    
     auto centerView = planet->prepareRenderData(viewPos, viewProj);
     
     // Look away from planet - look in the opposite direction
@@ -186,6 +190,10 @@ void test_frustum_culling() {
     view = camera.getViewMatrix();
     viewProj = proj * view;
     // Note: viewPos is still the same, only the view direction changed
+    
+    // Debug: Check if view matrix actually changed
+    glm::vec3 lookDirAway = glm::vec3(view[0][2], view[1][2], view[2][2]);
+    std::cout << "  Looking away, view forward: (" << lookDirAway.x << "," << lookDirAway.y << "," << lookDirAway.z << ")" << std::endl;
     
     auto awayView = planet->prepareRenderData(viewPos, viewProj);
     

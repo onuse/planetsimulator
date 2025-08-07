@@ -515,14 +515,18 @@ OctreePlanet::RenderData OctreePlanet::prepareRenderData(const glm::vec3& viewPo
     
     // Debug: Check if near plane normal points in the right direction
     static int debugCallCount = 0;
-    if (debugCallCount++ < 2) {
-        std::cout << "  Frustum debug: Near plane normal=(" 
+    if (radius >= 10000.0f && debugCallCount++ < 10) {
+        std::cout << "  Frustum debug call #" << debugCallCount << ":" << std::endl;
+        std::cout << "    Near plane: normal=(" 
                   << frustumPlanes[4].x << "," << frustumPlanes[4].y << "," << frustumPlanes[4].z 
                   << ") d=" << frustumPlanes[4].w << std::endl;
         
-        // Test planet center against near plane
-        float planetDist = glm::dot(glm::vec3(frustumPlanes[4]), glm::vec3(0,0,0)) + frustumPlanes[4].w;
-        std::cout << "  Planet center distance to near plane: " << planetDist << std::endl;
+        // Test planet center against all planes
+        for (int i = 0; i < 6; i++) {
+            float dist = glm::dot(glm::vec3(frustumPlanes[i]), glm::vec3(0,0,0)) + frustumPlanes[i].w;
+            const char* names[] = {"Left", "Right", "Bottom", "Top", "Near", "Far"};
+            std::cout << "    " << names[i] << " plane: planet distance = " << dist << std::endl;
+        }
     }
     
     // Debug counters for small planets

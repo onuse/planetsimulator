@@ -180,6 +180,10 @@ void Camera::lookAt(const glm::vec3& tgt) {
         glm::quat pitchQuat = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
         orientation = yawQuat * pitchQuat;
     }
+    
+    // Update vectors and view matrix immediately so changes take effect
+    updateVectors();
+    updateViewMatrix();
 }
 
 void Camera::setUp(const glm::vec3& newUp) {
