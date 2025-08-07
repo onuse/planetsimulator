@@ -41,12 +41,20 @@ public:
                 if (voxelIdx != 0xFFFFFFFF && voxelIdx + 8 <= renderData.voxels.size()) {
                     for (int i = 0; i < 8; i++) {
                         const auto& voxel = renderData.voxels[voxelIdx + i];
-                        // Check dominant material based on MixedVoxel components
-                        if (voxel.air > 127) result.airCount++;
-                        else if (voxel.rock > 127) result.rockCount++;
-                        else if (voxel.water > 127) result.waterCount++;
-                        else if (voxel.rock > voxel.water) result.rockCount++;
-                        else result.waterCount++;
+                        // Check dominant material using new API
+                        core::MaterialID mat = voxel.getDominantMaterialID();
+                        if (mat == core::MaterialID::Air || mat == core::MaterialID::Vacuum) {
+                            result.airCount++;
+                        } else if (mat == core::MaterialID::Rock || mat == core::MaterialID::Granite || mat == core::MaterialID::Basalt) {
+                            result.rockCount++;
+                        } else if (mat == core::MaterialID::Water) {
+                            result.waterCount++;
+                        } else if (mat == core::MaterialID::Lava) {
+                            result.magmaCount++;
+                        } else {
+                            // Default to rock for other solid materials
+                            result.rockCount++;
+                        }
                     }
                 }
             }

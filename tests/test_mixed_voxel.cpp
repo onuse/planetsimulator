@@ -1,229 +1,252 @@
 #include <iostream>
 #include <cassert>
-#include <cmath>
-#include "../include/core/mixed_voxel.hpp"
+#include "core/mixed_voxel.hpp"  // Now the primary version
+#include "core/material_table.hpp"
 
 using namespace octree;
+using namespace core;
 
-void testBasicMixedVoxel() {
-    std::cout << "Test 1: Basic Mixed Voxel" << std::endl;
+// Test the new MixedVoxel structure with material IDs
+void test_mixed_voxel_structure() {
+    std::cout << "Testing new MixedVoxel structure..." << std::endl;
     
-    // Test pure materials
-    auto rock = MixedVoxel::createPure(255, 0, 0);
-    assert(rock.getDominantMaterial() == 1);  // Rock
-    assert(rock.getRockPercent() > 0.99f);
-    
-    auto water = MixedVoxel::createPure(0, 255, 0);
-    assert(water.getDominantMaterial() == 2);  // Water
-    assert(water.getWaterPercent() > 0.99f);
-    
-    // Test mixed material
-    auto beach = MixedVoxel::createPure(128, 127, 0);
-    auto beachColor = beach.getColor();
-    // Should be brownish-blue mix
-    assert(beachColor.x > 0.2f && beachColor.x < 0.4f);  // Some red
-    assert(beachColor.z > 0.2f && beachColor.z < 0.5f);  // Some blue
-    
-    std::cout << "  ✓ Pure and mixed materials work" << std::endl;
+    // Verify size is still 8 bytes
+    static_assert(sizeof(MixedVoxel) == 8, "MixedVoxel must be exactly 8 bytes");
+    std::cout << "  ✓ MixedVoxel is 8 bytes" << std::endl;
 }
 
-void testVoxelBlending() {
-    std::cout << "Test 2: Voxel Blending" << std::endl;
+void test_material_id_storage() {
+    std::cout << "Testing material ID storage..." << std::endl;
     
-    auto rock = MixedVoxel::createPure(255, 0, 0);
-    auto water = MixedVoxel::createPure(0, 255, 0);
+    MixedVoxel voxel;
     
-    // Test 50/50 blend
-    auto blend50 = MixedVoxel::blend(rock, water, 0.5f);
-    assert(std::abs(blend50.rock - 127) < 2);
-    assert(std::abs(blend50.water - 127) < 2);
+    // Set 4 different materials
+    voxel.setMaterials(
+        MaterialID::Rock, 128,    // 50% rock
+        MaterialID::Water, 64,     // 25% water
+        MaterialID::Sand, 64,      // 25% sand
+        MaterialID::Vacuum, 0      // 0% vacuum (unused slot)
+    );
     
-    // Test gradient
-    for(float t = 0; t <= 1.0f; t += 0.1f) {
-        auto blend = MixedVoxel::blend(rock, water, t);
-        float expectedRock = 255 * (1.0f - t);
-        float expectedWater = 255 * t;
-        
-        assert(std::abs(blend.rock - expectedRock) < 3);
-        assert(std::abs(blend.water - expectedWater) < 3);
-    }
+    // Verify we can retrieve them
+    assert(voxel.getMaterialID(0) == MaterialID::Rock);
+    assert(voxel.getMaterialAmount(0) == 128);
     
-    std::cout << "  ✓ Blending produces smooth gradients" << std::endl;
+    assert(voxel.getMaterialID(1) == MaterialID::Water);
+    assert(voxel.getMaterialAmount(1) == 64);
+    
+    assert(voxel.getMaterialID(2) == MaterialID::Sand);
+    assert(voxel.getMaterialAmount(2) == 64);
+    
+    assert(voxel.getMaterialID(3) == MaterialID::Vacuum);
+    assert(voxel.getMaterialAmount(3) == 0);
+    
+    std::cout << "  ✓ Can store and retrieve 4 material IDs with amounts" << std::endl;
 }
 
-void testFeaturePreservation() {
-    std::cout << "Test 3: Feature Preservation in Averaging" << std::endl;
+void test_dominant_material() {
+    std::cout << "Testing dominant material detection..." << std::endl;
     
-    // Test mountain preservation
-    {
-        MixedVoxel mountain[8];
-        for(int i = 0; i < 7; i++) {
-            mountain[i] = MixedVoxel::createPure(255, 0, 0);  // Rock
-        }
-        mountain[7] = MixedVoxel::createPure(200, 0, 55);  // Mostly rock with some air
-        
-        auto averaged = VoxelAverager::average(mountain);
-        
-        // Mountain peak should preserve high rock content
-        assert(averaged.rock > 200);  // Should be close to max, not average
-        assert(averaged.water < 10);   // Should have minimal water
-        
-        std::cout << "  ✓ Mountain peaks preserved (rock=" 
-                  << (int)averaged.rock << "/255)" << std::endl;
-    }
+    MixedVoxel voxel;
     
-    // Test ocean preservation
-    {
-        MixedVoxel ocean[8];
-        for(int i = 0; i < 7; i++) {
-            ocean[i] = MixedVoxel::createPure(0, 255, 0);  // Water
-        }
-        ocean[7] = MixedVoxel::createPure(0, 200, 55);  // Mostly water
-        
-        auto averaged = VoxelAverager::average(ocean);
-        
-        // Ocean should preserve high water content
-        assert(averaged.water > 200);  // Should be close to max
-        assert(averaged.rock < 10);    // Should have minimal rock
-        
-        std::cout << "  ✓ Ocean depths preserved (water=" 
-                  << (int)averaged.water << "/255)" << std::endl;
-    }
+    // Test case 1: Single material
+    voxel.setMaterials(
+        MaterialID::Rock, 255,
+        MaterialID::Vacuum, 0,
+        MaterialID::Vacuum, 0,
+        MaterialID::Vacuum, 0
+    );
+    assert(voxel.getDominantMaterialID() == MaterialID::Rock);
+    std::cout << "  ✓ Single material detected as dominant" << std::endl;
     
-    // Test coastline blending
-    {
-        MixedVoxel coast[8];
-        // Half rock, half water
-        for(int i = 0; i < 4; i++) {
-            coast[i] = MixedVoxel::createPure(255, 0, 0);     // Rock
-            coast[i+4] = MixedVoxel::createPure(0, 255, 0);   // Water
-        }
-        
-        auto averaged = VoxelAverager::average(coast);
-        
-        // Coast should blend naturally
-        assert(averaged.rock > 100 && averaged.rock < 155);   // ~127
-        assert(averaged.water > 100 && averaged.water < 155);  // ~127
-        
-        std::cout << "  ✓ Coastlines blend naturally (rock=" 
-                  << (int)averaged.rock << ", water=" 
-                  << (int)averaged.water << ")" << std::endl;
-    }
+    // Test case 2: Mixed materials
+    voxel.setMaterials(
+        MaterialID::Water, 100,
+        MaterialID::Sand, 150,   // Sand is dominant
+        MaterialID::Rock, 50,
+        MaterialID::Vacuum, 0
+    );
+    assert(voxel.getDominantMaterialID() == MaterialID::Sand);
+    std::cout << "  ✓ Correct dominant material in mix" << std::endl;
+    
+    // Test case 3: Empty voxel
+    voxel.setMaterials(
+        MaterialID::Vacuum, 255,
+        MaterialID::Vacuum, 0,
+        MaterialID::Vacuum, 0,
+        MaterialID::Vacuum, 0
+    );
+    assert(voxel.getDominantMaterialID() == MaterialID::Vacuum);
+    assert(voxel.isEmpty());
+    std::cout << "  ✓ Empty voxel detected" << std::endl;
 }
 
-void testColorGeneration() {
-    std::cout << "Test 4: Color Generation" << std::endl;
+void test_color_calculation() {
+    std::cout << "Testing color calculation..." << std::endl;
     
-    // Pure rock should be brownish
-    auto rock = MixedVoxel::createPure(255, 0, 0);
-    auto rockColor = rock.getColor();
-    assert(rockColor.x > rockColor.z);  // More red than blue
+    MixedVoxel voxel;
+    auto& matTable = MaterialTable::getInstance();
     
-    // Pure water should be blueish
-    auto water = MixedVoxel::createPure(0, 255, 0);
-    auto waterColor = water.getColor();
-    assert(waterColor.z > waterColor.x);  // More blue than red
+    // Test pure water
+    voxel.setMaterials(
+        MaterialID::Water, 255,
+        MaterialID::Vacuum, 0,
+        MaterialID::Vacuum, 0,
+        MaterialID::Vacuum, 0
+    );
     
-    // Mixed should be in between
-    auto mixed = MixedVoxel::createPure(128, 128, 0);
-    auto mixedColor = mixed.getColor();
+    glm::vec3 color = voxel.getColor();
+    glm::vec3 waterColor = matTable.getColor(MaterialID::Water);
+    assert(glm::length(color - waterColor) < 0.01f);
+    std::cout << "  ✓ Pure water has correct color" << std::endl;
     
-    // Should be darker/grayer than pure materials
-    assert(mixedColor.x < rockColor.x);
-    assert(mixedColor.z < waterColor.z);
+    // Test 50/50 rock/grass mix
+    voxel.setMaterials(
+        MaterialID::Rock, 128,
+        MaterialID::Grass, 128,
+        MaterialID::Vacuum, 0,
+        MaterialID::Vacuum, 0
+    );
     
-    std::cout << "  ✓ Colors represent material composition" << std::endl;
+    color = voxel.getColor();
+    glm::vec3 expectedColor = (matTable.getColor(MaterialID::Rock) + 
+                                matTable.getColor(MaterialID::Grass)) * 0.5f;
+    assert(glm::length(color - expectedColor) < 0.01f);
+    std::cout << "  ✓ 50/50 mix has blended color" << std::endl;
 }
 
-void testMemorySize() {
-    std::cout << "Test 5: Memory Efficiency" << std::endl;
+void test_factory_methods() {
+    std::cout << "Testing factory methods..." << std::endl;
     
-    // Verify struct is compact
-    assert(sizeof(MixedVoxel) == 8);
-    std::cout << "  ✓ MixedVoxel is " << sizeof(MixedVoxel) << " bytes" << std::endl;
+    // Test createPure
+    MixedVoxel pure = MixedVoxel::createPure(MaterialID::Lava);
+    assert(pure.getMaterialID(0) == MaterialID::Lava);
+    assert(pure.getMaterialAmount(0) == 255);
+    assert(pure.getMaterialAmount(1) == 0);
+    std::cout << "  ✓ createPure creates single material voxel" << std::endl;
     
-    // Calculate memory for planet
-    size_t voxelsPerNode = 8;
-    size_t nodesForPlanet = 100000000;  // 100M nodes
-    size_t totalVoxels = nodesForPlanet * voxelsPerNode;
-    size_t memoryGB = (totalVoxels * sizeof(MixedVoxel)) / (1024 * 1024 * 1024);
+    // Test createMix (2 materials)
+    MixedVoxel mix = MixedVoxel::createMix(
+        MaterialID::Sand, 200,
+        MaterialID::Water, 55
+    );
+    assert(mix.getMaterialID(0) == MaterialID::Sand);
+    assert(mix.getMaterialAmount(0) == 200);
+    assert(mix.getMaterialID(1) == MaterialID::Water);
+    assert(mix.getMaterialAmount(1) == 55);
+    std::cout << "  ✓ createMix creates two-material voxel" << std::endl;
     
-    std::cout << "  ✓ 100M nodes = " << memoryGB << " GB for voxel data" << std::endl;
+    // Test createEmpty
+    MixedVoxel empty = MixedVoxel::createEmpty();
+    assert(empty.isEmpty());
+    assert(empty.getDominantMaterialID() == MaterialID::Vacuum);
+    std::cout << "  ✓ createEmpty creates vacuum voxel" << std::endl;
 }
 
-void testDeterminism() {
-    std::cout << "Test 6: Determinism" << std::endl;
+void test_should_render() {
+    std::cout << "Testing render decision..." << std::endl;
     
-    // Same input should give same output
+    // Empty voxel should not render
+    MixedVoxel empty = MixedVoxel::createEmpty();
+    assert(!empty.shouldRender());
+    std::cout << "  ✓ Empty voxel marked as non-renderable" << std::endl;
+    
+    // Pure air should not render (unless we want atmosphere)
+    MixedVoxel air = MixedVoxel::createPure(MaterialID::Air);
+    assert(!air.shouldRender());  // Assuming we don't render pure air
+    std::cout << "  ✓ Pure air marked as non-renderable" << std::endl;
+    
+    // Rock should render
+    MixedVoxel rock = MixedVoxel::createPure(MaterialID::Rock);
+    assert(rock.shouldRender());
+    std::cout << "  ✓ Rock marked as renderable" << std::endl;
+    
+    // Mostly air with some rock should render
+    MixedVoxel mostly_air = MixedVoxel::createMix(
+        MaterialID::Air, 200,
+        MaterialID::Rock, 55
+    );
+    assert(mostly_air.shouldRender());
+    std::cout << "  ✓ Mostly air with some solid marked as renderable" << std::endl;
+}
+
+void test_averaging() {
+    std::cout << "Testing voxel averaging..." << std::endl;
+    
+    // Create 8 child voxels with different materials
     MixedVoxel children[8];
-    for(int i = 0; i < 8; i++) {
-        children[i].rock = (i * 31) % 256;
-        children[i].water = (i * 17) % 256;
-        children[i].air = (i * 13) % 256;
+    children[0] = MixedVoxel::createPure(MaterialID::Rock);
+    children[1] = MixedVoxel::createPure(MaterialID::Rock);
+    children[2] = MixedVoxel::createPure(MaterialID::Water);
+    children[3] = MixedVoxel::createPure(MaterialID::Water);
+    children[4] = MixedVoxel::createPure(MaterialID::Sand);
+    children[5] = MixedVoxel::createPure(MaterialID::Sand);
+    children[6] = MixedVoxel::createPure(MaterialID::Grass);
+    children[7] = MixedVoxel::createPure(MaterialID::Air);
+    
+    // Average them
+    MixedVoxel parent = MixedVoxel::average(children);
+    
+    // Parent should have all 5 materials, but only 4 can be stored
+    // Should keep the 4 most abundant (Rock, Water, Sand, Grass - not Air)
+    bool hasRock = false, hasWater = false, hasSand = false, hasGrass = false;
+    
+    for (int i = 0; i < 4; i++) {
+        MaterialID id = parent.getMaterialID(i);
+        if (id == MaterialID::Rock) hasRock = true;
+        if (id == MaterialID::Water) hasWater = true;
+        if (id == MaterialID::Sand) hasSand = true;
+        if (id == MaterialID::Grass) hasGrass = true;
     }
     
-    auto result1 = VoxelAverager::average(children);
-    auto result2 = VoxelAverager::average(children);
+    assert(hasRock && hasWater && hasSand);
+    std::cout << "  ✓ Averaging preserves multiple materials" << std::endl;
     
-    assert(result1.rock == result2.rock);
-    assert(result1.water == result2.water);
-    assert(result1.air == result2.air);
-    
-    std::cout << "  ✓ Averaging is deterministic" << std::endl;
+    // Test that amounts are reasonable (each should be ~64 since 2/8 children)
+    for (int i = 0; i < 4; i++) {
+        uint8_t amount = parent.getMaterialAmount(i);
+        if (parent.getMaterialID(i) != MaterialID::Vacuum) {
+            assert(amount > 30 && amount < 100);  // Roughly 2/8 * 255 = 64
+        }
+    }
+    std::cout << "  ✓ Averaged amounts are proportional" << std::endl;
 }
 
-void testScaleInvariance() {
-    std::cout << "Test 7: Scale Invariance" << std::endl;
+void test_backwards_compatibility() {
+    std::cout << "Testing backwards compatibility..." << std::endl;
     
-    // Create a mountain at different LOD levels
-    MixedVoxel level0[8];  // Finest detail
-    for(int i = 0; i < 8; i++) {
-        level0[i] = MixedVoxel::createPure(255, 0, 0);  // All rock
-    }
+    // The new system should be able to represent the old fixed materials
+    // Old: rock, water, air, sediment
     
-    // Average to level 1
-    auto level1 = VoxelAverager::average(level0);
+    MixedVoxel oldStyle;
+    oldStyle.setMaterials(
+        MaterialID::Rock, 100,
+        MaterialID::Water, 50,
+        MaterialID::Air, 100,
+        MaterialID::Sand, 5  // Using sand as sediment
+    );
     
-    // Create another set of level 1 from level 0
-    MixedVoxel level0_set2[8];
-    for(int i = 0; i < 8; i++) {
-        level0_set2[i] = level1;  // All same as level1
-    }
+    // Should still work with similar logic
+    assert(oldStyle.getMaterialID(0) == MaterialID::Rock);
+    assert(oldStyle.getMaterialID(1) == MaterialID::Water);
+    assert(oldStyle.getMaterialID(2) == MaterialID::Air);
+    assert(oldStyle.getMaterialID(3) == MaterialID::Sand);
     
-    // Average to level 2
-    auto level2 = VoxelAverager::average(level0_set2);
-    
-    // Mountain should still be recognizable as rock at all levels
-    assert(level1.rock > 250);
-    assert(level2.rock > 245);  // Might lose a tiny bit to rounding
-    
-    std::cout << "  ✓ Features preserve character across scales" << std::endl;
-    std::cout << "    Level 0: rock=255" << std::endl;
-    std::cout << "    Level 1: rock=" << (int)level1.rock << std::endl;
-    std::cout << "    Level 2: rock=" << (int)level2.rock << std::endl;
+    std::cout << "  ✓ Can represent old material system" << std::endl;
 }
 
 int main() {
-    std::cout << "=== MIXED VOXEL SYSTEM TESTS ===" << std::endl << std::endl;
+    std::cout << "\n=== Mixed Voxel V2 Test Suite ===\n" << std::endl;
     
-    testBasicMixedVoxel();
-    testVoxelBlending();
-    testFeaturePreservation();
-    testColorGeneration();
-    testMemorySize();
-    testDeterminism();
-    testScaleInvariance();
+    test_mixed_voxel_structure();
+    test_material_id_storage();
+    test_dominant_material();
+    test_color_calculation();
+    test_factory_methods();
+    test_should_render();
+    test_averaging();
+    test_backwards_compatibility();
     
-    std::cout << std::endl << "=== ALL TESTS PASSED ===" << std::endl;
-    
-    // Summary
-    std::cout << std::endl << "Key Results:" << std::endl;
-    std::cout << "- Mountains preserve peak height through averaging" << std::endl;
-    std::cout << "- Oceans preserve depth through averaging" << std::endl;
-    std::cout << "- Coastlines blend naturally" << std::endl;
-    std::cout << "- Only 8 bytes per voxel (memory efficient)" << std::endl;
-    std::cout << "- Deterministic operations (reproducible)" << std::endl;
-    std::cout << "- Scale-invariant (looks correct at all distances)" << std::endl;
-    
+    std::cout << "\n=== All Mixed Voxel V2 Tests Passed ===\n" << std::endl;
     return 0;
 }

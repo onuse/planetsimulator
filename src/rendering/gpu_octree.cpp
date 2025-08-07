@@ -91,11 +91,12 @@ void GPUOctree::uploadOctree(octree::OctreePlanet* planet,
     // DEBUG: Analyze materials in the voxels we're uploading
     int airCount = 0, rockCount = 0, waterCount = 0, magmaCount = 0;
     for (const auto& voxel : renderData.voxels) {
-        uint8_t mat = voxel.getDominantMaterial();
-        if (mat == 0) airCount++;
-        else if (mat == 1) rockCount++;
-        else if (mat == 2) waterCount++;
-        else if (mat == 3) magmaCount++;
+        core::MaterialID mat = voxel.getDominantMaterialID();
+        if (mat == core::MaterialID::Air || mat == core::MaterialID::Vacuum) airCount++;
+        else if (mat == core::MaterialID::Rock || mat == core::MaterialID::Granite || 
+                 mat == core::MaterialID::Basalt) rockCount++;
+        else if (mat == core::MaterialID::Water) waterCount++;
+        else if (mat == core::MaterialID::Lava) magmaCount++;
     }
     std::cout << "  Material distribution in upload:" << std::endl;
     std::cout << "    Air: " << airCount << " (" << (airCount * 100.0f / voxelCount) << "%)" << std::endl;
@@ -245,10 +246,7 @@ void GPUOctree::flattenOctree(const octree::OctreeNode* node,
                       << " Node " << currentNodeIndex 
                       << " at dist=" << dist << std::endl;
             std::cout << "  Voxel ptr: " << &voxels[0] << std::endl;
-            std::cout << "  First voxel raw: rock=" << (int)voxels[0].rock 
-                      << " water=" << (int)voxels[0].water 
-                      << " air=" << (int)voxels[0].air << std::endl;
-            std::cout << "  First voxel dominant material: " << static_cast<int>(voxels[0].getDominantMaterial()) << std::endl;
+            std::cout << "  First voxel dominant material: " << static_cast<int>(voxels[0].getDominantMaterialID()) << std::endl;
             
             // If it's a non-leaf, that's the problem!
             if (!node->isLeaf()) {
@@ -275,13 +273,13 @@ void GPUOctree::flattenOctree(const octree::OctreeNode* node,
         }
         
         for (int i = 0; i < 8; i++) {
-            // DEBUG: Check voxel data before calling getDominantMaterial
-            if (shouldDebug && i == 0) {
-                std::cout << "\n  First voxel raw values: rock=" << (int)voxels[0].rock 
-                          << " water=" << (int)voxels[0].water 
-                          << " air=" << (int)voxels[0].air << std::endl;
-            }
-            uint32_t mat = static_cast<uint32_t>(voxels[i].getDominantMaterial());
+            // DEBUG: Check voxel data
+            core::MaterialID matID = voxels[i].getDominantMaterialID();
+            uint32_t mat = 0;  // Map to old material numbers for compatibility
+            if (matID == core::MaterialID::Air || matID == core::MaterialID::Vacuum) mat = 0;
+            else if (matID == core::MaterialID::Rock || matID == core::MaterialID::Granite || matID == core::MaterialID::Basalt) mat = 1;
+            else if (matID == core::MaterialID::Water) mat = 2;
+            else if (matID == core::MaterialID::Lava) mat = 3;
             if (shouldDebug) {
                 std::cout << mat << " ";
             }

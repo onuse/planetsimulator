@@ -277,6 +277,22 @@ set_target_properties(test_gpu_rendering PROPERTIES
 )
 add_test(NAME GPURendering COMMAND test_gpu_rendering)
 
+# Test 3b: Shader material lookup
+add_executable(test_shader_material_lookup
+    tests/test_shader_material_lookup.cpp
+    src/core/octree.cpp
+    src/core/material_table.cpp
+)
+target_include_directories(test_shader_material_lookup PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_shader_material_lookup PRIVATE glm::glm)
+set_target_properties(test_shader_material_lookup PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME ShaderMaterialLookup COMMAND test_shader_material_lookup)
+
 # Add custom target to run tests (can be run manually with: cmake --build . --target run_tests)
 add_custom_target(run_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
@@ -331,6 +347,7 @@ set_target_properties(test_material_pipeline PROPERTIES
 add_executable(test_hierarchical_octree
     tests/test_hierarchical_octree.cpp
     src/core/octree.cpp
+    src/core/material_table.cpp
     src/rendering/hierarchical_gpu_octree.cpp
 )
 target_include_directories(test_hierarchical_octree PRIVATE
@@ -403,6 +420,7 @@ add_test(NAME MaterialTracking COMMAND test_material_tracking)
 
 add_executable(test_mixed_voxel
     tests/test_mixed_voxel.cpp
+    src/core/material_table.cpp
 )
 target_include_directories(test_mixed_voxel PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include

@@ -6,6 +6,14 @@
 
 namespace core {
 
+// Material states
+enum class MaterialState : uint8_t {
+    Solid = 0,
+    Liquid = 1,
+    Gas = 2,
+    Plasma = 3
+};
+
 // Material IDs - 4 bits each, supports up to 16 material types
 enum class MaterialID : uint8_t {
     // Fundamental materials (always needed)
@@ -83,6 +91,26 @@ public:
     // Get color for a material
     glm::vec3 getColor(MaterialID id) const {
         return materials[static_cast<size_t>(id)].color;
+    }
+    
+    // Get density for a material
+    float getDensity(MaterialID id) const {
+        return materials[static_cast<size_t>(id)].density;
+    }
+    
+    // Get state for a material
+    MaterialState getState(MaterialID id) const {
+        // Determine state based on material ID
+        switch(id) {
+            case MaterialID::Vacuum:
+            case MaterialID::Air:
+                return MaterialState::Gas;
+            case MaterialID::Water:
+            case MaterialID::Lava:
+                return MaterialState::Liquid;
+            default:
+                return MaterialState::Solid;
+        }
     }
     
     // For GPU upload - packed format

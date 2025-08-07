@@ -67,7 +67,8 @@ void test_prepare_render_data() {
 void test_frustum_culling() {
     std::cout << "TEST: Frustum culling..." << std::endl;
     
-    float radius = 1000.0f;
+    // Use larger planet so frustum culling is enabled (>= 10000.0f)
+    float radius = 10000.0f;
     OctreePlanet planet(radius, 4);
     planet.generate(42);
     

@@ -27,8 +27,10 @@ InstanceBufferManager::createInstancesFromVoxels(
                 for (int i = 0; i < 8; i++) {
                     const auto& voxel = renderData.voxels[voxelIdx + i];
                     
-                    // Skip pure air voxels - they're invisible
-                    if (voxel.getDominantMaterial() == 0 && voxel.air > 200) {
+                    // Skip pure air/vacuum voxels - they're invisible
+                    core::MaterialID mat = voxel.getDominantMaterialID();
+                    if ((mat == core::MaterialID::Air || mat == core::MaterialID::Vacuum) && 
+                        voxel.getMaterialAmount(0) > 200) {
                         localStats.airCount++;
                         continue;
                     }
@@ -41,17 +43,24 @@ InstanceBufferManager::createInstancesFromVoxels(
                     // Get blended color from mixed voxel
                     glm::vec3 color = voxel.getColor();
                     
-                    // Pack dominant material type in w for backward compatibility
-                    float matType = static_cast<float>(voxel.getDominantMaterial());
-                    instance.colorAndMaterial = glm::vec4(color, matType);
+                    // Map material ID to old material type numbers for shader compatibility
+                    core::MaterialID dominantID = voxel.getDominantMaterialID();
+                    float matType = 0.0f;
                     
-                    // Update statistics based on dominant material
-                    uint8_t dominant = voxel.getDominantMaterial();
-                    switch (dominant) {
-                        case 1: localStats.rockCount++; break;
-                        case 2: localStats.waterCount++; break;
-                        case 3: localStats.magmaCount++; break;  // Future: magma support
+                    if (dominantID == core::MaterialID::Rock || dominantID == core::MaterialID::Granite || 
+                        dominantID == core::MaterialID::Basalt || dominantID == core::MaterialID::Sand ||
+                        dominantID == core::MaterialID::Soil || dominantID == core::MaterialID::Clay) {
+                        matType = 1.0f;  // Rock-like
+                        localStats.rockCount++;
+                    } else if (dominantID == core::MaterialID::Water || dominantID == core::MaterialID::Ice) {
+                        matType = 2.0f;  // Water-like
+                        localStats.waterCount++;
+                    } else if (dominantID == core::MaterialID::Lava) {
+                        matType = 3.0f;  // Magma/Lava
+                        localStats.magmaCount++;
                     }
+                    
+                    instance.colorAndMaterial = glm::vec4(color, matType);
                     
                     instances.push_back(instance);
                 }

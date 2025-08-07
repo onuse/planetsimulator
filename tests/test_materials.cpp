@@ -11,15 +11,15 @@ using namespace octree;
 void test_mixed_voxel_creation() {
     std::cout << "TEST: MixedVoxel creation..." << std::endl;
     
-    // Pure materials
-    auto rock = MixedVoxel::createPure(255, 0, 0);
-    assert(rock.getDominantMaterial() == 1); // Rock
+    // Pure materials using new API
+    auto rock = MixedVoxel::createPure(core::MaterialID::Rock);
+    assert(rock.getDominantMaterialID() == core::MaterialID::Rock);
     
-    auto water = MixedVoxel::createPure(0, 255, 0);
-    assert(water.getDominantMaterial() == 2); // Water
+    auto water = MixedVoxel::createPure(core::MaterialID::Water);
+    assert(water.getDominantMaterialID() == core::MaterialID::Water);
     
-    auto air = MixedVoxel::createPure(0, 0, 255);
-    assert(air.getDominantMaterial() == 0); // Air
+    auto air = MixedVoxel::createPure(core::MaterialID::Air);
+    assert(air.getDominantMaterialID() == core::MaterialID::Air);
     
     std::cout << "  ✓ Pure materials created correctly" << std::endl;
 }
@@ -28,24 +28,16 @@ void test_mixed_voxel_creation() {
 void test_material_blending() {
     std::cout << "TEST: Material blending..." << std::endl;
     
-    // 50/50 mix
-    MixedVoxel mix;
-    mix.rock = 128;
-    mix.water = 127;
-    mix.air = 0;
-    mix.sediment = 0;
+    // 50/50 mix using new API
+    MixedVoxel mix = MixedVoxel::createMix(core::MaterialID::Rock, 128, core::MaterialID::Water, 127);
     
-    uint8_t dominant = mix.getDominantMaterial();
-    assert(dominant == 1 || dominant == 2); // Should be rock or water
+    core::MaterialID dominant = mix.getDominantMaterialID();
+    assert(dominant == core::MaterialID::Rock || dominant == core::MaterialID::Water);
     
     // Mostly air with some rock
-    MixedVoxel sparse;
-    sparse.rock = 50;
-    sparse.water = 0;
-    sparse.air = 205;
-    sparse.sediment = 0;
+    MixedVoxel sparse = MixedVoxel::createMix(core::MaterialID::Rock, 50, core::MaterialID::Air, 205);
     
-    assert(sparse.getDominantMaterial() == 0); // Should be air
+    assert(sparse.getDominantMaterialID() == core::MaterialID::Air);
     
     std::cout << "  ✓ Material blending works" << std::endl;
 }
@@ -58,40 +50,40 @@ void test_voxel_averager() {
     {
         MixedVoxel voxels[8];
         for (int i = 0; i < 8; i++) {
-            voxels[i] = MixedVoxel::createPure(255, 0, 0); // All rock
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Rock);
         }
         auto avg = VoxelAverager::average(voxels);
-        assert(avg.getDominantMaterial() == 1); // Should be rock
+        assert(avg.getDominantMaterialID() == core::MaterialID::Rock);
     }
     
     // Mixed materials
     {
         MixedVoxel voxels[8];
         for (int i = 0; i < 4; i++) {
-            voxels[i] = MixedVoxel::createPure(255, 0, 0); // Rock
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Rock);
         }
         for (int i = 4; i < 8; i++) {
-            voxels[i] = MixedVoxel::createPure(0, 255, 0); // Water
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Water);
         }
         auto avg = VoxelAverager::average(voxels);
-        uint8_t dom = avg.getDominantMaterial();
-        assert(dom == 1 || dom == 2); // Should be rock or water, not air
+        core::MaterialID dom = avg.getDominantMaterialID();
+        assert(dom == core::MaterialID::Rock || dom == core::MaterialID::Water);
     }
     
     // Sparse materials (the problem case)
     {
         MixedVoxel voxels[8];
         for (int i = 0; i < 6; i++) {
-            voxels[i] = MixedVoxel::createPure(0, 0, 255); // Air
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Air);
         }
-        voxels[6] = MixedVoxel::createPure(255, 0, 0); // Rock
-        voxels[7] = MixedVoxel::createPure(0, 255, 0); // Water
+        voxels[6] = MixedVoxel::createPure(core::MaterialID::Rock);
+        voxels[7] = MixedVoxel::createPure(core::MaterialID::Water);
         
         auto avg = VoxelAverager::average(voxels);
-        uint8_t dom = avg.getDominantMaterial();
+        core::MaterialID dom = avg.getDominantMaterialID();
         
         // This is the bug - sparse materials average to air
-        if (dom == 0) {
+        if (dom == core::MaterialID::Air) {
             std::cout << "  ⚠️  Known issue: Sparse materials (6 air, 2 material) average to air" << std::endl;
         }
     }
@@ -113,19 +105,21 @@ void test_planet_materials() {
     auto renderData = planet.prepareRenderData(viewPos, viewProj);
     
     // Count materials
-    int materials[4] = {0, 0, 0, 0}; // air, rock, water, magma
+    int airCount = 0, rockCount = 0, waterCount = 0;
     for (const auto& voxel : renderData.voxels) {
-        uint8_t mat = voxel.getDominantMaterial();
-        if (mat < 4) materials[mat]++;
+        core::MaterialID mat = voxel.getDominantMaterialID();
+        if (mat == core::MaterialID::Air || mat == core::MaterialID::Vacuum) airCount++;
+        else if (mat == core::MaterialID::Rock) rockCount++;
+        else if (mat == core::MaterialID::Water) waterCount++;
     }
     
     int total = renderData.voxels.size();
-    std::cout << "  Air: " << (materials[0] * 100.0f / total) << "%" << std::endl;
-    std::cout << "  Rock: " << (materials[1] * 100.0f / total) << "%" << std::endl;
-    std::cout << "  Water: " << (materials[2] * 100.0f / total) << "%" << std::endl;
+    std::cout << "  Air: " << (airCount * 100.0f / total) << "%" << std::endl;
+    std::cout << "  Rock: " << (rockCount * 100.0f / total) << "%" << std::endl;
+    std::cout << "  Water: " << (waterCount * 100.0f / total) << "%" << std::endl;
     
     // Should have some non-air materials
-    assert(materials[1] + materials[2] > 0);
+    assert(rockCount + waterCount > 0);
     
     std::cout << "  ✓ Planet has materials" << std::endl;
 }
@@ -134,15 +128,15 @@ void test_planet_materials() {
 void test_material_colors() {
     std::cout << "TEST: Material colors..." << std::endl;
     
-    auto rock = MixedVoxel::createPure(255, 0, 0);
+    auto rock = MixedVoxel::createPure(core::MaterialID::Rock);
     glm::vec3 rockColor = rock.getColor();
     assert(rockColor.r > 0.4f && rockColor.r < 0.7f); // Brownish
     
-    auto water = MixedVoxel::createPure(0, 255, 0);
+    auto water = MixedVoxel::createPure(core::MaterialID::Water);
     glm::vec3 waterColor = water.getColor();
     assert(waterColor.b > waterColor.r); // Blue dominant
     
-    auto air = MixedVoxel::createPure(0, 0, 255);
+    auto air = MixedVoxel::createPure(core::MaterialID::Air);
     glm::vec3 airColor = air.getColor();
     // Air should be nearly transparent (light blue)
     

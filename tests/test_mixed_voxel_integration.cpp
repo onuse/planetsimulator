@@ -9,13 +9,13 @@ using namespace rendering;
 void testMixedVoxelInOctree() {
     std::cout << "Test 1: Mixed Voxel Creation" << std::endl;
     
-    // Test that MixedVoxel works as Voxel
-    MixedVoxel voxel1 = MixedVoxel::createPure(255, 0, 0);  // Rock
-    MixedVoxel voxel2 = MixedVoxel::createPure(0, 255, 0);  // Water
-    MixedVoxel voxel3 = MixedVoxel::createPure(128, 128, 0); // Mixed
+    // Test that MixedVoxel works with new API
+    MixedVoxel voxel1 = MixedVoxel::createPure(core::MaterialID::Rock);
+    MixedVoxel voxel2 = MixedVoxel::createPure(core::MaterialID::Water);
+    MixedVoxel voxel3 = MixedVoxel::createMix(core::MaterialID::Rock, 128, core::MaterialID::Water, 128);
     
-    assert(voxel1.getDominantMaterial() == 1); // Rock
-    assert(voxel2.getDominantMaterial() == 2); // Water
+    assert(voxel1.getDominantMaterialID() == core::MaterialID::Rock);
+    assert(voxel2.getDominantMaterialID() == core::MaterialID::Water);
     
     // Test color generation
     glm::vec3 rockColor = voxel1.getColor();
@@ -51,16 +51,16 @@ void testInstanceColorGeneration() {
         MixedVoxel voxel;
         if (i == 0) {
             // Pure rock - should be brownish
-            voxel = MixedVoxel::createPure(255, 0, 0);
+            voxel = MixedVoxel::createPure(core::MaterialID::Rock);
         } else if (i == 1) {
             // Pure water - should be blueish
-            voxel = MixedVoxel::createPure(0, 255, 0);
+            voxel = MixedVoxel::createPure(core::MaterialID::Water);
         } else if (i == 2) {
             // Mixed coast - should be blend
-            voxel = MixedVoxel::createPure(128, 128, 0);
+            voxel = MixedVoxel::createMix(core::MaterialID::Rock, 128, core::MaterialID::Water, 128);
         } else {
             // Air - should be skipped
-            voxel = MixedVoxel::createPure(0, 0, 255);
+            voxel = MixedVoxel::createPure(core::MaterialID::Air);
         }
         renderData.voxels.push_back(voxel);
     }
@@ -117,12 +117,12 @@ void testPlanetGeneration() {
     int pureRock = 0, pureWater = 0, mixed = 0, air = 0;
     
     for (const auto& voxel : renderData.voxels) {
-        uint8_t dominant = voxel.getDominantMaterial();
-        if (dominant == 0 && voxel.air > 200) {
+        core::MaterialID dominant = voxel.getDominantMaterialID();
+        if (dominant == core::MaterialID::Air || dominant == core::MaterialID::Vacuum) {
             air++;
-        } else if (dominant == 1 && voxel.rock > 200) {
+        } else if (dominant == core::MaterialID::Rock) {
             pureRock++;
-        } else if (dominant == 2 && voxel.water > 200) {
+        } else if (dominant == core::MaterialID::Water) {
             pureWater++;
         } else {
             mixed++;

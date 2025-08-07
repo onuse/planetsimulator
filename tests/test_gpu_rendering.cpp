@@ -153,7 +153,8 @@ void test_no_fallback_needed() {
             // Check if voxels have materials
             int materialCount = 0;
             for (int j = 0; j < 8 && node.voxelIndex + j < renderData.voxels.size(); j++) {
-                if (renderData.voxels[node.voxelIndex + j].getDominantMaterial() != 0) {
+                core::MaterialID mat = renderData.voxels[node.voxelIndex + j].getDominantMaterialID();
+                if (mat != core::MaterialID::Air && mat != core::MaterialID::Vacuum) {
                     materialCount++;
                 }
             }

@@ -207,7 +207,13 @@ void HierarchicalGPUOctree::traverseWithCulling(const octree::OctreeNode* node,
         uint32_t materialCounts[4] = {0, 0, 0, 0};
         
         for (const auto& voxel : voxels) {
-            uint32_t mat = static_cast<uint32_t>(voxel.getDominantMaterial());
+            // Map material ID to old material numbers for compatibility
+            core::MaterialID matID = voxel.getDominantMaterialID();
+            uint32_t mat = 0;
+            if (matID == core::MaterialID::Rock || matID == core::MaterialID::Granite || matID == core::MaterialID::Basalt) mat = 1;
+            else if (matID == core::MaterialID::Water) mat = 2;
+            else if (matID == core::MaterialID::Lava) mat = 3;
+            
             if (mat < 4) materialCounts[mat]++;
         }
         

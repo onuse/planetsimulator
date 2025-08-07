@@ -12,10 +12,10 @@ REM Check if shader directory exists
 if exist shaders (
     cd shaders
     
-    REM Check if compiled shaders exist
+    REM Check if compiled shaders exist in root
     set REQUIRED_SHADERS=hierarchical.vert.spv hierarchical.frag.spv octree_raymarch.vert.spv octree_raymarch.frag.spv
     for %%s in (%REQUIRED_SHADERS%) do (
-        if not exist "compiled\%%s" (
+        if not exist "%%s" (
             echo Shader %%s is missing - must recompile
             set SHADER_STALE=1
         )
@@ -38,11 +38,13 @@ if exist shaders (
         echo Copying shaders to build directory...
         if not exist ..\build\bin\Release\shaders mkdir ..\build\bin\Release\shaders
         copy /Y *.spv ..\build\bin\Release\shaders\ >nul 2>&1
-        if exist compiled\*.spv (
-            copy /Y compiled\*.spv ..\build\bin\Release\shaders\ >nul 2>&1
-        )
     ) else (
         echo All shaders are fresh
+        
+        REM Always ensure shaders are copied to build directory
+        echo Ensuring shaders are in build directory...
+        if not exist ..\build\bin\Release\shaders mkdir ..\build\bin\Release\shaders
+        copy /Y *.spv ..\build\bin\Release\shaders\ >nul 2>&1
     )
     
     cd ..

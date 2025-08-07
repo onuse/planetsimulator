@@ -164,6 +164,10 @@ private:
     VkBuffer voxelDataBuffer;
     VkDeviceMemory voxelDataBufferMemory;
     
+    // Material table buffer
+    VkBuffer materialTableBuffer;
+    VkDeviceMemory materialTableBufferMemory;
+    
     // Command buffers
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
@@ -234,6 +238,8 @@ private:
     void drawFrame(octree::OctreePlanet* planet, core::Camera* camera);
     void createCubeGeometry();
     void updateInstanceBuffer(const octree::OctreePlanet::RenderData& renderData);
+    void createMaterialTableBuffer();
+    void updateMaterialTableBuffer();
     
     // Device selection helpers
     bool isDeviceSuitable(VkPhysicalDevice device);

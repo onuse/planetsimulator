@@ -266,7 +266,9 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
                     const auto& voxel = renderData.voxels[voxelIdx + i];
                     
                     // Skip pure air voxels
-                    if (voxel.getDominantMaterial() == 0 && voxel.air > 200) {
+                    core::MaterialID mat = voxel.getDominantMaterialID();
+                    if ((mat == core::MaterialID::Air || mat == core::MaterialID::Vacuum) && 
+                        voxel.getMaterialAmount(0) > 200) {
                         continue;
                     }
                     
@@ -281,8 +283,18 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
                     instance.center = node.center + offset;
                     instance.halfSize = voxelSize;
                     
-                    // Get dominant material type
-                    float materialType = static_cast<float>(voxel.getDominantMaterial());
+                    // Get dominant material type and map to old numbers for shader compatibility
+                    core::MaterialID dominantID = voxel.getDominantMaterialID();
+                    float materialType = 0.0f;
+                    
+                    if (dominantID == core::MaterialID::Rock || dominantID == core::MaterialID::Granite || 
+                        dominantID == core::MaterialID::Basalt) {
+                        materialType = 1.0f;  // Rock-like
+                    } else if (dominantID == core::MaterialID::Water) {
+                        materialType = 2.0f;  // Water
+                    } else if (dominantID == core::MaterialID::Lava) {
+                        materialType = 3.0f;  // Magma/Lava
+                    }
                     
                     // DEBUG: Track water voxels specifically with sequence numbers
                     if (materialType == 2.0f && debugOnce) {

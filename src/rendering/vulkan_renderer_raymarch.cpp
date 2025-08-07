@@ -13,9 +13,10 @@ void VulkanRenderer::createRayMarchPipeline() {
     // Create descriptor set layout for ray marching
     // Binding 0: UBO (camera matrices)
     // Binding 1: SSBO (octree nodes)
-    // Binding 2: SSBO (voxel data)
+    // Binding 2: SSBO (material table)
+    // Binding 3: SSBO (voxel data) - optional, for future use
     
-    std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings{};
+    std::array<VkDescriptorSetLayoutBinding, 4> layoutBindings{};
     
     // UBO for camera
     layoutBindings[0].binding = 0;
@@ -31,12 +32,19 @@ void VulkanRenderer::createRayMarchPipeline() {
     layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     layoutBindings[1].pImmutableSamplers = nullptr;
     
-    // SSBO for voxel data
+    // SSBO for material table
     layoutBindings[2].binding = 2;
     layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindings[2].descriptorCount = 1;
     layoutBindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     layoutBindings[2].pImmutableSamplers = nullptr;
+    
+    // SSBO for voxel data (optional, for future use)
+    layoutBindings[3].binding = 3;
+    layoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindings[3].descriptorCount = 1;
+    layoutBindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    layoutBindings[3].pImmutableSamplers = nullptr;
     
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -218,13 +226,19 @@ void VulkanRenderer::createRayMarchDescriptorSets() {
         nodeBufferInfo.offset = 0;
         nodeBufferInfo.range = VK_WHOLE_SIZE;
         
-        // SSBO for voxel data
+        // SSBO for material table
+        VkDescriptorBufferInfo materialTableInfo{};
+        materialTableInfo.buffer = materialTableBuffer;
+        materialTableInfo.offset = 0;
+        materialTableInfo.range = VK_WHOLE_SIZE;
+        
+        // SSBO for voxel data (optional)
         VkDescriptorBufferInfo voxelBufferInfo{};
         voxelBufferInfo.buffer = gpuOctree->getVoxelBuffer();
         voxelBufferInfo.offset = 0;
         voxelBufferInfo.range = VK_WHOLE_SIZE;
         
-        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
         
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = rayMarchDescriptorSets[i];
@@ -248,7 +262,15 @@ void VulkanRenderer::createRayMarchDescriptorSets() {
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrites[2].descriptorCount = 1;
-        descriptorWrites[2].pBufferInfo = &voxelBufferInfo;
+        descriptorWrites[2].pBufferInfo = &materialTableInfo;
+        
+        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[3].dstSet = rayMarchDescriptorSets[i];
+        descriptorWrites[3].dstBinding = 3;
+        descriptorWrites[3].dstArrayElement = 0;
+        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[3].descriptorCount = 1;
+        descriptorWrites[3].pBufferInfo = &voxelBufferInfo;
         
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()),
                               descriptorWrites.data(), 0, nullptr);

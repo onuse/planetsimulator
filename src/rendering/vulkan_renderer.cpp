@@ -21,7 +21,8 @@ namespace rendering {
 
 VulkanRenderer::VulkanRenderer(uint32_t width, uint32_t height) 
     : windowWidth(width), windowHeight(height), instanceBuffer(VK_NULL_HANDLE), 
-      instanceBufferMemory(VK_NULL_HANDLE), instanceBufferMapped(nullptr) {
+      instanceBufferMemory(VK_NULL_HANDLE), instanceBufferMapped(nullptr),
+      materialTableBuffer(VK_NULL_HANDLE), materialTableBufferMemory(VK_NULL_HANDLE) {
     lastFrameTime = std::chrono::steady_clock::now();
 }
 
@@ -48,6 +49,7 @@ bool VulkanRenderer::initialize() {
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
+        createMaterialTableBuffer();
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
@@ -178,6 +180,12 @@ void VulkanRenderer::cleanup() {
     
     vkDestroyBuffer(device, vertexBuffer, nullptr);
     vkFreeMemory(device, vertexBufferMemory, nullptr);
+    
+    // Clean up material table buffer
+    if (materialTableBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, materialTableBuffer, nullptr);
+        vkFreeMemory(device, materialTableBufferMemory, nullptr);
+    }
     
     // Clean up instance buffer if it exists
     if (instanceBuffer != VK_NULL_HANDLE) {

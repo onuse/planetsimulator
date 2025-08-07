@@ -3,10 +3,11 @@
 #include <cstdint>
 #include <algorithm>
 #include <glm/glm.hpp>
+#include "material_table.hpp"
 
 namespace octree {
 
-// Feature types for LOD preservation
+// Feature types for LOD preservation (keeping from old version)
 enum class FeatureType : uint8_t {
     GENERIC = 0,
     MOUNTAIN_PEAK = 1,
@@ -19,243 +20,262 @@ enum class FeatureType : uint8_t {
     PLATEAU = 8
 };
 
-// Compact mixed material representation (8 bytes)
+// New MixedVoxel with flexible material system (still 8 bytes)
 struct MixedVoxel {
-    // Material composition (4 bytes)
-    // Values are normalized: actual = (stored / 255.0)
-    uint8_t rock;      // Igneous, metamorphic, sedimentary
-    uint8_t water;     // Liquid water
-    uint8_t air;       // Atmosphere/empty
-    uint8_t sediment;  // Loose material (sand, soil)
+    // Material amounts (4 bytes) - how much of each material
+    uint8_t amounts[4];
+    
+    // Material IDs (2 bytes) - which materials (4 bits each)
+    // materialIds[0] = [material1_id:4][material0_id:4]
+    // materialIds[1] = [material3_id:4][material2_id:4]
+    uint8_t materialIds[2];
     
     // Physical properties (2 bytes)
     uint8_t temperature;  // 0-255 mapped to real temperature
     uint8_t pressure;     // 0-255 mapped to pressure/depth
     
-    // Metadata (2 bytes)
-    uint8_t age;         // Geological age
-    uint8_t flags;       // Bit flags for special properties
-    
-    // Constructors
-    MixedVoxel() : rock(0), water(0), air(255), sediment(0),
-                   temperature(128), pressure(128), age(0), flags(0) {}
-    
-    // Create pure material
-    static MixedVoxel createPure(uint8_t rockAmt, uint8_t waterAmt, uint8_t airAmt) {
-        MixedVoxel v;
-        v.rock = rockAmt;
-        v.water = waterAmt;
-        v.air = airAmt;
-        v.sediment = 0;
-        return v;
+    // Default constructor - creates empty/vacuum voxel
+    MixedVoxel() : amounts{0, 0, 0, 0}, materialIds{0, 0}, 
+                   temperature(128), pressure(128) {
+        // Set first material to Vacuum with full amount
+        setMaterial(0, core::MaterialID::Vacuum, 255);
     }
     
-    // Get dominant material
-    uint8_t getDominantMaterial() const {
-        uint8_t maxVal = std::max({rock, water, air, sediment});
-        if (rock == maxVal) return 1;  // Rock
-        if (water == maxVal) return 2; // Water
-        if (air == maxVal) return 0;   // Air
-        return 3; // Sediment
+    // === Material Access Methods ===
+    
+    // Set a specific material slot
+    void setMaterial(int slot, core::MaterialID id, uint8_t amount) {
+        if (slot < 0 || slot > 3) return;
+        
+        amounts[slot] = amount;
+        
+        // Pack material ID into the right nibble
+        if (slot == 0) {
+            materialIds[0] = (materialIds[0] & 0xF0) | (static_cast<uint8_t>(id) & 0x0F);
+        } else if (slot == 1) {
+            materialIds[0] = (materialIds[0] & 0x0F) | ((static_cast<uint8_t>(id) & 0x0F) << 4);
+        } else if (slot == 2) {
+            materialIds[1] = (materialIds[1] & 0xF0) | (static_cast<uint8_t>(id) & 0x0F);
+        } else { // slot == 3
+            materialIds[1] = (materialIds[1] & 0x0F) | ((static_cast<uint8_t>(id) & 0x0F) << 4);
+        }
     }
     
-    // Get material percentages
-    float getRockPercent() const { return rock / 255.0f; }
-    float getWaterPercent() const { return water / 255.0f; }
-    float getAirPercent() const { return air / 255.0f; }
-    float getSedimentPercent() const { return sediment / 255.0f; }
+    // Set all materials at once
+    void setMaterials(core::MaterialID id0, uint8_t amt0,
+                      core::MaterialID id1, uint8_t amt1,
+                      core::MaterialID id2, uint8_t amt2,
+                      core::MaterialID id3, uint8_t amt3) {
+        setMaterial(0, id0, amt0);
+        setMaterial(1, id1, amt1);
+        setMaterial(2, id2, amt2);
+        setMaterial(3, id3, amt3);
+    }
     
-    // Blend two voxels
-    static MixedVoxel blend(const MixedVoxel& a, const MixedVoxel& b, float t) {
-        MixedVoxel result;
+    // Get material ID at slot
+    core::MaterialID getMaterialID(int slot) const {
+        if (slot < 0 || slot > 3) return core::MaterialID::Vacuum;
         
-        auto lerp = [](uint8_t v1, uint8_t v2, float t) -> uint8_t {
-            return static_cast<uint8_t>(v1 * (1.0f - t) + v2 * t);
-        };
+        if (slot == 0) {
+            return static_cast<core::MaterialID>(materialIds[0] & 0x0F);
+        } else if (slot == 1) {
+            return static_cast<core::MaterialID>((materialIds[0] >> 4) & 0x0F);
+        } else if (slot == 2) {
+            return static_cast<core::MaterialID>(materialIds[1] & 0x0F);
+        } else { // slot == 3
+            return static_cast<core::MaterialID>((materialIds[1] >> 4) & 0x0F);
+        }
+    }
+    
+    // Get material amount at slot
+    uint8_t getMaterialAmount(int slot) const {
+        if (slot < 0 || slot > 3) return 0;
+        return amounts[slot];
+    }
+    
+    // === Analysis Methods ===
+    
+    // Get the dominant material ID
+    core::MaterialID getDominantMaterialID() const {
+        uint8_t maxAmount = 0;
+        core::MaterialID dominantId = core::MaterialID::Vacuum;
         
-        result.rock = lerp(a.rock, b.rock, t);
-        result.water = lerp(a.water, b.water, t);
-        result.air = lerp(a.air, b.air, t);
-        result.sediment = lerp(a.sediment, b.sediment, t);
-        result.temperature = lerp(a.temperature, b.temperature, t);
-        result.pressure = lerp(a.pressure, b.pressure, t);
-        result.age = std::max(a.age, b.age);  // Keep older
-        result.flags = a.flags | b.flags;     // Combine flags
+        for (int i = 0; i < 4; i++) {
+            if (amounts[i] > maxAmount) {
+                maxAmount = amounts[i];
+                dominantId = getMaterialID(i);
+            }
+        }
         
-        return result;
+        return dominantId;
+    }
+    
+    // Check if voxel is empty (only vacuum/air)
+    bool isEmpty() const {
+        for (int i = 0; i < 4; i++) {
+            core::MaterialID id = getMaterialID(i);
+            if (amounts[i] > 0 && id != core::MaterialID::Vacuum && id != core::MaterialID::Air) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    // Should this voxel be rendered?
+    bool shouldRender() const {
+        // Don't render pure vacuum or pure air
+        if (isEmpty()) return false;
+        
+        // Check if we have any solid materials
+        for (int i = 0; i < 4; i++) {
+            core::MaterialID id = getMaterialID(i);
+            if (amounts[i] > 0 && 
+                id != core::MaterialID::Vacuum && 
+                id != core::MaterialID::Air) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     // Get interpolated color for rendering
     glm::vec3 getColor() const {
-        // Define material colors
-        const glm::vec3 ROCK_COLOR(0.5f, 0.4f, 0.3f);      // Brown
-        const glm::vec3 WATER_COLOR(0.0f, 0.3f, 0.7f);     // Blue
-        const glm::vec3 AIR_COLOR(0.8f, 0.9f, 1.0f);       // Light blue
-        const glm::vec3 SEDIMENT_COLOR(0.8f, 0.7f, 0.5f);  // Sandy
+        auto& matTable = core::MaterialTable::getInstance();
         
         // Calculate total for normalization
-        float total = rock + water + air + sediment;
-        if (total == 0) return AIR_COLOR;  // Empty voxel
+        float total = 0;
+        for (int i = 0; i < 4; i++) {
+            total += amounts[i];
+        }
+        
+        if (total == 0) {
+            return matTable.getColor(core::MaterialID::Vacuum);
+        }
         
         // Blend colors based on composition
         glm::vec3 color(0.0f);
-        color += ROCK_COLOR * (rock / total);
-        color += WATER_COLOR * (water / total);
-        color += AIR_COLOR * (air / total);
-        color += SEDIMENT_COLOR * (sediment / total);
+        for (int i = 0; i < 4; i++) {
+            if (amounts[i] > 0) {
+                color += matTable.getColor(getMaterialID(i)) * (amounts[i] / total);
+            }
+        }
         
-        // Apply temperature tint (cold = blue, hot = red)
+        // Apply temperature tint (optional, from old version)
         float temp_norm = temperature / 255.0f;
         if (temp_norm < 0.5f) {
-            // Cold: add blue
+            // Cold: add blue tint
             color = glm::mix(color, glm::vec3(0.5f, 0.7f, 1.0f), 
-                           (0.5f - temp_norm) * 0.3f);
-        } else {
-            // Hot: add red
+                           (0.5f - temp_norm) * 0.2f);
+        } else if (temp_norm > 0.5f) {
+            // Hot: add red tint
             color = glm::mix(color, glm::vec3(1.0f, 0.5f, 0.3f), 
-                           (temp_norm - 0.5f) * 0.3f);
+                           (temp_norm - 0.5f) * 0.2f);
         }
         
         return color;
     }
+    
+    // === Factory Methods ===
+    
+    // Create a pure single-material voxel
+    static MixedVoxel createPure(core::MaterialID material) {
+        MixedVoxel v;
+        v.setMaterial(0, material, 255);
+        v.setMaterial(1, core::MaterialID::Vacuum, 0);
+        v.setMaterial(2, core::MaterialID::Vacuum, 0);
+        v.setMaterial(3, core::MaterialID::Vacuum, 0);
+        return v;
+    }
+    
+    // Create a two-material mix
+    static MixedVoxel createMix(core::MaterialID mat1, uint8_t amt1,
+                                core::MaterialID mat2, uint8_t amt2) {
+        MixedVoxel v;
+        v.setMaterial(0, mat1, amt1);
+        v.setMaterial(1, mat2, amt2);
+        v.setMaterial(2, core::MaterialID::Vacuum, 0);
+        v.setMaterial(3, core::MaterialID::Vacuum, 0);
+        return v;
+    }
+    
+    // Create empty/vacuum voxel
+    static MixedVoxel createEmpty() {
+        MixedVoxel v;
+        v.setMaterial(0, core::MaterialID::Vacuum, 255);
+        v.setMaterial(1, core::MaterialID::Vacuum, 0);
+        v.setMaterial(2, core::MaterialID::Vacuum, 0);
+        v.setMaterial(3, core::MaterialID::Vacuum, 0);
+        return v;
+    }
+    
+    // Average multiple voxels (for LOD)
+    static MixedVoxel average(const MixedVoxel children[], int count = 8) {
+        // Count total amounts for each material type
+        struct MaterialSum {
+            core::MaterialID id;
+            uint32_t total;
+        };
+        
+        MaterialSum sums[16] = {};  // Support all 16 material types
+        
+        // Sum up all materials from children
+        for (int child = 0; child < count; child++) {
+            for (int slot = 0; slot < 4; slot++) {
+                core::MaterialID id = children[child].getMaterialID(slot);
+                uint8_t amount = children[child].getMaterialAmount(slot);
+                
+                // Find or add this material to sums
+                bool found = false;
+                for (int i = 0; i < 16; i++) {
+                    if (sums[i].id == id || sums[i].total == 0) {
+                        sums[i].id = id;
+                        sums[i].total += amount;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Sort by total amount (descending)
+        std::sort(sums, sums + 16, [](const MaterialSum& a, const MaterialSum& b) {
+            return a.total > b.total;
+        });
+        
+        // Create result with top 4 materials
+        MixedVoxel result;
+        for (int i = 0; i < 4; i++) {
+            if (sums[i].total > 0) {
+                // Average the amount
+                uint8_t avgAmount = static_cast<uint8_t>(
+                    std::min(255u, sums[i].total / count)
+                );
+                result.setMaterial(i, sums[i].id, avgAmount);
+            } else {
+                result.setMaterial(i, core::MaterialID::Vacuum, 0);
+            }
+        }
+        
+        // Average temperature and pressure
+        uint32_t tempSum = 0, pressSum = 0;
+        for (int i = 0; i < count; i++) {
+            tempSum += children[i].temperature;
+            pressSum += children[i].pressure;
+        }
+        result.temperature = static_cast<uint8_t>(tempSum / count);
+        result.pressure = static_cast<uint8_t>(pressSum / count);
+        
+        return result;
+    }
+    
 };
 
-// Hierarchical averaging for LOD
+// VoxelAverager class - now just delegates to MixedVoxel
 class VoxelAverager {
 public:
-    // Average 8 child voxels into parent, preserving features
     static MixedVoxel average(const MixedVoxel children[8]) {
-        // First, detect the dominant feature
-        FeatureType feature = detectFeature(children);
-        
-        // Average based on feature type
-        switch(feature) {
-            case FeatureType::MOUNTAIN_PEAK:
-                return averageMountain(children);
-            case FeatureType::OCEAN_DEEP:
-                return averageOcean(children);
-            case FeatureType::COAST:
-                return averageCoast(children);
-            default:
-                return averageGeneric(children);
-        }
-    }
-    
-private:
-    // Detect what kind of feature these voxels represent
-    static FeatureType detectFeature(const MixedVoxel children[8]) {
-        int rockDominant = 0;
-        int waterDominant = 0;
-        int mixed = 0;
-        
-        for(int i = 0; i < 8; i++) {
-            if(children[i].rock > 200) rockDominant++;
-            else if(children[i].water > 200) waterDominant++;
-            else if(children[i].rock > 100 && children[i].water > 100) mixed++;
-        }
-        
-        if(rockDominant >= 6) return FeatureType::MOUNTAIN_PEAK;
-        if(waterDominant >= 6) return FeatureType::OCEAN_DEEP;
-        if(mixed >= 3) return FeatureType::COAST;
-        
-        return FeatureType::GENERIC;
-    }
-    
-    // Preserve mountain peaks (don't average away heights)
-    static MixedVoxel averageMountain(const MixedVoxel children[8]) {
-        MixedVoxel result;
-        
-        // For mountains, preserve maximum rock
-        uint16_t maxRock = 0;
-        uint16_t totalWater = 0;
-        uint16_t totalAir = 0;
-        
-        for(int i = 0; i < 8; i++) {
-            maxRock = std::max(maxRock, (uint16_t)children[i].rock);
-            totalWater += children[i].water;
-            totalAir += children[i].air;
-        }
-        
-        result.rock = std::min(255, (int)maxRock);
-        result.water = totalWater / 8;
-        result.air = totalAir / 8;
-        
-        // Average other properties normally
-        averageProperties(result, children);
-        
-        return result;
-    }
-    
-    // Preserve ocean depths
-    static MixedVoxel averageOcean(const MixedVoxel children[8]) {
-        MixedVoxel result;
-        
-        // For oceans, preserve maximum water
-        uint16_t maxWater = 0;
-        uint16_t totalRock = 0;
-        uint16_t totalAir = 0;
-        
-        for(int i = 0; i < 8; i++) {
-            maxWater = std::max(maxWater, (uint16_t)children[i].water);
-            totalRock += children[i].rock;
-            totalAir += children[i].air;
-        }
-        
-        result.water = std::min(255, (int)maxWater);
-        result.rock = totalRock / 8;
-        result.air = totalAir / 8;
-        
-        averageProperties(result, children);
-        
-        return result;
-    }
-    
-    // Blend coastlines naturally
-    static MixedVoxel averageCoast(const MixedVoxel children[8]) {
-        // For coasts, do standard averaging to create smooth transitions
-        return averageGeneric(children);
-    }
-    
-    // Standard averaging
-    static MixedVoxel averageGeneric(const MixedVoxel children[8]) {
-        MixedVoxel result;
-        
-        uint16_t totalRock = 0, totalWater = 0, totalAir = 0, totalSediment = 0;
-        
-        for(int i = 0; i < 8; i++) {
-            totalRock += children[i].rock;
-            totalWater += children[i].water;
-            totalAir += children[i].air;
-            totalSediment += children[i].sediment;
-        }
-        
-        result.rock = totalRock / 8;
-        result.water = totalWater / 8;
-        result.air = totalAir / 8;
-        result.sediment = totalSediment / 8;
-        
-        averageProperties(result, children);
-        
-        return result;
-    }
-    
-    // Average physical properties
-    static void averageProperties(MixedVoxel& result, const MixedVoxel children[8]) {
-        uint16_t totalTemp = 0, totalPressure = 0;
-        uint8_t maxAge = 0;
-        uint8_t combinedFlags = 0;
-        
-        for(int i = 0; i < 8; i++) {
-            totalTemp += children[i].temperature;
-            totalPressure += children[i].pressure;
-            maxAge = std::max(maxAge, children[i].age);
-            combinedFlags |= children[i].flags;
-        }
-        
-        result.temperature = totalTemp / 8;
-        result.pressure = totalPressure / 8;
-        result.age = maxAge;  // Keep oldest
-        result.flags = combinedFlags;  // Combine all flags
+        return MixedVoxel::average(children, 8);
     }
 };
 

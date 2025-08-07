@@ -14,7 +14,7 @@ OctreeNode::OctreeNode(const glm::vec3& center, float halfSize, int level)
     : center(center), halfSize(halfSize), level(level) {
     // Initialize as leaf node with air voxels
     for (auto& voxel : voxels) {
-        voxel = MixedVoxel::createPure(0, 0, 255);  // Pure air
+        voxel = MixedVoxel::createPure(core::MaterialID::Air);
         voxel.temperature = 10;  // Cold space
         voxel.pressure = 0;      // No pressure
     }
@@ -197,9 +197,10 @@ OctreeNode::GPUNode OctreeNode::toGPUNode(uint32_t& nodeIndex, uint32_t& voxelIn
         MixedVoxel averaged = VoxelAverager::average(avgVoxels);
         
         // Get dominant material from the averaged voxel
-        uint8_t dominantMat = averaged.getDominantMaterial();
+        core::MaterialID dominantMatID = averaged.getDominantMaterialID();
         
-        gpuNode.flags |= (static_cast<uint32_t>(dominantMat) << 8);
+        // Store MaterialID directly in flags (no mapping needed!)
+        gpuNode.flags |= (static_cast<uint32_t>(dominantMatID) << 8);
     } else {
         gpuNode.childrenIndex = nodeIndex;
         gpuNode.voxelIndex = 0xFFFFFFFF; // Invalid index for internal nodes
@@ -286,7 +287,7 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
             // Mixed material assignment
             if (voxelDist < radius * 0.9f) {
                 // Core/mantle - pure rock
-                voxel = MixedVoxel::createPure(255, 0, 0);  // 100% rock
+                voxel = MixedVoxel::createPure(core::MaterialID::Rock);
                 voxel.temperature = 255;  // Hot core (normalized)
                 voxel.pressure = 255;     // High pressure
             } else if (voxelDist < radius) {
@@ -327,74 +328,39 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                 // Use mixed materials for more realistic boundaries
                 if (continentValue > 0.8f) {
                     // Mountain peaks - pure rock
-                    voxel = MixedVoxel::createPure(255, 0, 0);  // 100% rock
+                    voxel = MixedVoxel::createPure(core::MaterialID::Rock);
                     voxel.temperature = 128;  // Temperate
-                    if (leafCount < 10 && i == 0) {
-                        std::cout << "  Voxel " << i << " surface mountain -> Pure Rock" << std::endl;
-                    }
                 } else if (continentValue > 0.7f) {
                     // Coastline - mixed rock and water
                     float blend = (continentValue - 0.7f) * 10.0f;  // 0 to 1
                     uint8_t rockAmt = static_cast<uint8_t>(128 + 127 * blend);
                     uint8_t waterAmt = static_cast<uint8_t>(127 - 127 * blend);
-                    voxel = MixedVoxel::createPure(rockAmt, waterAmt, 0);
+                    voxel = MixedVoxel::createMix(
+                        core::MaterialID::Rock, rockAmt,
+                        core::MaterialID::Water, waterAmt
+                    );
                     voxel.temperature = 128;
-                    if (leafCount < 10 && i == 0) {
-                        std::cout << "  Voxel " << i << " coastline -> Mixed (rock=" << (int)rockAmt 
-                                  << ", water=" << (int)waterAmt << ")" << std::endl;
-                    }
                 } else if (continentValue > 0.1f) {
                     // Ocean - pure water
-                    voxel = MixedVoxel::createPure(0, 255, 0);  // 100% water
+                    voxel = MixedVoxel::createPure(core::MaterialID::Water);
                     voxel.temperature = 128;
-                    if (leafCount < 10 && i == 0) {
-                        std::cout << "  Voxel " << i << " surface ocean -> Pure Water" << std::endl;
-                    }
                 } else {
                     // Deep ocean trenches - water with some sediment
-                    voxel = MixedVoxel::createPure(0, 200, 0);
-                    voxel.sediment = 55;  // Some sediment at ocean floor
+                    voxel = MixedVoxel::createMix(
+                        core::MaterialID::Water, 200,
+                        core::MaterialID::Sand, 55  // Sand as sediment
+                    );
                     voxel.temperature = 120;  // Slightly cooler
                     voxel.pressure = 150;  // Higher pressure at depth
-                    if (leafCount < 10 && i == 0) {
-                        std::cout << "  Voxel " << i << " deep ocean -> Water+Sediment" << std::endl;
-                    }
                 }
             } else {
                 // Space/atmosphere - pure air
-                voxel = MixedVoxel::createPure(0, 0, 255);  // 100% air
+                voxel = MixedVoxel::createPure(core::MaterialID::Air);
                 voxel.temperature = 10;   // Cold space
                 voxel.pressure = 0;       // No pressure
-                if (leafCount < 10 && i == 0) {
-                    std::cout << "  Voxel " << i << " dist=" << voxelDist 
-                              << " > " << radius << " -> Pure Air" << std::endl;
-                }
             }
         }
         
-        // DEBUG: Verify mixed materials were actually set on surface nodes
-        if (nearSurface && surfaceDebugCount <= 10) {
-            int rockTotal = 0, waterTotal = 0, airTotal = 0;
-            for (int i = 0; i < 8; i++) {
-                rockTotal += node->voxels[i].rock;
-                waterTotal += node->voxels[i].water;
-                airTotal += node->voxels[i].air;
-            }
-            std::cout << "  VERIFICATION: Node materials (totals): Rock=" << rockTotal
-                     << " Water=" << waterTotal << " Air=" << airTotal << std::endl;
-            
-            // Show dominant materials
-            int pureRock = 0, pureWater = 0, pureAir = 0, mixed = 0;
-            for (int i = 0; i < 8; i++) {
-                uint8_t dom = node->voxels[i].getDominantMaterial();
-                if (dom == 1 && node->voxels[i].rock > 200) pureRock++;
-                else if (dom == 2 && node->voxels[i].water > 200) pureWater++;
-                else if (dom == 0 && node->voxels[i].air > 200) pureAir++;
-                else mixed++;
-            }
-            std::cout << "  Dominant: PureRock=" << pureRock << " PureWater=" << pureWater
-                     << " PureAir=" << pureAir << " Mixed=" << mixed << std::endl;
-        }
     }
 }
 
@@ -419,8 +385,9 @@ void OctreePlanet::generate(uint32_t seed) {
                 nodeCount++;
                 // Check if any voxel is non-air
                 for (const auto& voxel : node->voxels) {
-                    // Check if voxel is not pure air
-                    if (voxel.getDominantMaterial() != 0 || voxel.air < 200) {
+                    // Check if voxel is not pure air/vacuum
+                    core::MaterialID mat = voxel.getDominantMaterialID();
+                    if (mat != core::MaterialID::Air && mat != core::MaterialID::Vacuum) {
                         surfaceNodes++;
                         break;
                     }
@@ -576,23 +543,10 @@ OctreePlanet::RenderData OctreePlanet::prepareRenderData(const glm::vec3& viewPo
             // Check if this node contains non-air material
             bool hasNonAir = false;
             
-            // DEBUG: Check what voxels we're reading
-            static int leafCheckCount = 0;
-            if (leafCheckCount++ < 5) {
-                std::cout << "PrepareRender checking leaf at " << glm::length(node->center) 
-                          << " from planet center:" << std::endl;
-                for (int i = 0; i < 8; i++) {
-                    const auto& voxel = node->voxels[i];
-                    std::cout << "  Voxel " << i << ": rock=" << (int)voxel.rock 
-                              << " water=" << (int)voxel.water 
-                              << " air=" << (int)voxel.air 
-                              << " dominant=" << (int)voxel.getDominantMaterial() << std::endl;
-                }
-            }
-            
             for (const auto& voxel : node->voxels) {
-                // Check if voxel is not pure air
-                if (voxel.getDominantMaterial() != 0 || voxel.air < 200) {
+                // Check if voxel is not pure air/vacuum
+                core::MaterialID mat = voxel.getDominantMaterialID();
+                if (mat != core::MaterialID::Air && mat != core::MaterialID::Vacuum) {
                     hasNonAir = true;
                     break;
                 }
