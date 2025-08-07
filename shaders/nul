@@ -1,1 +1,1 @@
-./compile.bat: line 14: del: command not found
+./compile.bat: line 12: del: command not found

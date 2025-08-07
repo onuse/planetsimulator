@@ -238,22 +238,91 @@ struct MixedVoxel {
             }
         }
         
-        // Sort by total amount (descending)
+        // Sort by total amount (descending), but prioritize non-air/vacuum materials
         std::sort(sums, sums + 16, [](const MaterialSum& a, const MaterialSum& b) {
+            // Always prioritize solid materials over air/vacuum
+            bool aIsAir = (a.id == core::MaterialID::Air || a.id == core::MaterialID::Vacuum);
+            bool bIsAir = (b.id == core::MaterialID::Air || b.id == core::MaterialID::Vacuum);
+            
+            if (aIsAir != bIsAir) {
+                return !aIsAir;  // Non-air materials come first
+            }
             return a.total > b.total;
         });
         
+        // Calculate total non-air/vacuum amount for better distribution
+        uint32_t solidTotal = 0;
+        uint32_t airTotal = 0;
+        for (int i = 0; i < 16; i++) {
+            if (sums[i].total > 0) {
+                if (sums[i].id == core::MaterialID::Air || sums[i].id == core::MaterialID::Vacuum) {
+                    airTotal += sums[i].total;
+                } else {
+                    solidTotal += sums[i].total;
+                }
+            }
+        }
+        
         // Create result with top 4 materials
         MixedVoxel result;
-        for (int i = 0; i < 4; i++) {
-            if (sums[i].total > 0) {
-                // Average the amount
-                uint8_t avgAmount = static_cast<uint8_t>(
-                    std::min(255u, sums[i].total / count)
-                );
-                result.setMaterial(i, sums[i].id, avgAmount);
-            } else {
-                result.setMaterial(i, core::MaterialID::Vacuum, 0);
+        
+        // If we have any solid materials, ensure they're preserved
+        if (solidTotal > 0) {
+            // Special handling for sparse solid materials
+            // If solid materials are 30% or less of total, boost them to ensure visibility
+            float solidRatio = static_cast<float>(solidTotal) / (solidTotal + airTotal);
+            bool isSparse = solidRatio <= 0.3f;
+            
+            int slot = 0;
+            // First, add all solid materials with boosted amounts if sparse
+            for (int i = 0; i < 16 && slot < 4; i++) {
+                if (sums[i].total > 0 && 
+                    sums[i].id != core::MaterialID::Air && 
+                    sums[i].id != core::MaterialID::Vacuum) {
+                    
+                    uint32_t amount;
+                    if (isSparse) {
+                        // Boost solid materials to at least 128 (50%) when sparse
+                        // This ensures they become dominant
+                        amount = std::max(128u, (sums[i].total * 255) / solidTotal);
+                    } else {
+                        // Normal proportional distribution
+                        amount = (sums[i].total * 255) / (solidTotal + airTotal);
+                    }
+                    
+                    result.setMaterial(slot++, sums[i].id, 
+                                     static_cast<uint8_t>(std::min(255u, amount)));
+                }
+            }
+            
+            // Then add air/vacuum with remaining space
+            if (slot < 4 && airTotal > 0) {
+                uint32_t airAmount;
+                if (isSparse) {
+                    // Reduce air when we've boosted solids
+                    airAmount = std::min(127u, (airTotal * 255) / (solidTotal + airTotal));
+                } else {
+                    airAmount = (airTotal * 255) / (solidTotal + airTotal);
+                }
+                result.setMaterial(slot++, core::MaterialID::Air, 
+                                 static_cast<uint8_t>(std::min(255u, airAmount)));
+            }
+            
+            // Fill remaining slots with vacuum
+            while (slot < 4) {
+                result.setMaterial(slot++, core::MaterialID::Vacuum, 0);
+            }
+        } else {
+            // No solid materials, just average air/vacuum normally
+            for (int i = 0; i < 4; i++) {
+                if (sums[i].total > 0) {
+                    uint8_t avgAmount = static_cast<uint8_t>(
+                        std::min(255u, sums[i].total / count)
+                    );
+                    result.setMaterial(i, sums[i].id, avgAmount);
+                } else {
+                    result.setMaterial(i, core::MaterialID::Vacuum, 0);
+                }
             }
         }
         

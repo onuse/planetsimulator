@@ -4,48 +4,27 @@ setlocal enabledelayedexpansion
 echo Building Octree Planet Simulator (C++)...
 echo.
 
-REM First check and compile shaders if needed
-echo Checking shader freshness...
-set SHADER_STALE=0
-
-REM Check if shader directory exists
+REM Always clean and rebuild shaders
+echo Cleaning and rebuilding shaders...
 if exist shaders (
     cd shaders
     
-    REM Check if compiled shaders exist in root
-    set REQUIRED_SHADERS=hierarchical.vert.spv hierarchical.frag.spv octree_raymarch.vert.spv octree_raymarch.frag.spv
-    for %%s in (%REQUIRED_SHADERS%) do (
-        if not exist "%%s" (
-            echo Shader %%s is missing - must recompile
-            set SHADER_STALE=1
-        )
-    )
+    REM Clean all generated files
+    echo Deleting all .frag and .spv files...
+    del /F /Q *.spv 2>nul
+    del /F /Q src\fragment\*.frag 2>nul
+    del /F /Q ..\build\bin\Release\shaders\*.spv 2>nul
     
-    REM Compile shaders if any are stale
-    if !SHADER_STALE!==1 (
-        echo.
-        echo Recompiling all shaders...
-        call compile.bat
-        if !ERRORLEVEL! NEQ 0 (
-            echo Shader compilation failed!
-            cd ..
-            pause
-            exit /b 1
-        )
-        echo Shaders compiled successfully!
-        
-        REM Copy to build directory immediately
-        echo Copying shaders to build directory...
-        if not exist ..\build\bin\Release\shaders mkdir ..\build\bin\Release\shaders
-        copy /Y *.spv ..\build\bin\Release\shaders\ >nul 2>&1
-    ) else (
-        echo All shaders are fresh
-        
-        REM Always ensure shaders are copied to build directory
-        echo Ensuring shaders are in build directory...
-        if not exist ..\build\bin\Release\shaders mkdir ..\build\bin\Release\shaders
-        copy /Y *.spv ..\build\bin\Release\shaders\ >nul 2>&1
+    REM Compile shaders
+    echo Compiling shaders...
+    call compile.bat
+    if !ERRORLEVEL! NEQ 0 (
+        echo Shader compilation failed!
+        cd ..
+        pause
+        exit /b 1
     )
+    echo Shaders compiled successfully!
     
     cd ..
 )
@@ -73,20 +52,13 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo Build complete\!
+echo Build complete!
 
-REM Final shader copy to ensure they're fresh
-if exist ..\shaders (
-    echo Ensuring shaders are up to date in build directory...
+REM Copy shaders to build directory (single operation)
+if exist ..\shaders\*.spv (
+    echo Copying shaders to build directory...
     if not exist bin\Release\shaders mkdir bin\Release\shaders
-    REM Copy from root shaders directory if they exist
-    if exist ..\shaders\*.spv (
-        copy /Y ..\shaders\*.spv bin\Release\shaders\ >nul 2>&1
-    )
-    REM Also copy from compiled subdirectory if they exist
-    if exist ..\shaders\compiled\*.spv (
-        copy /Y ..\shaders\compiled\*.spv bin\Release\shaders\ >nul 2>&1
-    )
+    copy /Y ..\shaders\*.spv bin\Release\shaders\ >nul 2>&1
 )
 
 REM Run tests automatically

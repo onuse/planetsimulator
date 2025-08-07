@@ -7,16 +7,9 @@ set SRC_FRAGMENT=src\fragment
 set SRC_TEMPLATES=src\templates
 set TOOLS=tools
 
-REM IMPORTANT: Delete ALL generated files for clean build
-echo Cleaning ALL generated shader files...
-REM Delete all SPIR-V files everywhere
+REM Note: build.bat already cleans files, but clean here too for standalone use
 del /F /Q *.spv 2>nul
-del /F /Q compiled\*.spv 2>nul
-REM Delete ALL .frag files - they MUST come from templates only!
-echo Deleting ALL .frag files (will regenerate from templates)...
 del /F /Q %SRC_FRAGMENT%\*.frag 2>nul
-REM Remove compiled directory if it exists
-if exist compiled rd /S /Q compiled 2>nul
 
 REM Find glslc - check multiple VulkanSDK versions
 where glslc >nul 2>&1

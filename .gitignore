@@ -37,6 +37,11 @@
 *.out
 *.app
 *bin*/
+test_*
+!test_*.cpp
+!test_*.c
+!test_*.hpp
+!test_*.h
 
 # debug information files
 *.dwo
@@ -96,3 +101,20 @@ __pycache__/
 *.user
 *.sublime-workspace
 CLAUDE.md
+
+# Temporary text files
+all_tests.txt
+built_tests.txt
+*_list.txt
+
+# Build artifacts in root
+build_*/
+cmake-build-*/
+
+# Backup and temporary CMake files
+CMakeLists*.bak
+CMakeLists_*.txt
+
+# Temporary shader files
+shaders/nul*
+shaders/[0-9]

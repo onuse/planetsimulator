@@ -94,6 +94,18 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     frameTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
     lastFrameTime = currentTime;
     
+    // Dynamically adjust near/far planes based on distance to planet
+    // This fixes depth buffer precision issues
+    glm::vec3 cameraPos = camera->getPosition();
+    float distanceToOrigin = glm::length(cameraPos);
+    float planetRadius = planet->getRadius();
+    float distanceToPlanetSurface = std::max(100.0f, distanceToOrigin - planetRadius);
+    
+    // Set near/far planes for good depth precision (ratio ~10,000:1)
+    float nearPlane = distanceToPlanetSurface * 0.001f;  // 0.1% of distance
+    float farPlane = distanceToPlanetSurface * 100.0f;   // 100x distance (enough to see whole planet)
+    camera->setNearFar(nearPlane, farPlane);
+    
     // Upload octree to GPU if using GPU octree (do this once or when octree changes)
     static bool octreeUploaded = false;
     if (useGPUOctree && gpuOctree && !octreeUploaded) {

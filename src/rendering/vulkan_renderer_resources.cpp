@@ -283,21 +283,12 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
                     instance.center = node.center + offset;
                     instance.halfSize = voxelSize;
                     
-                    // Get dominant material type and map to old numbers for shader compatibility
+                    // Use MaterialID values directly (shader now expects MaterialID enum values)
                     core::MaterialID dominantID = voxel.getDominantMaterialID();
-                    float materialType = 0.0f;
+                    float materialType = static_cast<float>(dominantID);
                     
-                    if (dominantID == core::MaterialID::Rock || dominantID == core::MaterialID::Granite || 
-                        dominantID == core::MaterialID::Basalt) {
-                        materialType = 1.0f;  // Rock-like
-                    } else if (dominantID == core::MaterialID::Water) {
-                        materialType = 2.0f;  // Water
-                    } else if (dominantID == core::MaterialID::Lava) {
-                        materialType = 3.0f;  // Magma/Lava
-                    }
-                    
-                    // DEBUG: Track water voxels specifically with sequence numbers
-                    if (materialType == 2.0f && debugOnce) {
+                    // DEBUG: Track water voxels specifically with sequence numbers (Water = MaterialID 3)
+                    if (materialType == 3.0f && debugOnce) {
                         debugWaterCount++;
                         if (debugWaterCount <= 5) {
                             std::cout << "[3-VOXEL-" << debugWaterCount << "] Water voxel materialType=" 
@@ -308,32 +299,19 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
                         }
                     }
                     
-                    // Count materials for debugging
+                    // Count materials for debugging (using MaterialID values)
                     int materialInt = static_cast<int>(materialType + 0.5f);
                     if (materialInt < 4) {
                         materialCounts[materialInt]++;
                     }
                     
-                    glm::vec3 color;
-                    switch (materialInt) {
-                        case 1: // Rock
-                            color = glm::vec3(0.5f, 0.4f, 0.3f);
-                            break;
-                        case 2: // Water
-                            color = glm::vec3(0.0f, 0.3f, 0.7f);
-                            break;
-                        case 3: // Magma
-                            color = glm::vec3(1.0f, 0.3f, 0.0f);
-                            break;
-                        default:
-                            color = glm::vec3(0.5f, 0.5f, 0.5f);
-                            break;
-                    }
+                    // Get color from material table or voxel for consistency
+                    glm::vec3 color = voxel.getColor();
                     
                     instance.colorAndMaterial = glm::vec4(color, materialType); // Pack material in w
                     
-                    // DEBUG: Track water instances before pushing
-                    if (materialInt == 2 && debugOnce && debugWaterCount <= 5) {
+                    // DEBUG: Track water instances before pushing (Water = MaterialID 3)
+                    if (materialInt == 3 && debugOnce && debugWaterCount <= 5) {
                         std::cout << "[4-INSTANCE] Water instance created with colorAndMaterial.w=" 
                                   << instance.colorAndMaterial.w << "f"
                                   << " color=(" << instance.colorAndMaterial.x << ", " << instance.colorAndMaterial.y 
@@ -391,6 +369,9 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
     
     // Copy instance data to buffer
     memcpy(instanceBufferMapped, instances.data(), bufferSize);
+    
+    // Update the visible node count to the actual number of instances we're drawing
+    visibleNodeCount = static_cast<uint32_t>(instances.size());
     
     // DEBUG: Verify water instances in buffer
     static int bufferCheckCount = 0;

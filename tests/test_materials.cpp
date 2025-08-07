@@ -70,7 +70,7 @@ void test_voxel_averager() {
         assert(dom == core::MaterialID::Rock || dom == core::MaterialID::Water);
     }
     
-    // Sparse materials (the problem case)
+    // Sparse materials (the problem case - NOW FIXED!)
     {
         MixedVoxel voxels[8];
         for (int i = 0; i < 6; i++) {
@@ -82,9 +82,13 @@ void test_voxel_averager() {
         auto avg = VoxelAverager::average(voxels);
         core::MaterialID dom = avg.getDominantMaterialID();
         
-        // This is the bug - sparse materials average to air
-        if (dom == core::MaterialID::Air) {
-            std::cout << "  ⚠️  Known issue: Sparse materials (6 air, 2 material) average to air" << std::endl;
+        // The fix ensures sparse solid materials are boosted to be dominant
+        if (dom != core::MaterialID::Air) {
+            std::cout << "  ✓ FIXED: Sparse materials (6 air, 2 solid) now correctly preserve solid as dominant" << std::endl;
+            std::cout << "    Dominant material: " << static_cast<int>(dom) << " (Rock=1, Water=2)" << std::endl;
+        } else {
+            std::cout << "  ❌ BUG STILL EXISTS: Sparse materials average to air" << std::endl;
+            assert(false);  // This should not happen with the fix
         }
     }
     
@@ -124,7 +128,63 @@ void test_planet_materials() {
     std::cout << "  ✓ Planet has materials" << std::endl;
 }
 
-// Test 5: Material colors
+// Test 5: Sparse material averaging fix verification
+void test_sparse_material_fix() {
+    std::cout << "TEST: Sparse material averaging fix..." << std::endl;
+    
+    // Test case 1: Extreme sparse - 7 air, 1 rock
+    {
+        MixedVoxel voxels[8];
+        for (int i = 0; i < 7; i++) {
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Air);
+        }
+        voxels[7] = MixedVoxel::createPure(core::MaterialID::Rock);
+        
+        auto avg = VoxelAverager::average(voxels);
+        assert(avg.getDominantMaterialID() == core::MaterialID::Rock);
+        std::cout << "  ✓ 7 air + 1 rock = rock dominant" << std::endl;
+    }
+    
+    // Test case 2: Multiple sparse solids - 5 air, 2 rock, 1 water
+    {
+        MixedVoxel voxels[8];
+        for (int i = 0; i < 5; i++) {
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Air);
+        }
+        voxels[5] = MixedVoxel::createPure(core::MaterialID::Rock);
+        voxels[6] = MixedVoxel::createPure(core::MaterialID::Rock);
+        voxels[7] = MixedVoxel::createPure(core::MaterialID::Water);
+        
+        auto avg = VoxelAverager::average(voxels);
+        core::MaterialID dom = avg.getDominantMaterialID();
+        assert(dom == core::MaterialID::Rock || dom == core::MaterialID::Water);
+        assert(dom != core::MaterialID::Air);
+        std::cout << "  ✓ 5 air + 2 rock + 1 water = solid dominant" << std::endl;
+    }
+    
+    // Test case 3: Edge case - 3 air, 5 mixed solids
+    {
+        MixedVoxel voxels[8];
+        for (int i = 0; i < 3; i++) {
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Air);
+        }
+        for (int i = 3; i < 6; i++) {
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Rock);
+        }
+        for (int i = 6; i < 8; i++) {
+            voxels[i] = MixedVoxel::createPure(core::MaterialID::Water);
+        }
+        
+        auto avg = VoxelAverager::average(voxels);
+        core::MaterialID dom = avg.getDominantMaterialID();
+        assert(dom != core::MaterialID::Air);
+        std::cout << "  ✓ 3 air + 3 rock + 2 water = solid dominant (not sparse)" << std::endl;
+    }
+    
+    std::cout << "  ✓ Sparse material fix verified!" << std::endl;
+}
+
+// Test 6: Material colors
 void test_material_colors() {
     std::cout << "TEST: Material colors..." << std::endl;
     
@@ -153,6 +213,7 @@ int main() {
         test_material_blending();
         test_voxel_averager();
         test_planet_materials();
+        test_sparse_material_fix();
         test_material_colors();
         
         std::cout << "\n✅ All material tests passed!" << std::endl;

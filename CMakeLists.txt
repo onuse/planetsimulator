@@ -250,6 +250,7 @@ add_executable(test_materials
     tests/test_materials.cpp
     src/core/octree.cpp
     src/core/camera.cpp
+    src/core/material_table.cpp
 )
 target_include_directories(test_materials PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -276,6 +277,80 @@ set_target_properties(test_gpu_rendering PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
 add_test(NAME GPURendering COMMAND test_gpu_rendering)
+
+# Test 3a: Instance count verification (catches visibleNodeCount bug)
+add_executable(test_instance_count
+    tests/test_instance_count.cpp
+    src/core/octree.cpp
+    src/core/camera.cpp
+)
+target_include_directories(test_instance_count PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_instance_count PRIVATE glm::glm)
+set_target_properties(test_instance_count PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME InstanceCount COMMAND test_instance_count)
+
+# Test 3b: Complete rendering pipeline verification
+add_executable(test_rendering_pipeline
+    tests/test_rendering_pipeline.cpp
+    src/core/octree.cpp
+    src/core/camera.cpp
+)
+target_include_directories(test_rendering_pipeline PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_rendering_pipeline PRIVATE glm::glm)
+set_target_properties(test_rendering_pipeline PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME RenderingPipeline COMMAND test_rendering_pipeline)
+
+# Test 3c: Pipeline state configuration validation
+add_executable(test_pipeline_state
+    tests/pipeline/test_pipeline_state.cpp
+)
+target_include_directories(test_pipeline_state PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${Vulkan_INCLUDE_DIRS}
+)
+target_link_libraries(test_pipeline_state PRIVATE ${Vulkan_LIBRARIES})
+set_target_properties(test_pipeline_state PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME PipelineState COMMAND test_pipeline_state)
+
+# Test 3d: Buffer binding sequence verification
+add_executable(test_buffer_binding
+    tests/rendering/test_buffer_binding.cpp
+)
+target_include_directories(test_buffer_binding PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${Vulkan_INCLUDE_DIRS}
+)
+target_link_libraries(test_buffer_binding PRIVATE ${Vulkan_LIBRARIES})
+set_target_properties(test_buffer_binding PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME BufferBinding COMMAND test_buffer_binding)
+
+# Test 3e: Draw call parameter validation
+add_executable(test_draw_calls
+    tests/rendering/test_draw_calls.cpp
+)
+target_include_directories(test_draw_calls PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${Vulkan_INCLUDE_DIRS}
+)
+target_link_libraries(test_draw_calls PRIVATE ${Vulkan_LIBRARIES})
+set_target_properties(test_draw_calls PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME DrawCalls COMMAND test_draw_calls)
 
 # Test 3b: Shader material lookup
 add_executable(test_shader_material_lookup
@@ -402,6 +477,7 @@ add_executable(test_material_tracking
     src/core/octree.cpp
     src/rendering/instance_buffer_manager.cpp
     src/rendering/gpu_octree.cpp
+    src/core/material_table.cpp
 )
 target_include_directories(test_material_tracking PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -438,6 +514,7 @@ add_executable(test_mixed_voxel_integration
     tests/test_mixed_voxel_integration.cpp
     src/core/octree.cpp
     src/rendering/instance_buffer_manager.cpp
+    src/core/material_table.cpp
 )
 target_include_directories(test_mixed_voxel_integration PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
