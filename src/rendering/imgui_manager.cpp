@@ -1,5 +1,6 @@
 #include "rendering/imgui_manager.hpp"
 #include "rendering/vulkan_renderer.hpp"
+#include "core/camera.hpp"
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 #include <iostream>
@@ -130,7 +131,7 @@ void ImGuiManager::render(VkCommandBuffer commandBuffer) {
     ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
 }
 
-void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer) {
+void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Camera* camera) {
     // Show demo window if enabled
     if (uiState.showDemo) {
         ImGui::ShowDemoWindow(&uiState.showDemo);
@@ -168,9 +169,13 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer) {
                          renderer->getTriangleCount()); // Get actual triangle count from Transvoxel
     }
     
-    // Show camera window with placeholder data for now
+    // Show camera window with actual camera data if available
     if (uiState.showCamera) {
-        renderCameraWindow(glm::vec3(0, 0, 19113000), glm::vec3(0, 0, -1));
+        if (camera) {
+            renderCameraWindow(camera->getPosition(), camera->getForward());
+        } else {
+            renderCameraWindow(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1));
+        }
     }
     
     // Show settings window
@@ -211,19 +216,35 @@ void ImGuiManager::renderStatsWindow(float fps, uint32_t chunkCount, uint32_t tr
 
 void ImGuiManager::renderCameraWindow(const glm::vec3& position, const glm::vec3& forward) {
     ImGui::SetNextWindowPos(ImVec2(10, 240), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(300, 150), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(380, 320), ImGuiCond_FirstUseEver);
     
-    if (ImGui::Begin("Camera", &uiState.showCamera)) {
-        ImGui::Text("Position:");
-        ImGui::Text("  X: %.2f", position.x);
-        ImGui::Text("  Y: %.2f", position.y);
-        ImGui::Text("  Z: %.2f", position.z);
+    if (ImGui::Begin("Camera & Debug", &uiState.showCamera)) {
+        // Critical debug information - always visible!
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "=== RENDER DEBUG ===");
         
-        ImGui::Spacing();
-        ImGui::Text("Forward:");
-        ImGui::Text("  X: %.3f", forward.x);
-        ImGui::Text("  Y: %.3f", forward.y);
-        ImGui::Text("  Z: %.3f", forward.z);
+        ImGui::Text("Camera Pos: (%.3e, %.3e, %.3e)", position.x, position.y, position.z);
+        
+        float distanceToOrigin = glm::length(position);
+        float planetRadius = 6371000.0f; // Earth radius
+        float distanceToSurface = distanceToOrigin - planetRadius;
+        
+        ImGui::Text("Distance to origin: %.3e m", distanceToOrigin);
+        ImGui::Text("Distance to surface: %.3e m", distanceToSurface);
+        
+        ImGui::Separator();
+        ImGui::Text("Clipping & FOV:");
+        // These are the values we're using in vulkan_renderer.cpp
+        ImGui::Text("  Near: %.3f", 0.1f);
+        ImGui::Text("  Far: %.1f", 50000.0f);
+        ImGui::Text("  FOV: %.1f degrees", 60.0f);
+        
+        ImGui::Separator();
+        ImGui::Text("View Info:");
+        // TODO: Get matrix info when camera is passed through
+        ImGui::Text("  View and Proj matrices need camera access");
+        
+        ImGui::Separator();
+        ImGui::Text("Forward: (%.3f, %.3f, %.3f)", forward.x, forward.y, forward.z);
         
         ImGui::Spacing();
         ImGui::SliderFloat("Speed", &uiState.cameraSpeed, 100.0f, 100000.0f, "%.0f m/s", ImGuiSliderFlags_Logarithmic);

@@ -205,6 +205,9 @@ private:
     // ImGui manager
     ImGuiManager imguiManager;
     
+    // Current camera (for debug display)
+    core::Camera* currentCamera = nullptr;
+    
     // Transvoxel renderer - THE ONLY rendering path
     std::unique_ptr<TransvoxelRenderer> transvoxelRenderer;
     

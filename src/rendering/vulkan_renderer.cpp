@@ -80,6 +80,9 @@ bool VulkanRenderer::initialize() {
 }
 
 void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) {
+    // Store camera for debug display
+    currentCamera = camera;
+    
     // static int renderCalls = 0;
     // std::cout << "VulkanRenderer::render called (call #" << ++renderCalls << ")" << std::endl;
     
@@ -95,40 +98,19 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     float distanceToPlanetSurface = std::max(0.0f, distanceToOrigin - planetRadius);
     
     // Adaptive near/far planes for optimal depth precision at all scales
+    // Since we scale down by 1000x in the vertex shader, use smaller near/far values
     float nearPlane, farPlane;
     
-    if (distanceToPlanetSurface < 1000.0f) {
-        // Very close to surface - high precision for terrain
-        nearPlane = 0.1f;
-        farPlane = 50000.0f;
-    } else if (distanceToPlanetSurface < 10000.0f) {
-        // Low altitude flight
-        nearPlane = 1.0f;
-        farPlane = 500000.0f;
-    } else if (distanceToPlanetSurface < 100000.0f) {
-        // Medium altitude - see horizon and curvature
-        nearPlane = 10.0f;
-        farPlane = distanceToOrigin * 3.0f;
-    } else if (distanceToPlanetSurface < 1000000.0f) {
-        // High altitude - significant portion of planet visible
-        nearPlane = 100.0f;  // Much better than 1000.0f for nearby chunk visibility
-        farPlane = distanceToOrigin * 3.0f;
-    } else {
-        // Space view - entire planet visible
-        // Use more reasonable near/far ratio for better precision
-        nearPlane = distanceToOrigin * 0.01f;  // 1% of distance
-        farPlane = distanceToOrigin * 3.0f;    // 300% of distance
-    }
+    // Simple approach: just use reasonable values for the scaled world
+    nearPlane = 0.1f;   // 0.1 km = 100 meters in scaled space
+    farPlane = 50000.0f; // 50,000 km in scaled space (enough to see whole planet)
     
     camera->setNearFar(nearPlane, farPlane);
     
-    // Debug output to understand clipping
-    static int debugFrame = 0;
-    if (debugFrame++ % 60 == 0) {
-        std::cout << "Clipping planes: near=" << nearPlane << "m, far=" << farPlane 
-                  << "m (distance to origin=" << distanceToOrigin 
-                  << "m, to surface=" << distanceToPlanetSurface << "m)\n";
-    }
+    // Set a reasonable FOV - with world scaling, we don't need to adjust it dynamically
+    camera->setFieldOfView(60.0f);
+    
+    // Debug output removed - now shown in ImGui UI instead
     // std::cout << "Camera at distance " << distanceToOrigin << "m from origin, "
     //           << distanceToPlanetSurface << "m from surface. Using near=" << nearPlane 
     //           << "m, far=" << farPlane << "m\n";
@@ -147,13 +129,7 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
         updateChunks(planet, camera);
         generateChunkMeshes(planet);
         
-        // Debug output occasionally  
-        static int frameCounter2 = 0;
-        if (frameCounter2++ % 60 == 0) {
-            std::cout << "Transvoxel renderer: " << activeChunks.size() 
-                      << " chunks, " << transvoxelRenderer->getTriangleCount() 
-                      << " triangles\n";
-        }
+        // Debug output removed - now shown in ImGui UI
     }
     
     // Draw the frame

@@ -40,8 +40,8 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     // Start ImGui frame
     imguiManager.newFrame();
     
-    // Render ImGui UI
-    imguiManager.renderDebugUI(this);
+    // Render ImGui UI (pass camera for debug display)
+    imguiManager.renderDebugUI(this, currentCamera);
     
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
