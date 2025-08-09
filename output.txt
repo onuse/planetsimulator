@@ -1,0 +1,93 @@
+1:Starting Octree Planet Simulator...
+2:autoAdjustClipPlanes called with altitude=29000
+3:autoAdjustClipPlanes result: near=10, far=2.9e+06
+4:updateProjection called: near=10, far=2.9e+06
+5:Camera constructor: altitude=29000, near=10, far=2.9e+06
+6:updateProjection called: near=10, far=2.9e+06
+7:Octree Planet Simulator (C++ Version)
+8:=====================================
+9:Radius: 6.371e+06 meters
+10:Max Depth: 10
+11:Seed: 42
+12:Resolution: 1280x720
+13:Starting initialization...
+14:=== INIT FUNCTION CALLED ===
+15:Generating planet...
+16:Generating sphere structure...
+17:Planet radius: 6.371e+06 meters
+18:Root node half-size: 9.5565e+06 meters
+19:Setting materials for leaf at depth 4 center=(-2.98641e+06,-4.18097e+06,-5.37553e+06) size=597281
+20:    Node center=(-2.98641e+06,-4.18097e+06,-5.37553e+06) halfSize=597281
+21:    Voxel offset=(-298641,-298641,-298641)
+22:    Voxel pos=(-3.28505e+06,-4.47961e+06,-5.67417e+06) dist=7.9407e+06
+23:    Planet radius=6.371e+06
+24:Setting materials for leaf at depth 4 center=(-4.18097e+06,-2.98641e+06,-5.37553e+06) size=597281
+25:    Node center=(-4.18097e+06,-2.98641e+06,-5.37553e+06) halfSize=597281
+26:    Voxel offset=(-298641,-298641,-298641)
+27:    Voxel pos=(-4.47961e+06,-3.28505e+06,-5.67417e+06) dist=7.9407e+06
+28:    Planet radius=6.371e+06
+29:Setting materials for leaf at depth 5 center=(-3.28505e+06,-3.28505e+06,-5.67417e+06) size=298641
+30:    Node center=(-3.28505e+06,-3.28505e+06,-5.67417e+06) halfSize=298641
+31:    Voxel offset=(-149320,-149320,-149320)
+32:    Voxel pos=(-3.43437e+06,-3.43437e+06,-5.82349e+06) dist=7.58306e+06
+33:    Planet radius=6.371e+06
+34:Setting materials for leaf at depth 5 center=(-2.68777e+06,-3.28505e+06,-5.67417e+06) size=298641
+35:Setting materials for leaf at depth 5 center=(-3.28505e+06,-2.68777e+06,-5.67417e+06) size=298641
+36:Setting materials for leaf at depth 6 center=(-2.83709e+06,-2.83709e+06,-5.82349e+06) size=149320
+37:Setting materials for leaf at depth 6 center=(-2.53845e+06,-2.83709e+06,-5.82349e+06) size=149320
+38:Setting materials for leaf at depth 6 center=(-2.83709e+06,-2.53845e+06,-5.82349e+06) size=149320
+39:Setting materials for leaf at depth 6 center=(-2.53845e+06,-2.53845e+06,-5.82349e+06) size=149320
+40:Setting materials for leaf at depth 6 center=(-2.83709e+06,-2.83709e+06,-5.52485e+06) size=149320
+41:  Continent value range: [0.294055, 0.355255]
+42:Generated 5939984 leaf nodes (3502856 with surface material)
+43:Planet generation complete (simplified)
+44:Planet generated successfully
+45:Initializing Vulkan renderer...
+46:Hierarchical GPU octree rendering enabled
+47:Found NVIDIA GPU: NVIDIA GeForce RTX 3070 Laptop GPU
+48:Selected GPU: NVIDIA GeForce RTX 3070 Laptop GPU
+49:Creating material table buffer...
+50:Material table buffer created with 512 bytes
+51:Creating Transvoxel triangle mesh pipeline...
+52:Creating triangle mesh pipeline...
+53:Loaded triangle shaders: vert=2100 bytes, frag=1760 bytes
+54:Created shader modules successfully
+55:Pipeline creation returned: 0, handle: 0x20658ed8190
+56:Triangle mesh pipeline created, handle=0x20658ed8190
+57:Transvoxel pipeline created successfully
+58:Creating Transvoxel descriptor sets...
+59:Transvoxel descriptor sets created successfully
+60:Vulkan renderer initialized successfully
+61:=== ABOUT TO REPOSITION CAMERA ===
+62:Initial distance: 1.01936e+07
+63:=== CALLING autoAdjustClipPlanes with altitude=3.51206e+06 ===
+64:autoAdjustClipPlanes called with altitude=3.51206e+06
+65:autoAdjustClipPlanes result: near=3512.06, far=7.02412e+06
+66:updateProjection called: near=3512.06, far=7.02412e+06
+67:=== DONE CALLING autoAdjustClipPlanes ===
+68:Camera positioned at: (7.13552e+06, 3.05808e+06, 6.11616e+06)
+69:Near plane: 3512.06, Far plane: 7.02412e+06
+70:Initialization complete, entering main loop...
+71:Entering render loop...
+72:DEBUG: Starting main loop, auto-terminate=0, screenshot-interval=0
+73:DEBUG: Frame 0, elapsed=3.6e-06s, shouldExit=0
+74:updateProjection called: near=0.1, far=50000
+75:updateProjection called: near=0.1, far=50000
+76:
+77:=== CAMERA DEBUG ===
+78:Camera position: (7.13552e+06, 3.05808e+06, 6.11616e+06)
+79:Test sphere at: (3.5e+06, 1.5e+06, 3e+06)
+80:Test cube at: (3.8e+06, 1.5e+06, 3e+06)
+81:Distance from camera to sphere: 5.03538e+06m
+82:Distance from camera to cube: 4.82325e+06m
+83:Test meshes created: Sphere with 561 vertices, Cube with 24 vertices
+84:Chunks marked as dirty for GPU buffer generation
+85:Created GPU buffers for test mesh with 561 vertices
+86:Created GPU buffers for test mesh with 24 vertices
+87:[CHUNK DEBUG] Total: 2, AlreadyValid: 0, Generated: 2, NewValid: 2, FinalValid: 2
+88:FATAL ERROR: Degenerate viewProj matrix, determinant = 0
+89:ViewProj matrix:
+90:  [0.634052, 0.406918, -0.721998, -0.721995]
+91:  [0, -1.64705, -0.309428, -0.309426]
+92:  [-0.739728, 0.348787, -0.618855, -0.618853]
+93:  [0.487139, 0.216506, 9.8831e+06, 9.88306e+06]

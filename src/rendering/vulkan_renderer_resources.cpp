@@ -4,6 +4,10 @@
 #include <array>
 #include <iostream>
 #include <cstddef>  // for offsetof
+#include <cassert>
+#include <cmath>
+#include <chrono>
+#include <cstdlib>  // for std::abort
 
 namespace rendering {
 
@@ -213,6 +217,29 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     ubo.proj = camera->getProjectionMatrix();
     ubo.viewProj = camera->getViewProjectionMatrix();
     ubo.viewPos = camera->getPosition();
+    
+    // Validate matrices - crash if they're invalid
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            float val = ubo.viewProj[i][j];
+            if (std::isnan(val) || std::isinf(val)) {
+                std::cerr << "FATAL ERROR: Invalid viewProj matrix at [" << i << "][" << j << "] = " << val << std::endl;
+                std::abort();  // Force crash even in Release mode
+            }
+        }
+    }
+    
+    // Check if matrix is degenerate (determinant near zero would mean no inverse exists)
+    float det = glm::determinant(ubo.viewProj);
+    if (std::abs(det) < 1e-10f) {
+        std::cerr << "FATAL ERROR: Degenerate viewProj matrix, determinant = " << det << std::endl;
+        std::cerr << "ViewProj matrix:\n";
+        for (int i = 0; i < 4; i++) {
+            std::cerr << "  [" << ubo.viewProj[i][0] << ", " << ubo.viewProj[i][1] 
+                      << ", " << ubo.viewProj[i][2] << ", " << ubo.viewProj[i][3] << "]\n";
+        }
+        std::abort();  // Force crash even in Release mode
+    }
     
     // Debug: Print first frame's matrices to check they're reasonable
     static bool firstFrame = true;

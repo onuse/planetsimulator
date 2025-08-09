@@ -69,9 +69,9 @@ bool VulkanRenderer::initialize() {
         // Initialize Transvoxel renderer - THE ONLY rendering path
         transvoxelRenderer = std::make_unique<TransvoxelRenderer>(device, physicalDevice, commandPool, graphicsQueue);
         createTransvoxelPipeline();
-        std::cout << "Transvoxel mesh renderer initialized\n";
+        // Transvoxel mesh renderer initialized
         
-        std::cout << "Vulkan renderer initialized successfully\n";
+        // Vulkan renderer initialized successfully
         return true;
     } catch (const std::exception& e) {
         std::cerr << "Failed to initialize Vulkan renderer: " << e.what() << std::endl;
@@ -95,20 +95,16 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     glm::vec3 cameraPos = camera->getPosition();
     float distanceToOrigin = glm::length(cameraPos);
     float planetRadius = planet->getRadius();
-    float distanceToPlanetSurface = std::max(0.0f, distanceToOrigin - planetRadius);
+    // float distanceToPlanetSurface = std::max(0.0f, distanceToOrigin - planetRadius);
     
-    // Adaptive near/far planes for optimal depth precision at all scales
-    // Since we scale down by 1000x in the vertex shader, use smaller near/far values
-    float nearPlane, farPlane;
+    // Don't override camera settings - they are managed by autoAdjustClipPlanes
+    // The camera already has proper near/far planes set based on altitude
     
-    // Simple approach: just use reasonable values for the scaled world
-    nearPlane = 0.1f;   // 0.1 km = 100 meters in scaled space
-    farPlane = 50000.0f; // 50,000 km in scaled space (enough to see whole planet)
+    // Note: Removing hardcoded setNearFar that was causing degenerate matrices
+    // camera->setNearFar(nearPlane, farPlane);  // REMOVED - was overriding proper values
     
-    camera->setNearFar(nearPlane, farPlane);
-    
-    // Set a reasonable FOV - with world scaling, we don't need to adjust it dynamically
-    camera->setFieldOfView(60.0f);
+    // Set a reasonable FOV if needed (though this could also be managed elsewhere)
+    // camera->setFieldOfView(60.0f);  // Consider removing this too
     
     // Debug output removed - now shown in ImGui UI instead
     // std::cout << "Camera at distance " << distanceToOrigin << "m from origin, "
@@ -261,7 +257,7 @@ void VulkanRenderer::resize(uint32_t width, uint32_t height) {
     framebufferResized = true;
 }
 
-void VulkanRenderer::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+void VulkanRenderer::framebufferResizeCallback(GLFWwindow* window, int /*width*/, int /*height*/) {
     auto app = reinterpret_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
     app->framebufferResized = true;
 }
@@ -374,10 +370,10 @@ void VulkanRenderer::setupDebugMessenger() {
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanRenderer::debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    VkDebugUtilsMessageSeverityFlagBitsEXT /*messageSeverity*/,
+    VkDebugUtilsMessageTypeFlagsEXT /*messageType*/,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData) {
+    void* /*pUserData*/) {
     
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     
@@ -412,7 +408,7 @@ void VulkanRenderer::updateInput() {
     inputState.scrollDelta = glm::vec2(0, 0);
 }
 
-void VulkanRenderer::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+void VulkanRenderer::keyCallback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
     auto* renderer = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
     if (!renderer || key < 0 || key >= 512) return;
     
@@ -438,7 +434,7 @@ void VulkanRenderer::cursorPosCallback(GLFWwindow* window, double xpos, double y
     renderer->inputState.lastMousePos = renderer->inputState.mousePos;
 }
 
-void VulkanRenderer::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+void VulkanRenderer::mouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*/) {
     auto* renderer = static_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
     if (!renderer || button < 0 || button >= 8) return;
     

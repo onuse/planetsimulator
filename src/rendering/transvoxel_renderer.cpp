@@ -292,8 +292,7 @@ void TransvoxelRenderer::render(
     VkPipelineLayout /*pipelineLayout*/) {  // Unused parameter
     
     static int renderCallCount = 0;
-    bool debugThis = false;
-    //bool debugThis = (renderCallCount++ % 60 == 0); // Debug every 60 calls
+    bool debugThis = (renderCallCount++ % 60 == 0); // Debug every 60 calls
     
     // Dump mesh data on first render
     static bool firstDump = true;
@@ -303,7 +302,7 @@ void TransvoxelRenderer::render(
     }
     
     if (debugThis) {
-        std::cout << "TransvoxelRenderer::render called with " << chunks.size() << " chunks\n";
+        // TransvoxelRenderer::render called with chunks
     }
     
     int validMeshCount = 0;
@@ -311,8 +310,7 @@ void TransvoxelRenderer::render(
     
     for (const auto& chunk : chunks) {
         if (debugThis) {
-            std::cout << "  Chunk has " << chunk.vertices.size() << " vertices, " 
-                      << chunk.indices.size()/3 << " triangles, hasValidMesh=" << chunk.hasValidMesh << "\n";
+            // Debug: Chunk vertices and triangles
         }
         
         if (!chunk.hasValidMesh || chunk.vertices.empty()) continue;
@@ -330,12 +328,13 @@ void TransvoxelRenderer::render(
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(chunk.indices.size()), 1, 0, 0, 0);
         
         if (debugThis) {
-            std::cout << "    Rendered chunk with " << chunk.indices.size() << " indices\n";
+            // Debug: Rendered chunk
         }
     }
     
     if (debugThis) {
-        std::cout << "  Rendered " << validMeshCount << " valid meshes with " << totalTriangleCount << " total triangles\n";
+        std::cout << "[TRANSVOXEL RENDER] Rendered " << validMeshCount 
+                  << " chunks with " << totalTriangleCount << " triangles" << std::endl;
     }
 }
 

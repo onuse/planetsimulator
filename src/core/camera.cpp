@@ -21,6 +21,12 @@ Camera::Camera(uint32_t width, uint32_t height)
     , up(0.0f, 1.0f, 0.0f)
     , orientation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)) {
     
+    // Auto-adjust clip planes based on initial altitude
+    float altitude = glm::length(position) - 6371000.0f; // Assume planet radius
+    autoAdjustClipPlanes(altitude);
+    
+    std::cout << "Camera constructor: altitude=" << altitude << ", near=" << nearPlane << ", far=" << farPlane << std::endl;
+    
     updateVectors();
     updateViewMatrix();
     updateProjection();
@@ -70,8 +76,8 @@ void Camera::orbit(float deltaAzimuth, float deltaElevation) {
     orbitElevation = clamp(orbitElevation, -1.5f, 1.5f); // ~+-85 degrees
     
     // Keep azimuth in reasonable range
-    while (orbitAzimuth > M_PI * 2.0f) orbitAzimuth -= M_PI * 2.0f;
-    while (orbitAzimuth < 0.0f) orbitAzimuth += M_PI * 2.0f;
+    while (orbitAzimuth > static_cast<float>(M_PI * 2.0)) orbitAzimuth -= static_cast<float>(M_PI * 2.0);
+    while (orbitAzimuth < 0.0f) orbitAzimuth += static_cast<float>(M_PI * 2.0);
 }
 
 void Camera::zoom(float delta) {
@@ -227,7 +233,7 @@ void Camera::setMode(CameraMode newMode) {
 // Planet-Aware Functions
 // ============================================================================
 
-void Camera::alignToPlanetSurface(const glm::vec3& planetCenter, float planetRadius) {
+void Camera::alignToPlanetSurface(const glm::vec3& planetCenter, float /*planetRadius*/) {
     glm::vec3 toPlanet = position - planetCenter;
     float distance = glm::length(toPlanet);
     
@@ -317,6 +323,8 @@ void Camera::setNearFar(float near, float far) {
 }
 
 void Camera::updateProjection() {
+    std::cout << "updateProjection called: near=" << nearPlane << ", far=" << farPlane << std::endl;
+    
     projectionMatrix = glm::perspective(
         glm::radians(fov),
         aspectRatio,
@@ -344,10 +352,15 @@ void Camera::autoAdjustClipPlanes(float altitude) {
         farPlane = altitude * 50.0f;
     } else {
         // High altitude / space
-        nearPlane = 1000.0f;
-        farPlane = altitude * 20.0f;
+        // Keep near/far ratio under 10,000:1 to avoid precision issues
+        nearPlane = altitude * 0.001f;   // Near at 0.1% of altitude
+        farPlane = altitude * 2.0f;      // Far at 2x altitude
+        // Clamp to reasonable values
+        nearPlane = std::max(1000.0f, nearPlane);
+        farPlane = std::min(50000000.0f, farPlane);  // Cap at 50M meters
     }
     
+    std::cout << "autoAdjustClipPlanes result: near=" << nearPlane << ", far=" << farPlane << std::endl;
     updateProjection();
 }
 

@@ -136,8 +136,8 @@ private:
     // Projection parameters
     float fov = 75.0f;          // Field of view in degrees - wider to see more planet
     float aspectRatio = 16.0f / 9.0f;
-    float nearPlane = 100.0f;   // 100 meters
-    float farPlane = 100000000.0f; // 100,000 km
+    float nearPlane = 1000.0f;   // 1 km - reasonable default
+    float farPlane = 20000000.0f; // 20,000 km - reasonable default
     
     // Viewport
     uint32_t viewportWidth;

@@ -150,13 +150,10 @@ public:
             planet.updateLOD(camera.getPosition());
             
             // Render
-            if (frameCount < 3) {
-                // std::cout << "Main loop: calling renderer.render (frame " << frameCount << ")" << std::endl;
-            }
+            std::cout << "=== ABOUT TO CALL renderer.render, frame=" << frameCount 
+                      << ", near=" << camera.getNearPlane() << ", far=" << camera.getFarPlane() << " ===\n";
             renderer.render(&planet, &camera);
-            if (frameCount < 3) {
-                // std::cout << "Main loop: renderer.render returned" << std::endl;
-            }
+            std::cout << "=== RETURNED FROM renderer.render ===\n";
             
             // Screenshots (only after first frame to ensure something is rendered)
             if (config.screenshotInterval > 0 && frameCount > 0) {
@@ -198,6 +195,8 @@ private:
     core::Camera camera;
     
     void init() {
+        std::cout << "=== INIT FUNCTION CALLED ===\n" << std::flush;
+        
         // Clean up old screenshots if we're taking new ones
         if (config.screenshotInterval > 0) {
             cleanupOldScreenshots();
@@ -241,11 +240,21 @@ private:
         // Set initial camera position - back away from planet to see whole sphere
         // 1.6x radius gives a good close view of the planet globe
         float initialDistance = config.radius * 1.6f;
+        std::cout << "=== ABOUT TO REPOSITION CAMERA ===\n";
+        std::cout << "Initial distance: " << initialDistance << "\n";
         camera.setPosition(glm::vec3(initialDistance * 0.7f, initialDistance * 0.3f, initialDistance * 0.6f));
         camera.lookAt(glm::vec3(0, 0, 0));
+        
+        // Adjust near/far planes based on initial altitude
+        float altitude = camera.getAltitude(glm::vec3(0, 0, 0), config.radius);
+        std::cout << "=== CALLING autoAdjustClipPlanes with altitude=" << altitude << " ===\n";
+        camera.autoAdjustClipPlanes(altitude);
+        std::cout << "=== DONE CALLING autoAdjustClipPlanes ===\n";
+        
         if (!config.quiet) {
             glm::vec3 pos = camera.getPosition();
-            std::cout << "Camera positioned at: (" << pos.x << ", " << pos.y << ", " << pos.z << ")\n" << std::flush;
+            std::cout << "Camera positioned at: (" << pos.x << ", " << pos.y << ", " << pos.z << ")\n";
+            std::cout << "Near plane: " << camera.getNearPlane() << ", Far plane: " << camera.getFarPlane() << "\n" << std::flush;
         }
     }
     
@@ -277,6 +286,9 @@ private:
         // Base movement speed - adjust based on camera altitude
         float moveSpeed = 1000.0f; // meters per second
         float altitude = camera.getAltitude(glm::vec3(0, 0, 0), config.radius);
+        
+        // Auto-adjust near/far planes based on altitude
+        camera.autoAdjustClipPlanes(altitude);
         
         // Scale speed based on altitude (move faster when far away)
         if (altitude > config.radius * 0.1f) {

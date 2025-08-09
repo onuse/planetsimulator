@@ -55,7 +55,7 @@ public:
     VkBuffer getNodeBuffer() const { return nodeBuffer; }
     VkBuffer getVoxelBuffer() const { return voxelBuffer; }
     VkBuffer getVisibilityBuffer() const { return visibilityBuffer; }
-    uint32_t getVisibleNodeCount() const { return visibilityInfo.visibleNodes.size(); }
+    uint32_t getVisibleNodeCount() const { return static_cast<uint32_t>(visibilityInfo.visibleNodes.size()); }
     
 private:
     VkDevice device;

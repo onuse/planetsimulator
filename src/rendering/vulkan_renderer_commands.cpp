@@ -87,12 +87,21 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     // TRANSVOXEL MESH RENDERING - Single path, triangle meshes
     // The transvoxel system generates triangle meshes from octree voxel data
     
+    // Debug output for investigating chunk rendering issue
     static int debugFrameCount = 0;
-    bool shouldDebug = (debugFrameCount++ % 60 == 0); // Debug every 60 frames
-    
-    if (shouldDebug) {
-        std::cout << "Render frame: activeChunks.size()=" << activeChunks.size() 
-                  << ", transvoxelRenderer=" << (transvoxelRenderer ? "valid" : "null") << "\n";
+    if (debugFrameCount++ % 60 == 0) { // Every 60 frames
+        int validChunks = 0;
+        int chunksWithBuffers = 0;
+        for (const auto& chunk : activeChunks) {
+            if (chunk.hasValidMesh) validChunks++;
+            if (chunk.vertexBuffer != VK_NULL_HANDLE && chunk.indexBuffer != VK_NULL_HANDLE) {
+                chunksWithBuffers++;
+            }
+        }
+        std::cout << "[RENDER DEBUG] activeChunks: " << activeChunks.size() 
+                  << ", validMeshes: " << validChunks 
+                  << ", chunksWithBuffers: " << chunksWithBuffers
+                  << ", transvoxelRenderer: " << (transvoxelRenderer ? "valid" : "null") << std::endl;
     }
     
     if (transvoxelRenderer && !activeChunks.empty()) {
@@ -110,18 +119,9 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         }
         
         // Render all active chunks with valid meshes
-        if (shouldDebug) {
-            std::cout << "About to render " << activeChunks.size() << " chunks\n";
-        }
         transvoxelRenderer->render(activeChunks, commandBuffer, hierarchicalPipelineLayout);
-        if (shouldDebug) {
-            std::cout << "Finished rendering chunks\n";
-        }
     } else {
         // Fallback: draw a simple triangle if no chunks available
-        if (shouldDebug) {
-            std::cout << "Using fallback triangle render\n";
-        }
         // Use trianglePipeline for fallback render since hierarchicalPipeline is not created
         if (trianglePipeline == VK_NULL_HANDLE) {
             std::cerr << "ERROR: trianglePipeline is NULL in fallback render!" << std::endl;
@@ -170,7 +170,7 @@ void VulkanRenderer::createSyncObjects() {
 // Frame Drawing
 // ============================================================================
 
-void VulkanRenderer::drawFrame(octree::OctreePlanet* planet, core::Camera* camera) {
+void VulkanRenderer::drawFrame(octree::OctreePlanet* /*planet*/, core::Camera* camera) {
     // Debug output
     // static int frameNum = 0;
     // std::cout << "DrawFrame " << frameNum++ << " starting..." << std::endl;
