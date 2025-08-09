@@ -294,12 +294,12 @@ void TransvoxelRenderer::render(
     static int renderCallCount = 0;
     bool debugThis = (renderCallCount++ % 60 == 0); // Debug every 60 calls
     
-    // Dump mesh data on first render
-    static bool firstDump = true;
-    if (firstDump && !chunks.empty()) {
-        firstDump = false;
-        dumpMeshDataToFile(chunks);
-    }
+    // Dump mesh data on first render (disabled - use -vertex-dump flag instead)
+    // static bool firstDump = true;
+    // if (firstDump && !chunks.empty()) {
+    //     firstDump = false;
+    //     dumpMeshDataToFile(chunks);
+    // }
     
     if (debugThis) {
         // TransvoxelRenderer::render called with chunks

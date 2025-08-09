@@ -327,8 +327,7 @@ void VulkanRenderer::createTrianglePipeline() {
 // Chunk Management System
 // ============================================================================
 
-// Test mesh generation
-#include "../test_sphere_mesh.cpp"
+// Include sphere patch generator
 #include "../sphere_patch_generator.cpp"
 
 void VulkanRenderer::updateChunks(octree::OctreePlanet* planet, core::Camera* camera) {
@@ -336,224 +335,52 @@ void VulkanRenderer::updateChunks(octree::OctreePlanet* planet, core::Camera* ca
     glm::vec3 planetCenter(0.0f);
     float planetRadius = planet->getRadius();
     
-    // SIMPLIFIED: Test minimal chunking with 4 chunks
-    bool USE_MINIMAL_CHUNKS = true;
-    if (USE_MINIMAL_CHUNKS) {
-        static bool singleMeshCreated = false;
-        if (!singleMeshCreated) {
-            activeChunks.clear();
-            
-            std::cout << "\n=== CREATING PROPER SPHERE PATCHES ===\n";
-            
-            float asteroidRadius = 1000.0f; 
-            
-            // Choose resolution level:
-            // 0 = 6 patches (basic cube)
-            // 1 = 24 patches (2x2 per face)
-            // 2 = 96 patches (4x4 per face)
-            int resolution = 1;  // Start with 24 patches for testing
-            
-            std::cout << "Creating sphere with radius=" << asteroidRadius 
-                      << "m, resolution=" << resolution 
-                      << " (" << (6 * (1 << (2*resolution))) << " patches)\n";
-            
-            // Generate all sphere patches with planet material data
-            auto patches = sphere_patches::generateSphere(asteroidRadius, resolution, planet);
-            
-            // Add all patches as chunks
-            for (auto& patch : patches) {
-                patch.isDirty = true;
-                patch.hasValidMesh = false;
-                activeChunks.push_back(patch);
-            }
-            
-            std::cout << "Created " << activeChunks.size() << " sphere patches\n";
-            std::cout << "Each patch has " << (patches.empty() ? 0 : patches[0].vertices.size()) 
-                      << " vertices\n";
-            
-            // HACK: Also tell the camera to look at the asteroid from a reasonable distance
-            camera->setPosition(glm::vec3(0, 0, 5000)); // 5km away from asteroid
-            camera->lookAt(glm::vec3(0, 0, 0));
-            camera->setMode(core::CameraMode::Orbital); // Ensure orbital mode for drag rotation
-            
-            singleMeshCreated = true;
-        }
-        return;
-    }
-    
-    // DEBUG: Use test mesh instead of planet chunks
-    bool USE_TEST_MESH = false;
-    if (USE_TEST_MESH) {
-        static bool testMeshCreated = false;
-        if (!testMeshCreated) {
-            activeChunks.clear();
-            
-            // Debug: Print camera info
-            std::cout << "\n=== CAMERA DEBUG ===\n";
-            std::cout << "Camera position: (" << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << ")\n";
-            
-            // Create test objects in front of the camera
-            // Camera is at (7.13M, 3.05M, 6.11M), looking toward origin
-            // Place objects between camera and origin
-            glm::vec3 testPos = glm::vec3(3500000, 1500000, 3000000); // Halfway to camera
-            auto testChunk = test::generateTestSphere(100000.0f, testPos); // 100km radius sphere
-            
-            // Also add a cube for reference, offset to the side
-            glm::vec3 cubePos = glm::vec3(3800000, 1500000, 3000000); // 300km to the side
-            auto testCube = test::generateTestCube(150000.0f, cubePos); // 150km cube
-            
-            std::cout << "Test sphere at: (" << testPos.x << ", " << testPos.y << ", " << testPos.z << ")\n";
-            std::cout << "Test cube at: (" << cubePos.x << ", " << cubePos.y << ", " << cubePos.z << ")\n";
-            std::cout << "Distance from camera to sphere: " << glm::length(testPos - cameraPos) << "m\n";
-            std::cout << "Distance from camera to cube: " << glm::length(cubePos - cameraPos) << "m\n";
-            
-            // IMPORTANT: Mark chunks as needing GPU buffer creation
-            testChunk.isDirty = true;
-            testChunk.hasValidMesh = false;
-            testCube.isDirty = true;
-            testCube.hasValidMesh = false;
-            
-            activeChunks.push_back(testChunk);
-            activeChunks.push_back(testCube);
-            
-            std::cout << "Test meshes created: Sphere with " << testChunk.vertices.size() 
-                      << " vertices, Cube with " << testCube.vertices.size() << " vertices\n";
-            std::cout << "Chunks marked as dirty for GPU buffer generation\n";
-            testMeshCreated = true;
-        }
-        return;
-    }
-    
-    // Calculate direction from planet center to camera
-    glm::vec3 directionToCamera = glm::normalize(cameraPos - planetCenter);
-    
-    // Check if we need to update chunks (only when camera has moved significantly)
-    static glm::vec3 lastChunkUpdatePos = glm::vec3(0);
-    float distanceMoved = glm::length(cameraPos - lastChunkUpdatePos);
-    
-    // Adaptive update distance based on altitude
-    const float cameraDistance = glm::length(cameraPos - planetCenter);
-    const float altitude = cameraDistance - planetRadius;
-    const float updateThreshold = (altitude < 10000.0f) ? 100.0f :     // Update every 100m near surface
-                                  (altitude < 100000.0f) ? 1000.0f :    // Update every 1km at low altitude
-                                  (altitude < 1000000.0f) ? 5000.0f :   // Update every 5km at medium altitude
-                                  10000.0f;                              // Update every 10km from space
-    
-    if (distanceMoved < updateThreshold && !activeChunks.empty()) {
-        return; // Keep existing chunks
-    }
-    
-    lastChunkUpdatePos = cameraPos;
-    
-    // Clean up existing chunks before creating new ones
-    if (transvoxelRenderer && !activeChunks.empty()) {
-        // Wait for GPU to finish using the buffers before destroying them
-        vkDeviceWaitIdle(device);
+    // Create planet sphere patches once
+    static bool spherePatchesCreated = false;
+    if (!spherePatchesCreated) {
+        activeChunks.clear();
         
-        for (auto& chunk : activeChunks) {
-            transvoxelRenderer->destroyChunkBuffers(chunk);
+        std::cout << "Creating planet sphere patches...\n";
+        
+        // Generate sphere patches at planet scale
+        int resolution = 3;  // 384 patches (8x8 per cube face)
+        
+        std::cout << "Creating sphere with radius=" << planetRadius/1000000.0f
+                  << "M meters, resolution=" << resolution 
+                  << " (" << (6 * (1 << (2*resolution))) << " patches)\n";
+        
+        // Generate all sphere patches with planet material data
+        auto patches = sphere_patches::generateSphere(planetRadius, resolution, planet);
+        
+        // Add all patches as chunks
+        for (auto& patch : patches) {
+            patch.isDirty = true;
+            patch.hasValidMesh = false;
+            activeChunks.push_back(patch);
         }
-    }
-    activeChunks.clear();
-    
-    // Adaptive chunk grid based on camera distance
-    // (cameraDistance and altitude already calculated above)
-    
-    // More chunks when closer, fewer when farther
-    // Increase chunk count for better coverage
-    const int chunkGridSize = (altitude < 100000.0f) ? 15 :   // Very close: 15x15 grid
-                             (altitude < 1000000.0f) ? 11 :    // Medium: 11x11 grid
-                             (altitude < 10000000.0f) ? 9 : 7; // Far: 9x9 or 7x7 grid
-    
-    // Calculate appropriate chunk size based on view distance
-    // Chunks need to be large enough to connect but not so large they lose detail
-    const float baseChunkSize = (altitude < 10000.0f) ? 5000.0f :      // 5km chunks near surface
-                                (altitude < 100000.0f) ? 20000.0f :     // 20km chunks at low altitude  
-                                (altitude < 1000000.0f) ? 100000.0f :   // 100km chunks at medium altitude
-                                500000.0f;                               // 500km chunks from space
-    // Use a more reasonable scale
-    const float chunkSize = baseChunkSize * 2.0f; // 2x for some overlap
-    
-    // Debug output for chunk sizing
-    static int chunkDebugCounter = 0;
-    if (chunkDebugCounter++ < 3) {
-        std::cout << "Chunk sizing: grid=" << chunkGridSize << "x" << chunkGridSize 
-                  << ", chunk size=" << chunkSize << "m"
-                  << ", voxel size=" << (chunkSize/128.0f) << "m\n";
+        
+        std::cout << "Created " << activeChunks.size() << " sphere patches\n";
+        std::cout << "Each patch has " << (patches.empty() ? 0 : patches[0].vertices.size()) 
+                  << " vertices\n";
+        
+        // Position camera to view the full planet
+        float viewDistance = planetRadius * 2.5f; // View from 2.5x planet radius
+        camera->setPosition(glm::vec3(0, 0, viewDistance));
+        camera->lookAt(glm::vec3(0, 0, 0));
+        camera->setMode(core::CameraMode::Orbital); // Ensure orbital mode for drag rotation
+        std::cout << "Camera positioned at " << viewDistance/1000000.0f << "M meters from planet center\n";
+        
+        spherePatchesCreated = true;
     }
     
-    // Position chunks on planet surface in the direction of the camera
-    glm::vec3 surfacePoint = directionToCamera * planetRadius;
-    
-    // Debug output to understand chunk positioning
-    static int updateCount = 0;
-    if (updateCount++ < 3) {
-        std::cout << "UpdateChunks: Camera at " << glm::length(cameraPos) 
-                  << "m from center, placing chunks at surface point (" 
-                  << surfacePoint.x << ", " << surfacePoint.y << ", " << surfacePoint.z 
-                  << ") distance=" << glm::length(surfacePoint) << "m\n";
-    }
-    
-    // Create orthogonal basis for the surface patch
-    glm::vec3 up = glm::vec3(0, 1, 0);
-    if (abs(glm::dot(directionToCamera, up)) > 0.9f) {
-        up = glm::vec3(1, 0, 0); // Use different up vector if nearly parallel
-    }
-    
-    glm::vec3 right = glm::normalize(glm::cross(directionToCamera, up));
-    glm::vec3 forward = glm::normalize(glm::cross(right, directionToCamera));
-    
-    int chunksCreated = 0;
-    
-    // Create a spherical distribution of chunks around the view point
-    // Use spherical coordinates to distribute chunks evenly on the sphere surface
-    for (int x = 0; x < chunkGridSize; x++) {
-        for (int z = 0; z < chunkGridSize; z++) {
-            TransvoxelChunk chunk;
-            
-            // Create angular offsets for spherical distribution
-            // Original distribution that worked
-            float angleX = ((float)(x - chunkGridSize/2) / (float)chunkGridSize) * 1.2f; 
-            float angleZ = ((float)(z - chunkGridSize/2) / (float)chunkGridSize) * 1.2f;
-            
-            // Rotate the surface point direction by these angles
-            glm::mat4 rotationX = glm::rotate(glm::mat4(1.0f), angleX, right);
-            glm::mat4 rotationZ = glm::rotate(glm::mat4(1.0f), angleZ, forward);
-            glm::vec3 chunkDirection = glm::vec3(rotationZ * rotationX * glm::vec4(directionToCamera, 0.0f));
-            
-            // Place chunk on sphere surface in this direction
-            chunk.position = glm::normalize(chunkDirection) * planetRadius;
-            
-            // Reasonable voxel grid resolution
-            // Use 128x128x128 grid for good detail without killing performance
-            chunk.voxelSize = chunkSize / 128.0f; // 128x128x128 voxel grid per chunk
-            chunk.lodLevel = 0;
-            chunk.isDirty = true;
-            chunk.hasValidMesh = false;
-            
-            activeChunks.push_back(chunk);
-            chunksCreated++;
-            
-            // float distanceFromOrigin = glm::length(chunk.position);
-            // float distanceFromCamera = glm::length(chunk.position - cameraPos);
-            
-            // Debug output removed
-            // std::cout << "Created chunk " << chunksCreated << " at (" 
-            //           << chunk.position.x << ", " << chunk.position.y << ", " << chunk.position.z 
-            //           << "), distance from origin: " << distanceFromOrigin << "m"
-            //           << ", distance from camera: " << distanceFromCamera << "m"
-            //           << ", voxelSize: " << chunk.voxelSize << "m\n";
-        }
-    }
-    
-    // std::cout << "Created " << chunksCreated << " chunks on planet surface\n";
+    // Sphere patches are static, no need to update them
+    return;
 }
 
 void VulkanRenderer::generateChunkMeshes(octree::OctreePlanet* planet) {
     if (!transvoxelRenderer) return;
     
-    // Debug: Track mesh generation
-    int totalChunks = static_cast<int>(activeChunks.size());
+    // Track mesh generation
     int meshesGenerated = 0;
     int validMeshes = 0;
     int alreadyValid = 0;
@@ -565,9 +392,8 @@ void VulkanRenderer::generateChunkMeshes(octree::OctreePlanet* planet) {
         }
         
         if (chunk.isDirty || !chunk.hasValidMesh) {
-            // Check if this is a test mesh (already has vertices)
+            // Sphere patches already have vertices, just create GPU buffers
             if (!chunk.vertices.empty()) {
-                // Test mesh - just create GPU buffers directly
                 try {
                     transvoxelRenderer->createVertexBuffer(chunk);
                     transvoxelRenderer->createIndexBuffer(chunk);
@@ -575,42 +401,19 @@ void VulkanRenderer::generateChunkMeshes(octree::OctreePlanet* planet) {
                     chunk.isDirty = false;
                     meshesGenerated++;
                     validMeshes++;
-                    std::cout << "Created GPU buffers for test mesh with " 
-                              << chunk.vertices.size() << " vertices\n";
+                    // Removed verbose output
                 } catch (const std::exception& e) {
-                    std::cerr << "Failed to create GPU buffers for test mesh: " << e.what() << std::endl;
-                }
-            } else {
-                // Normal planet mesh generation
-                try {
-                    // Use transvoxel renderer to generate mesh
-                    if (transvoxelRenderer) {
-                        transvoxelRenderer->generateMesh(chunk, *planet);
-                        meshesGenerated++;
-                        if (chunk.hasValidMesh) {
-                            validMeshes++;
-                        }
-                    }
-                } catch (const std::exception& e) {
-                    std::cerr << "Failed to generate mesh for chunk: " << e.what() << std::endl;
+                    std::cerr << "Failed to create GPU buffers: " << e.what() << std::endl;
                 }
             }
         }
     }
     
-    // Debug output to understand what's happening
+    // Debug output occasionally
     static int frameCount = 0;
-    if (frameCount++ % 60 == 0) {  // Every 60 frames
-        // Count final state
-        int finalValidCount = 0;
-        for (const auto& chunk : activeChunks) {
-            if (chunk.hasValidMesh) finalValidCount++;
-        }
-        // std::cout << "[CHUNK DEBUG] Total: " << totalChunks 
-        //           << ", AlreadyValid: " << alreadyValid
-        //           << ", Generated: " << meshesGenerated 
-        //           << ", NewValid: " << validMeshes 
-        //           << ", FinalValid: " << finalValidCount << std::endl;
+    if (frameCount++ % 600 == 0 && meshesGenerated > 0) {  // Every 600 frames (about 10 seconds)
+        std::cout << "Mesh generation: " << meshesGenerated << " new, " 
+                  << validMeshes << " valid total\n";
     }
 }
 

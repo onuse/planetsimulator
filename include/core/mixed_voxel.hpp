@@ -143,6 +143,25 @@ struct MixedVoxel {
     glm::vec3 getColor() const {
         auto& matTable = core::MaterialTable::getInstance();
         
+        // Check if this is a pure single-material voxel
+        core::MaterialID pureMaterial = core::MaterialID::Vacuum;
+        bool isPure = true;
+        for (int i = 0; i < 4; i++) {
+            if (amounts[i] > 0) {
+                if (pureMaterial == core::MaterialID::Vacuum) {
+                    pureMaterial = getMaterialID(i);
+                } else if (getMaterialID(i) != pureMaterial) {
+                    isPure = false;
+                    break;
+                }
+            }
+        }
+        
+        if (isPure && pureMaterial != core::MaterialID::Vacuum) {
+            // Return exact color for pure materials to avoid variations
+            return matTable.getColor(pureMaterial);
+        }
+        
         // Calculate total for normalization
         float total = 0;
         for (int i = 0; i < 4; i++) {
@@ -161,17 +180,7 @@ struct MixedVoxel {
             }
         }
         
-        // Apply temperature tint (optional, from old version)
-        float temp_norm = temperature / 255.0f;
-        if (temp_norm < 0.5f) {
-            // Cold: add blue tint
-            color = glm::mix(color, glm::vec3(0.5f, 0.7f, 1.0f), 
-                           (0.5f - temp_norm) * 0.2f);
-        } else if (temp_norm > 0.5f) {
-            // Hot: add red tint
-            color = glm::mix(color, glm::vec3(1.0f, 0.5f, 0.3f), 
-                           (temp_norm - 0.5f) * 0.2f);
-        }
+        // No temperature tinting to avoid variations
         
         return color;
     }

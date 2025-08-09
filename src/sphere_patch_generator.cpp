@@ -51,7 +51,7 @@ std::vector<glm::vec3> generateCubeFacePatch(
             float tv = minV + (maxV - minV) * (float)v / (verticesPerPatch - 1);
             
             // Convert UV to 3D cube position based on face
-            glm::vec3 cubePos;
+            glm::vec3 cubePos(0.0f);  // Initialize to avoid warning
             switch(face) {
                 case FACE_POS_X: cubePos = glm::vec3( 1.0f,    tv,    tu); break;
                 case FACE_NEG_X: cubePos = glm::vec3(-1.0f,    tv,   -tu); break;
@@ -59,6 +59,7 @@ std::vector<glm::vec3> generateCubeFacePatch(
                 case FACE_NEG_Y: cubePos = glm::vec3(   tu, -1.0f,   -tv); break;
                 case FACE_POS_Z: cubePos = glm::vec3(  -tu,    tv,  1.0f); break;
                 case FACE_NEG_Z: cubePos = glm::vec3(   tu,    tv, -1.0f); break;
+                default: cubePos = glm::vec3(1.0f, 0.0f, 0.0f); break;  // Should never happen
             }
             
             // Project cube position onto sphere
@@ -87,10 +88,10 @@ rendering::TransvoxelChunk generateSpherePatch(
     // Debug: Print patch info at start (disabled)
     // std::cout << "Generating patch face=" << face << " pos=(" << patchX << "," << patchY << ")\n";
     
-    // Debug: Sample a few vertices to understand material distribution
-    static int debugPatchCount = 0;
-    bool debugThisPatch = (debugPatchCount++ < 3);  // Debug first 3 patches
-    int debugVertexCount = 0;
+    // Debug: Sample a few vertices to understand material distribution (disabled)
+    // static int debugPatchCount = 0;
+    // bool debugThisPatch = (debugPatchCount++ < 3);  // Debug first 3 patches
+    // int debugVertexCount = 0;
     
     // Convert to chunk vertices with colors and normals
     for (const auto& pos : verts) {
@@ -100,37 +101,53 @@ rendering::TransvoxelChunk generateSpherePatch(
         
         // Sample color from planet if available
         if (planet && planet->getRoot()) {
-            // Scale position from asteroid size to planet size for sampling
-            float planetRadius = planet->getRadius();
-            float scaleFactor = planetRadius / radius;  // e.g., 6.371M / 1000 = 6371
-            glm::vec3 samplePos = pos * scaleFactor;
+            // No scaling needed - sphere is already at planet scale
+            glm::vec3 samplePos = pos;
             
             // Query the octree for the voxel at this position
+            // If we hit air/vacuum, sample deeper to find the surface
             const octree::MixedVoxel* voxel = planet->getVoxel(samplePos);
+            
+            // If we hit air/vacuum, step inward to find the surface
+            glm::vec3 currentPos = samplePos;
+            const int maxSteps = 10;
+            float stepSize = 1000.0f; // 1km steps inward
+            
+            for (int step = 0; step < maxSteps; step++) {
+                voxel = planet->getVoxel(currentPos);
+                
+                if (voxel && !voxel->isEmpty()) {
+                    // Found a non-empty voxel (water, land, etc.)
+                    break;
+                }
+                
+                // Step inward toward planet center
+                glm::vec3 inwardDir = -glm::normalize(currentPos);
+                currentPos += inwardDir * stepSize;
+            }
             
             if (voxel && !voxel->isEmpty()) {
                 // Get the blended color from the voxel's materials
                 vertex.color = voxel->getColor();
                 
-                // Debug output for first few vertices
-                if (debugThisPatch && debugVertexCount++ < 10) {
-                    core::MaterialID dominant = voxel->getDominantMaterialID();
-                    std::cout << "Patch " << (debugPatchCount-1) << " vertex " << (debugVertexCount-1) 
-                              << ": pos=(" << pos.x << "," << pos.y << "," << pos.z << ")"
-                              << " samplePos=(" << samplePos.x/1000000.0f << "M," 
-                              << samplePos.y/1000000.0f << "M," << samplePos.z/1000000.0f << "M)"
-                              << " material=" << static_cast<int>(dominant)
-                              << " color=(" << vertex.color.r << "," << vertex.color.g << "," << vertex.color.b << ")\n";
-                }
                 
-                // Optional: Add a bit of variation to avoid completely uniform colors
-                float noise = sin(samplePos.x * 0.00001f) * cos(samplePos.z * 0.00001f);
-                vertex.color += noise * 0.05f;  // Subtle variation
-                vertex.color = glm::clamp(vertex.color, 0.0f, 1.0f);
+                
+                // Debug output for first few vertices (disabled for now)
+                // if (debugThisPatch && debugVertexCount++ < 10) {
+                //     core::MaterialID dominant = voxel->getDominantMaterialID();
+                //     std::cout << "Patch " << (debugPatchCount-1) << " vertex " << (debugVertexCount-1) 
+                //               << ": material=" << static_cast<int>(dominant)
+                //               << " color=(" << vertex.color.r << "," << vertex.color.g << "," << vertex.color.b << ")\n";
+                // }
+                
+                // Noise disabled to debug moiré pattern
+                // float noise = sin(samplePos.x * 0.00001f) * cos(samplePos.z * 0.00001f);
+                // vertex.color += noise * 0.05f;  // Subtle variation
+                // vertex.color = glm::clamp(vertex.color, 0.0f, 1.0f);
             } else {
-                // Fallback if voxel not found or is empty
-                // Use a neutral gray-blue for empty space
-                vertex.color = glm::vec3(0.4f, 0.5f, 0.6f);
+                // Fallback - should rarely happen now that we step inward
+                // Use a distinct color to make it obvious if we hit this case
+                vertex.color = glm::vec3(1.0f, 0.0f, 1.0f);  // Magenta for debugging
             }
         } else {
             // Make each face VERY different colors for debugging
