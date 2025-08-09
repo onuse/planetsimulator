@@ -84,8 +84,13 @@ rendering::TransvoxelChunk generateSpherePatch(
     // Generate vertices
     auto verts = generateCubeFacePatch(face, radius, patchX, patchY, patchesPerSide, verticesPerPatch);
     
-    // Debug: Print patch info at start
-    std::cout << "Generating patch face=" << face << " pos=(" << patchX << "," << patchY << ")\n";
+    // Debug: Print patch info at start (disabled)
+    // std::cout << "Generating patch face=" << face << " pos=(" << patchX << "," << patchY << ")\n";
+    
+    // Debug: Sample a few vertices to understand material distribution
+    static int debugPatchCount = 0;
+    bool debugThisPatch = (debugPatchCount++ < 3);  // Debug first 3 patches
+    int debugVertexCount = 0;
     
     // Convert to chunk vertices with colors and normals
     for (const auto& pos : verts) {
@@ -95,25 +100,38 @@ rendering::TransvoxelChunk generateSpherePatch(
         
         // Sample color from planet if available
         if (planet && planet->getRoot()) {
-            // Sample the octree at this position
-            // This is simplified - real implementation would need proper material lookup
-            float altitude = glm::length(pos) - radius;
+            // Scale position from asteroid size to planet size for sampling
+            float planetRadius = planet->getRadius();
+            float scaleFactor = planetRadius / radius;  // e.g., 6.371M / 1000 = 6371
+            glm::vec3 samplePos = pos * scaleFactor;
             
-            // Simple height-based coloring for now
-            if (altitude > 10.0f) {
-                vertex.color = glm::vec3(1.0f, 1.0f, 1.0f);  // White (snow)
-            } else if (altitude > 5.0f) {
-                vertex.color = glm::vec3(0.5f, 0.4f, 0.3f);  // Brown (rock)
-            } else if (altitude > 0.0f) {
-                vertex.color = glm::vec3(0.2f, 0.6f, 0.2f);  // Green (grass)
+            // Query the octree for the voxel at this position
+            const octree::MixedVoxel* voxel = planet->getVoxel(samplePos);
+            
+            if (voxel && !voxel->isEmpty()) {
+                // Get the blended color from the voxel's materials
+                vertex.color = voxel->getColor();
+                
+                // Debug output for first few vertices
+                if (debugThisPatch && debugVertexCount++ < 10) {
+                    core::MaterialID dominant = voxel->getDominantMaterialID();
+                    std::cout << "Patch " << (debugPatchCount-1) << " vertex " << (debugVertexCount-1) 
+                              << ": pos=(" << pos.x << "," << pos.y << "," << pos.z << ")"
+                              << " samplePos=(" << samplePos.x/1000000.0f << "M," 
+                              << samplePos.y/1000000.0f << "M," << samplePos.z/1000000.0f << "M)"
+                              << " material=" << static_cast<int>(dominant)
+                              << " color=(" << vertex.color.r << "," << vertex.color.g << "," << vertex.color.b << ")\n";
+                }
+                
+                // Optional: Add a bit of variation to avoid completely uniform colors
+                float noise = sin(samplePos.x * 0.00001f) * cos(samplePos.z * 0.00001f);
+                vertex.color += noise * 0.05f;  // Subtle variation
+                vertex.color = glm::clamp(vertex.color, 0.0f, 1.0f);
             } else {
-                vertex.color = glm::vec3(0.1f, 0.3f, 0.7f);  // Blue (water)
+                // Fallback if voxel not found or is empty
+                // Use a neutral gray-blue for empty space
+                vertex.color = glm::vec3(0.4f, 0.5f, 0.6f);
             }
-            
-            // Add some variation based on position
-            float noise = sin(pos.x * 0.01f) * cos(pos.z * 0.01f);
-            vertex.color += noise * 0.1f;
-            vertex.color = glm::clamp(vertex.color, 0.0f, 1.0f);
         } else {
             // Make each face VERY different colors for debugging
             switch(face) {
@@ -128,11 +146,11 @@ rendering::TransvoxelChunk generateSpherePatch(
             // Add patch variation within face
             vertex.color *= (0.5f + 0.5f * ((patchX + patchY) % 2));
             
-            // Debug first vertex of each patch
-            if (chunk.vertices.empty()) {  // First vertex of this patch
-                std::cout << "  First vertex color=(" << vertex.color.r << "," << vertex.color.g 
-                          << "," << vertex.color.b << ")\n";
-            }
+            // Debug first vertex of each patch (disabled)
+            // if (chunk.vertices.empty()) {  // First vertex of this patch
+            //     std::cout << "  First vertex color=(" << vertex.color.r << "," << vertex.color.g 
+            //               << "," << vertex.color.b << ")\n";
+            // }
         }
         
         vertex.texCoord = glm::vec2(0, 0);  // TODO: Proper UV mapping

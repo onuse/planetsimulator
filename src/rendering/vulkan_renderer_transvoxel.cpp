@@ -357,8 +357,8 @@ void VulkanRenderer::updateChunks(octree::OctreePlanet* planet, core::Camera* ca
                       << "m, resolution=" << resolution 
                       << " (" << (6 * (1 << (2*resolution))) << " patches)\n";
             
-            // Generate all sphere patches
-            auto patches = sphere_patches::generateSphere(asteroidRadius, resolution);
+            // Generate all sphere patches with planet material data
+            auto patches = sphere_patches::generateSphere(asteroidRadius, resolution, planet);
             
             // Add all patches as chunks
             for (auto& patch : patches) {
