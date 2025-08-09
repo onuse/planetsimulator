@@ -64,6 +64,7 @@ screenshot_dev/
 screenshots/
 *.png
 *.jpg
+renderdoc/
 
 # ImGui configuration
 imgui.ini
@@ -74,6 +75,7 @@ imgui.ini
 *.swp
 *.bak
 *~
+*renderdoc*
 
 # CMake files
 CMakeCache.txt

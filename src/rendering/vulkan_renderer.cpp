@@ -115,8 +115,9 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
         farPlane = distanceToOrigin * 3.0f;
     } else {
         // Space view - entire planet visible
-        nearPlane = 500.0f;
-        farPlane = distanceToOrigin * 4.0f;
+        // Use more reasonable near/far ratio for better precision
+        nearPlane = distanceToOrigin * 0.01f;  // 1% of distance
+        farPlane = distanceToOrigin * 3.0f;    // 300% of distance
     }
     
     camera->setNearFar(nearPlane, farPlane);

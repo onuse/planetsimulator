@@ -214,6 +214,28 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     ubo.viewProj = camera->getViewProjectionMatrix();
     ubo.viewPos = camera->getPosition();
     
+    // Debug: Print first frame's matrices to check they're reasonable
+    static bool firstFrame = true;
+    if (firstFrame) {
+        firstFrame = false;
+        std::cout << "DEBUG: Camera matrices on first frame:\n";
+        std::cout << "  Camera position: (" << ubo.viewPos.x << ", " << ubo.viewPos.y << ", " << ubo.viewPos.z << ")\n";
+        std::cout << "  ViewProj[0]: " << ubo.viewProj[0][0] << ", " << ubo.viewProj[0][1] << ", " << ubo.viewProj[0][2] << ", " << ubo.viewProj[0][3] << "\n";
+        std::cout << "  ViewProj[1]: " << ubo.viewProj[1][0] << ", " << ubo.viewProj[1][1] << ", " << ubo.viewProj[1][2] << ", " << ubo.viewProj[1][3] << "\n";
+        std::cout << "  ViewProj[2]: " << ubo.viewProj[2][0] << ", " << ubo.viewProj[2][1] << ", " << ubo.viewProj[2][2] << ", " << ubo.viewProj[2][3] << "\n";
+        std::cout << "  ViewProj[3]: " << ubo.viewProj[3][0] << ", " << ubo.viewProj[3][1] << ", " << ubo.viewProj[3][2] << ", " << ubo.viewProj[3][3] << "\n";
+        
+        // Test transform a sample vertex
+        glm::vec4 testVertex(4470575.0f, 4534870.0f, 14112.0f, 1.0f);
+        glm::vec4 transformed = ubo.viewProj * testVertex;
+        std::cout << "  Test vertex (" << testVertex.x << ", " << testVertex.y << ", " << testVertex.z << ") -> (" 
+                  << transformed.x << ", " << transformed.y << ", " << transformed.z << ", w=" << transformed.w << ")\n";
+        if (transformed.w != 0) {
+            std::cout << "  After perspective divide: (" << transformed.x/transformed.w << ", " 
+                      << transformed.y/transformed.w << ", " << transformed.z/transformed.w << ")\n";
+        }
+    }
+    
     static auto startTime = std::chrono::high_resolution_clock::now();
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
