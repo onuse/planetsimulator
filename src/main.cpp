@@ -150,10 +150,10 @@ public:
             planet.updateLOD(camera.getPosition());
             
             // Render
-            std::cout << "=== ABOUT TO CALL renderer.render, frame=" << frameCount 
-                      << ", near=" << camera.getNearPlane() << ", far=" << camera.getFarPlane() << " ===\n";
+            // std::cout << "=== ABOUT TO CALL renderer.render, frame=" << frameCount 
+            //           << ", near=" << camera.getNearPlane() << ", far=" << camera.getFarPlane() << " ===\n";
             renderer.render(&planet, &camera);
-            std::cout << "=== RETURNED FROM renderer.render ===\n";
+            // std::cout << "=== RETURNED FROM renderer.render ===\n";
             
             // Screenshots (only after first frame to ensure something is rendered)
             if (config.screenshotInterval > 0 && frameCount > 0) {
@@ -173,7 +173,7 @@ public:
             
             // Frame counter
             frameCount++;
-            if (!config.quiet && frameCount % 30 == 0) {  // More frequent output
+            if (!config.quiet && frameCount % 300 == 0) {  // Every 300 frames (~10 seconds at 30fps)
                 std::cout << "Frame " << frameCount 
                           << ", Time: " << elapsed << "s"
                           << ", Sim: " << simulationTime / 1000000.0f << " My"

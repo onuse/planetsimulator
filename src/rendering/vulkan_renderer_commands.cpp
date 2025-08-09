@@ -98,10 +98,10 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
                 chunksWithBuffers++;
             }
         }
-        std::cout << "[RENDER DEBUG] activeChunks: " << activeChunks.size() 
-                  << ", validMeshes: " << validChunks 
-                  << ", chunksWithBuffers: " << chunksWithBuffers
-                  << ", transvoxelRenderer: " << (transvoxelRenderer ? "valid" : "null") << std::endl;
+        // std::cout << "[RENDER DEBUG] activeChunks: " << activeChunks.size() 
+        //           << ", validMeshes: " << validChunks 
+        //           << ", chunksWithBuffers: " << chunksWithBuffers
+        //           << ", transvoxelRenderer: " << (transvoxelRenderer ? "valid" : "null") << std::endl;
     }
     
     if (transvoxelRenderer && !activeChunks.empty()) {

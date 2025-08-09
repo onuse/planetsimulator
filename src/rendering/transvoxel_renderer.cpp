@@ -333,8 +333,8 @@ void TransvoxelRenderer::render(
     }
     
     if (debugThis) {
-        std::cout << "[TRANSVOXEL RENDER] Rendered " << validMeshCount 
-                  << " chunks with " << totalTriangleCount << " triangles" << std::endl;
+        // std::cout << "[TRANSVOXEL RENDER] Rendered " << validMeshCount 
+        //           << " chunks with " << totalTriangleCount << " triangles" << std::endl;
     }
 }
 

@@ -2,6 +2,7 @@
 #include <glm/gtc/constants.hpp>
 #include <vector>
 #include <cmath>
+#include <iostream>
 #include "rendering/transvoxel_renderer.hpp"
 #include "core/octree.hpp"
 
@@ -83,6 +84,9 @@ rendering::TransvoxelChunk generateSpherePatch(
     // Generate vertices
     auto verts = generateCubeFacePatch(face, radius, patchX, patchY, patchesPerSide, verticesPerPatch);
     
+    // Debug: Print patch info at start
+    std::cout << "Generating patch face=" << face << " pos=(" << patchX << "," << patchY << ")\n";
+    
     // Convert to chunk vertices with colors and normals
     for (const auto& pos : verts) {
         rendering::Vertex vertex;
@@ -111,14 +115,24 @@ rendering::TransvoxelChunk generateSpherePatch(
             vertex.color += noise * 0.1f;
             vertex.color = glm::clamp(vertex.color, 0.0f, 1.0f);
         } else {
-            // Default color if no planet data - make each face a different color
-            float faceColor = (float)face / 6.0f;
-            float patchColor = (float)(patchX + patchY * patchesPerSide) / (float)(patchesPerSide * patchesPerSide);
-            vertex.color = glm::vec3(
-                0.3f + faceColor * 0.5f,      // Red varies by face
-                0.3f + patchColor * 0.5f,     // Green varies by patch position
-                0.5f + sin(faceColor * 3.14159f) * 0.3f  // Blue varies by face
-            );
+            // Make each face VERY different colors for debugging
+            switch(face) {
+                case FACE_POS_X: vertex.color = glm::vec3(1.0f, 0.0f, 0.0f); break; // RED
+                case FACE_NEG_X: vertex.color = glm::vec3(0.0f, 1.0f, 0.0f); break; // GREEN  
+                case FACE_POS_Y: vertex.color = glm::vec3(0.0f, 0.0f, 1.0f); break; // BLUE
+                case FACE_NEG_Y: vertex.color = glm::vec3(1.0f, 1.0f, 0.0f); break; // YELLOW
+                case FACE_POS_Z: vertex.color = glm::vec3(1.0f, 0.0f, 1.0f); break; // MAGENTA
+                case FACE_NEG_Z: vertex.color = glm::vec3(0.0f, 1.0f, 1.0f); break; // CYAN
+            }
+            
+            // Add patch variation within face
+            vertex.color *= (0.5f + 0.5f * ((patchX + patchY) % 2));
+            
+            // Debug first vertex of each patch
+            if (chunk.vertices.empty()) {  // First vertex of this patch
+                std::cout << "  First vertex color=(" << vertex.color.r << "," << vertex.color.g 
+                          << "," << vertex.color.b << ")\n";
+            }
         }
         
         vertex.texCoord = glm::vec2(0, 0);  // TODO: Proper UV mapping

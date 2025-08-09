@@ -323,7 +323,7 @@ void Camera::setNearFar(float near, float far) {
 }
 
 void Camera::updateProjection() {
-    std::cout << "updateProjection called: near=" << nearPlane << ", far=" << farPlane << std::endl;
+    // std::cout << "updateProjection called: near=" << nearPlane << ", far=" << farPlane << std::endl;
     
     projectionMatrix = glm::perspective(
         glm::radians(fov),
@@ -360,7 +360,7 @@ void Camera::autoAdjustClipPlanes(float altitude) {
         farPlane = std::min(50000000.0f, farPlane);  // Cap at 50M meters
     }
     
-    std::cout << "autoAdjustClipPlanes result: near=" << nearPlane << ", far=" << farPlane << std::endl;
+    // std::cout << "autoAdjustClipPlanes result: near=" << nearPlane << ", far=" << farPlane << std::endl;
     updateProjection();
 }
 

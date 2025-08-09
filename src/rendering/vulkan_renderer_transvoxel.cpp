@@ -605,11 +605,11 @@ void VulkanRenderer::generateChunkMeshes(octree::OctreePlanet* planet) {
         for (const auto& chunk : activeChunks) {
             if (chunk.hasValidMesh) finalValidCount++;
         }
-        std::cout << "[CHUNK DEBUG] Total: " << totalChunks 
-                  << ", AlreadyValid: " << alreadyValid
-                  << ", Generated: " << meshesGenerated 
-                  << ", NewValid: " << validMeshes 
-                  << ", FinalValid: " << finalValidCount << std::endl;
+        // std::cout << "[CHUNK DEBUG] Total: " << totalChunks 
+        //           << ", AlreadyValid: " << alreadyValid
+        //           << ", Generated: " << meshesGenerated 
+        //           << ", NewValid: " << validMeshes 
+        //           << ", FinalValid: " << finalValidCount << std::endl;
     }
 }
 
