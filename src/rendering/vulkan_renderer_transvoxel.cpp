@@ -374,6 +374,7 @@ void VulkanRenderer::updateChunks(octree::OctreePlanet* planet, core::Camera* ca
             // HACK: Also tell the camera to look at the asteroid from a reasonable distance
             camera->setPosition(glm::vec3(0, 0, 5000)); // 5km away from asteroid
             camera->lookAt(glm::vec3(0, 0, 0));
+            camera->setMode(core::CameraMode::Orbital); // Ensure orbital mode for drag rotation
             
             singleMeshCreated = true;
         }

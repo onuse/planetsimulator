@@ -319,6 +319,13 @@ private:
             if (input.keys[GLFW_KEY_E]) camera.moveUp(frameMoveSpeed);
         }
         
+        // Sphere rotation with mouse (left-click drag) - orbital camera mode
+        if (!imguiWantsMouse && input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
+            float sensitivity = 0.002f; // Radians per pixel
+            // Orbit the camera around the sphere (effectively rotating the view)
+            camera.orbit(-input.mouseDelta.x * sensitivity, input.mouseDelta.y * sensitivity);
+        }
+        
         // Camera rotation with mouse (right-click drag) - only if ImGui doesn't want mouse
         if (!imguiWantsMouse && input.mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
             float sensitivity = 0.002f; // Radians per pixel
@@ -328,9 +335,9 @@ private:
         // Zoom with scroll wheel - only if ImGui doesn't want mouse
         if (!imguiWantsMouse && input.scrollDelta.y != 0) {
             // Pass scroll delta directly to zoom function
-            // Positive scroll (up) should zoom in (negative delta for zoom function)
-            // Negative scroll (down) should zoom out (positive delta for zoom function)
-            float zoomDelta = -input.scrollDelta.y * 0.5f; // Invert and scale
+            // Positive scroll (up) should zoom in
+            // Negative scroll (down) should zoom out
+            float zoomDelta = input.scrollDelta.y * 0.5f; // Scale but don't invert
             camera.zoom(zoomDelta);
         }
         
