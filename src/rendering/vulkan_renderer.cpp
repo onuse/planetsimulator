@@ -482,4 +482,14 @@ void VulkanRenderer::scrollCallback(GLFWwindow* window, double xoffset, double y
 
 // This file continues in vulkan_renderer_part2.cpp...
 
+void VulkanRenderer::dumpVertexData() {
+    // Dump vertex data from transvoxel renderer
+    if (transvoxelRenderer && !activeChunks.empty()) {
+        std::cout << "Dumping vertex data from " << activeChunks.size() << " chunks...\n";
+        transvoxelRenderer->dumpMeshDataToFile(activeChunks);
+    } else {
+        std::cout << "No vertex data to dump (no active chunks)\n";
+    }
+}
+
 } // namespace rendering

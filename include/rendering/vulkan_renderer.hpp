@@ -97,6 +97,9 @@ public:
     // Screenshot support
     bool captureScreenshot(const std::string& filename);
     
+    // Debug support
+    void dumpVertexData();  // Dump vertex data for debugging
+    
     // Stats
     float getFrameTime() const { return frameTime; }
     uint32_t getNodeCount() const { return visibleNodeCount; }

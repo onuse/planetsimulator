@@ -1,0 +1,2438 @@
+=== TRANSVOXEL MESH DEBUG DUMP ===
+Total chunks: 81
+
+Chunk 0:
+  Position: (2.35665e+06, -1.61829e+06, 5.69359e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3269
+  Triangles: 3150
+  Vertex bounds: min(2.34415e+06,-1.63079e+06,5.68343e+06) max(2.36915e+06,-1.60657e+06,5.70218e+06)
+  Bounding box size: (25000,24218.8,18750)
+  Average distance from origin: 6.37063e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.36134e+06,-1.63079e+06,5.68382e+06)
+      v1: (2.36056e+06,-1.63079e+06,5.68343e+06)
+      v2: (2.36056e+06,-1.63079e+06,5.68422e+06)
+      Edge lengths: 873.632, 781.5, 873.408
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (2.36134e+06,-1.63079e+06,5.68343e+06)
+      v1: (2.36056e+06,-1.63079e+06,5.68343e+06)
+      v2: (2.36134e+06,-1.63079e+06,5.68382e+06)
+      Edge lengths: 781.25, 873.632, 391
+      Triangle area: 152734
+    Triangle 2: [4,3,0]
+      v0: (2.36212e+06,-1.63079e+06,5.68382e+06)
+      v1: (2.36134e+06,-1.63079e+06,5.68343e+06)
+      v2: (2.36134e+06,-1.63079e+06,5.68382e+06)
+      Edge lengths: 873.632, 391, 781.25
+      Triangle area: 152734
+  WARNING: 32 degenerate triangles found!
+
+Chunk 1:
+  Position: (3.01892e+06, -1.51653e+06, 5.40147e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4155
+  Triangles: 4031
+  Vertex bounds: min(3.00642e+06,-1.52903e+06,5.39366e+06) max(3.03142e+06,-1.50481e+06,5.41319e+06)
+  Bounding box size: (25000,24218.8,19531)
+  Average distance from origin: 6.37024e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.01501e+06,-1.52903e+06,5.39405e+06)
+      v1: (3.01423e+06,-1.52903e+06,5.39366e+06)
+      v2: (3.01423e+06,-1.52903e+06,5.39444e+06)
+      Edge lengths: 873.408, 781, 873.408
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (3.01501e+06,-1.52903e+06,5.39366e+06)
+      v1: (3.01423e+06,-1.52903e+06,5.39366e+06)
+      v2: (3.01501e+06,-1.52903e+06,5.39405e+06)
+      Edge lengths: 781.25, 873.408, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,0]
+      v0: (3.01579e+06,-1.52903e+06,5.39405e+06)
+      v1: (3.01501e+06,-1.52903e+06,5.39366e+06)
+      v2: (3.01501e+06,-1.52903e+06,5.39405e+06)
+      Edge lengths: 873.408, 390.5, 781.25
+      Triangle area: 152539
+  WARNING: 67 degenerate triangles found!
+
+Chunk 2:
+  Position: (3.6411e+06, -1.44253e+06, 5.02505e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4353
+  Triangles: 4254
+  Vertex bounds: min(3.6286e+06,-1.45503e+06,5.01255e+06) max(3.6536e+06,-1.43081e+06,5.03755e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37056e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.64931e+06,-1.45503e+06,5.01333e+06)
+      v1: (3.64892e+06,-1.45503e+06,5.01255e+06)
+      v2: (3.64892e+06,-1.45503e+06,5.01333e+06)
+      Edge lengths: 873.296, 781, 390.75
+      Triangle area: 152588
+    Triangle 1: [0,3,1]
+      v0: (3.64931e+06,-1.45503e+06,5.01333e+06)
+      v1: (3.6497e+06,-1.45503e+06,5.01333e+06)
+      v2: (3.64892e+06,-1.45503e+06,5.01255e+06)
+      Edge lengths: 390.5, 1104.68, 873.296
+      Triangle area: 152490
+    Triangle 2: [3,4,1]
+      v0: (3.6497e+06,-1.45503e+06,5.01333e+06)
+      v1: (3.6497e+06,-1.45503e+06,5.01255e+06)
+      v2: (3.64892e+06,-1.45503e+06,5.01255e+06)
+      Edge lengths: 781, 781.25, 1104.68
+      Triangle area: 305078
+  WARNING: 65 degenerate triangles found!
+
+Chunk 3:
+  Position: (4.21216e+06, -1.3976e+06, 4.571e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4595
+  Triangles: 4472
+  Vertex bounds: min(4.19966e+06,-1.4101e+06,4.5585e+06) max(4.22466e+06,-1.38588e+06,4.58272e+06)
+  Bounding box size: (25000,24218.8,24218.5)
+  Average distance from origin: 6.37064e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.21802e+06,-1.4101e+06,4.55928e+06)
+      v1: (4.21763e+06,-1.4101e+06,4.5585e+06)
+      v2: (4.21763e+06,-1.4101e+06,4.55928e+06)
+      Edge lengths: 873.632, 781.5, 390.5
+      Triangle area: 152588
+    Triangle 1: [0,3,1]
+      v0: (4.21802e+06,-1.4101e+06,4.55928e+06)
+      v1: (4.21841e+06,-1.4101e+06,4.55928e+06)
+      v2: (4.21763e+06,-1.4101e+06,4.5585e+06)
+      Edge lengths: 390.5, 1104.85, 873.632
+      Triangle area: 152588
+    Triangle 2: [3,4,1]
+      v0: (4.21841e+06,-1.4101e+06,4.55928e+06)
+      v1: (4.21841e+06,-1.4101e+06,4.5585e+06)
+      v2: (4.21763e+06,-1.4101e+06,4.5585e+06)
+      Edge lengths: 781.5, 781, 1104.85
+      Triangle area: 305176
+  WARNING: 85 degenerate triangles found!
+
+Chunk 4:
+  Position: (4.72196e+06, -1.38253e+06, 4.04739e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5289
+  Triangles: 5194
+  Vertex bounds: min(4.70946e+06,-1.39503e+06,4.03489e+06) max(4.73211e+06,-1.37081e+06,4.05989e+06)
+  Bounding box size: (22656,24218.8,25000)
+  Average distance from origin: 6.37061e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.73172e+06,-1.39503e+06,4.03567e+06)
+      v1: (4.73133e+06,-1.39503e+06,4.03489e+06)
+      v2: (4.73133e+06,-1.39503e+06,4.03567e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (4.73172e+06,-1.39503e+06,4.03567e+06)
+      v1: (4.73211e+06,-1.39503e+06,4.03567e+06)
+      v2: (4.73133e+06,-1.39503e+06,4.03489e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (4.73211e+06,-1.39503e+06,4.03567e+06)
+      v1: (4.73211e+06,-1.39503e+06,4.03489e+06)
+      v2: (4.73133e+06,-1.39503e+06,4.03489e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 105 degenerate triangles found!
+
+Chunk 5:
+  Position: (5.16144e+06, -1.3976e+06, 3.46351e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5182
+  Triangles: 5066
+  Vertex bounds: min(5.15128e+06,-1.4101e+06,3.45101e+06) max(5.17081e+06,-1.38588e+06,3.47601e+06)
+  Bounding box size: (19531,24218.8,25000)
+  Average distance from origin: 6.37145e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.17042e+06,-1.4101e+06,3.45179e+06)
+      v1: (5.17003e+06,-1.4101e+06,3.45101e+06)
+      v2: (5.17003e+06,-1.4101e+06,3.45179e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.17042e+06,-1.4101e+06,3.45179e+06)
+      v1: (5.17081e+06,-1.4101e+06,3.45179e+06)
+      v2: (5.17003e+06,-1.4101e+06,3.45101e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.17081e+06,-1.4101e+06,3.45179e+06)
+      v1: (5.17081e+06,-1.4101e+06,3.45101e+06)
+      v2: (5.17003e+06,-1.4101e+06,3.45101e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 88 degenerate triangles found!
+
+Chunk 6:
+  Position: (5.5228e+06, -1.44253e+06, 2.82973e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4699
+  Triangles: 4595
+  Vertex bounds: min(5.51499e+06,-1.45503e+06,2.81723e+06) max(5.53452e+06,-1.43081e+06,2.84223e+06)
+  Bounding box size: (19531.5,24218.8,25000)
+  Average distance from origin: 6.37047e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.52476e+06,-1.45503e+06,2.81801e+06)
+      v1: (5.52437e+06,-1.45503e+06,2.81723e+06)
+      v2: (5.52437e+06,-1.45503e+06,2.81801e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.52476e+06,-1.45503e+06,2.81801e+06)
+      v1: (5.52515e+06,-1.45503e+06,2.81801e+06)
+      v2: (5.52437e+06,-1.45503e+06,2.81723e+06)
+      Edge lengths: 391, 1105.03, 873.408
+      Triangle area: 152734
+    Triangle 2: [3,4,1]
+      v0: (5.52515e+06,-1.45503e+06,2.81801e+06)
+      v1: (5.52515e+06,-1.45503e+06,2.81723e+06)
+      v2: (5.52437e+06,-1.45503e+06,2.81723e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 66 degenerate triangles found!
+
+Chunk 7:
+  Position: (5.79964e+06, -1.51653e+06, 2.15729e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4446
+  Triangles: 4330
+  Vertex bounds: min(5.79496e+06,-1.52903e+06,2.14479e+06) max(5.80511e+06,-1.50481e+06,2.16979e+06)
+  Bounding box size: (10156.5,24218.8,25000)
+  Average distance from origin: 6.37101e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.80472e+06,-1.52903e+06,2.14557e+06)
+      v1: (5.80433e+06,-1.52903e+06,2.14479e+06)
+      v2: (5.80433e+06,-1.52903e+06,2.14557e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.80472e+06,-1.52903e+06,2.14557e+06)
+      v1: (5.80511e+06,-1.52903e+06,2.14557e+06)
+      v2: (5.80433e+06,-1.52903e+06,2.14479e+06)
+      Edge lengths: 391, 1105.03, 873.408
+      Triangle area: 152734
+    Triangle 2: [3,4,1]
+      v0: (5.80511e+06,-1.52903e+06,2.14557e+06)
+      v1: (5.80511e+06,-1.52903e+06,2.14479e+06)
+      v2: (5.80433e+06,-1.52903e+06,2.14479e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 56 degenerate triangles found!
+
+Chunk 8:
+  Position: (5.98704e+06, -1.61829e+06, 1.45814e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4446
+  Triangles: 4330
+  Vertex bounds: min(5.98157e+06,-1.63079e+06,1.44564e+06) max(5.99172e+06,-1.60657e+06,1.47064e+06)
+  Bounding box size: (10156,24218.8,25000)
+  Average distance from origin: 6.37035e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.99133e+06,-1.63079e+06,1.44642e+06)
+      v1: (5.99094e+06,-1.63079e+06,1.44564e+06)
+      v2: (5.99094e+06,-1.63079e+06,1.44642e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.99133e+06,-1.63079e+06,1.44642e+06)
+      v1: (5.99172e+06,-1.63079e+06,1.44642e+06)
+      v2: (5.99094e+06,-1.63079e+06,1.44564e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.99172e+06,-1.63079e+06,1.44642e+06)
+      v1: (5.99172e+06,-1.63079e+06,1.44564e+06)
+      v2: (5.99094e+06,-1.63079e+06,1.44564e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 56 degenerate triangles found!
+
+Chunk 9:
+  Position: (2.28963e+06, -795662, 5.89187e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3494
+  Triangles: 3406
+  Vertex bounds: min(2.27713e+06,-808162,5.88875e+06) max(2.30213e+06,-783944,5.8989e+06)
+  Bounding box size: (25000,24218.8,10156.5)
+  Average distance from origin: 6.37078e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.27791e+06,-808162,5.88914e+06)
+      v1: (2.27713e+06,-808162,5.88875e+06)
+      v2: (2.27713e+06,-808162,5.88953e+06)
+      Edge lengths: 873.408, 781.5, 873.632
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (2.27791e+06,-808162,5.88875e+06)
+      v1: (2.27713e+06,-808162,5.88875e+06)
+      v2: (2.27791e+06,-808162,5.88914e+06)
+      Edge lengths: 781.25, 873.408, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,0]
+      v0: (2.27869e+06,-808162,5.88914e+06)
+      v1: (2.27791e+06,-808162,5.88875e+06)
+      v2: (2.27791e+06,-808162,5.88914e+06)
+      Edge lengths: 873.408, 390.5, 781.25
+      Triangle area: 152539
+  WARNING: 45 degenerate triangles found!
+
+Chunk 10:
+  Position: (2.998e+06, -686820, 5.57942e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4352
+  Triangles: 4288
+  Vertex bounds: min(2.9855e+06,-699320,5.57082e+06) max(3.0105e+06,-675102,5.58997e+06)
+  Bounding box size: (25000,24218.8,19141)
+  Average distance from origin: 6.37085e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.00581e+06,-699320,5.57122e+06)
+      v1: (3.00503e+06,-699320,5.57082e+06)
+      v2: (3.00503e+06,-699320,5.57161e+06)
+      Edge lengths: 873.632, 781.5, 873.408
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (3.00581e+06,-699320,5.57082e+06)
+      v1: (3.00503e+06,-699320,5.57082e+06)
+      v2: (3.00581e+06,-699320,5.57122e+06)
+      Edge lengths: 781.25, 873.632, 391
+      Triangle area: 152734
+    Triangle 2: [4,3,0]
+      v0: (3.00659e+06,-699320,5.57122e+06)
+      v1: (3.00581e+06,-699320,5.57082e+06)
+      v2: (3.00581e+06,-699320,5.57122e+06)
+      Edge lengths: 873.632, 391, 781.25
+      Triangle area: 152734
+  WARNING: 64 degenerate triangles found!
+
+Chunk 11:
+  Position: (3.6635e+06, -607666, 5.17679e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3982
+  Triangles: 3885
+  Vertex bounds: min(3.651e+06,-620166,5.16976e+06) max(3.676e+06,-595947,5.18929e+06)
+  Bounding box size: (25000,24218.8,19531)
+  Average distance from origin: 6.3719e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.66818e+06,-620166,5.17015e+06)
+      v1: (3.6674e+06,-620166,5.16976e+06)
+      v2: (3.6674e+06,-620166,5.17054e+06)
+      Edge lengths: 873.408, 781, 873.408
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (3.66818e+06,-620166,5.16976e+06)
+      v1: (3.6674e+06,-620166,5.16976e+06)
+      v2: (3.66818e+06,-620166,5.17015e+06)
+      Edge lengths: 781.25, 873.408, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,0]
+      v0: (3.66897e+06,-620166,5.17015e+06)
+      v1: (3.66818e+06,-620166,5.16976e+06)
+      v2: (3.66818e+06,-620166,5.17015e+06)
+      Edge lengths: 873.408, 390.5, 781.25
+      Triangle area: 152539
+  WARNING: 58 degenerate triangles found!
+
+Chunk 12:
+  Position: (4.27431e+06, -559604, 4.69114e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4736
+  Triangles: 4704
+  Vertex bounds: min(4.26181e+06,-572104,4.67864e+06) max(4.28368e+06,-547885,4.70325e+06)
+  Bounding box size: (21875,24218.8,24609.5)
+  Average distance from origin: 6.37007e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.28329e+06,-572104,4.67942e+06)
+      v1: (4.2829e+06,-572104,4.67864e+06)
+      v2: (4.2829e+06,-572104,4.67942e+06)
+      Edge lengths: 873.408, 781, 391
+      Triangle area: 152686
+    Triangle 1: [0,3,1]
+      v0: (4.28329e+06,-572104,4.67942e+06)
+      v1: (4.28368e+06,-572104,4.67942e+06)
+      v2: (4.2829e+06,-572104,4.67864e+06)
+      Edge lengths: 390.5, 1104.85, 873.408
+      Triangle area: 152490
+    Triangle 2: [3,4,1]
+      v0: (4.28368e+06,-572104,4.67942e+06)
+      v1: (4.28368e+06,-572104,4.67864e+06)
+      v2: (4.2829e+06,-572104,4.67864e+06)
+      Edge lengths: 781, 781.5, 1104.85
+      Triangle area: 305176
+  WARNING: 96 degenerate triangles found!
+
+Chunk 13:
+  Position: (4.81959e+06, -543488, 4.13108e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4324
+  Triangles: 4214
+  Vertex bounds: min(4.8149e+06,-555988,4.11858e+06) max(4.83209e+06,-531769,4.14358e+06)
+  Bounding box size: (17187.5,24218.8,25000)
+  Average distance from origin: 6.37183e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.82467e+06,-555988,4.11936e+06)
+      v1: (4.82428e+06,-555988,4.11858e+06)
+      v2: (4.82428e+06,-555988,4.11936e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (4.82467e+06,-555988,4.11936e+06)
+      v1: (4.82506e+06,-555988,4.11936e+06)
+      v2: (4.82428e+06,-555988,4.11858e+06)
+      Edge lengths: 391, 1105.03, 873.408
+      Triangle area: 152734
+    Triangle 2: [3,4,1]
+      v0: (4.82506e+06,-555988,4.11936e+06)
+      v1: (4.82506e+06,-555988,4.11858e+06)
+      v2: (4.82428e+06,-555988,4.11858e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 44 degenerate triangles found!
+
+Chunk 14:
+  Position: (5.28967e+06, -559604, 3.50655e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4752
+  Triangles: 4670
+  Vertex bounds: min(5.27717e+06,-572104,3.49405e+06) max(5.30138e+06,-547885,3.51905e+06)
+  Bounding box size: (24218.5,24218.8,25000)
+  Average distance from origin: 6.37125e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.29162e+06,-572104,3.49484e+06)
+      v1: (5.29123e+06,-572104,3.49405e+06)
+      v2: (5.29123e+06,-572104,3.49484e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.29162e+06,-572104,3.49484e+06)
+      v1: (5.29201e+06,-572104,3.49484e+06)
+      v2: (5.29123e+06,-572104,3.49405e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.29201e+06,-572104,3.49484e+06)
+      v1: (5.29201e+06,-572104,3.49405e+06)
+      v2: (5.29123e+06,-572104,3.49405e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 71 degenerate triangles found!
+
+Chunk 15:
+  Position: (5.67619e+06, -607666, 2.82865e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4698
+  Triangles: 4591
+  Vertex bounds: min(5.66447e+06,-620166,2.81615e+06) max(5.684e+06,-595947,2.84115e+06)
+  Bounding box size: (19531,24218.8,25000)
+  Average distance from origin: 6.3704e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.68361e+06,-620166,2.81693e+06)
+      v1: (5.68322e+06,-620166,2.81615e+06)
+      v2: (5.68322e+06,-620166,2.81693e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.68361e+06,-620166,2.81693e+06)
+      v1: (5.684e+06,-620166,2.81693e+06)
+      v2: (5.68322e+06,-620166,2.81615e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.684e+06,-620166,2.81693e+06)
+      v1: (5.684e+06,-620166,2.81615e+06)
+      v2: (5.68322e+06,-620166,2.81615e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 68 degenerate triangles found!
+
+Chunk 16:
+  Position: (5.9723e+06, -686820, 2.10941e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4077
+  Triangles: 3981
+  Vertex bounds: min(5.96292e+06,-699320,2.09691e+06) max(5.98245e+06,-675102,2.12191e+06)
+  Bounding box size: (19531,24218.8,25000)
+  Average distance from origin: 6.37066e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.97269e+06,-699320,2.09769e+06)
+      v1: (5.9723e+06,-699320,2.09691e+06)
+      v2: (5.9723e+06,-699320,2.09769e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.97269e+06,-699320,2.09769e+06)
+      v1: (5.97308e+06,-699320,2.09769e+06)
+      v2: (5.9723e+06,-699320,2.09691e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.97308e+06,-699320,2.09769e+06)
+      v1: (5.97308e+06,-699320,2.09691e+06)
+      v2: (5.9723e+06,-699320,2.09691e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 40 degenerate triangles found!
+
+Chunk 17:
+  Position: (6.17274e+06, -795663, 1.36158e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4446
+  Triangles: 4330
+  Vertex bounds: min(6.16805e+06,-808163,1.34908e+06) max(6.1782e+06,-783553,1.37408e+06)
+  Bounding box size: (10156.5,24609.4,25000)
+  Average distance from origin: 6.37003e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (6.17781e+06,-808163,1.34987e+06)
+      v1: (6.17742e+06,-808163,1.34908e+06)
+      v2: (6.17742e+06,-808163,1.34987e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (6.17781e+06,-808163,1.34987e+06)
+      v1: (6.1782e+06,-808163,1.34987e+06)
+      v2: (6.17742e+06,-808163,1.34908e+06)
+      Edge lengths: 391, 1105.03, 873.408
+      Triangle area: 152734
+    Triangle 2: [3,4,1]
+      v0: (6.1782e+06,-808163,1.34987e+06)
+      v1: (6.1782e+06,-808163,1.34908e+06)
+      v2: (6.17742e+06,-808163,1.34908e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 56 degenerate triangles found!
+
+Chunk 18:
+  Position: (2.18197e+06, 41090.4, 5.98556e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3232
+  Triangles: 3168
+  Vertex bounds: min(2.16947e+06,28590.4,5.98166e+06) max(2.19447e+06,52809.1,5.99142e+06)
+  Bounding box size: (25000,24218.8,9766)
+  Average distance from origin: 6.36941e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.17494e+06,28590.4,5.98205e+06)
+      v1: (2.17416e+06,28590.4,5.98166e+06)
+      v2: (2.17416e+06,28590.4,5.98244e+06)
+      Edge lengths: 873.632, 781.5, 873.408
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (2.17494e+06,28590.4,5.98166e+06)
+      v1: (2.17416e+06,28590.4,5.98166e+06)
+      v2: (2.17494e+06,28590.4,5.98205e+06)
+      Edge lengths: 781.25, 873.632, 391
+      Triangle area: 152734
+    Triangle 2: [4,3,0]
+      v0: (2.17572e+06,28590.4,5.98205e+06)
+      v1: (2.17494e+06,28590.4,5.98166e+06)
+      v2: (2.17494e+06,28590.4,5.98205e+06)
+      Edge lengths: 873.632, 391, 781.25
+      Triangle area: 152734
+  WARNING: 32 degenerate triangles found!
+
+Chunk 19:
+  Position: (2.92386e+06, 155084, 5.65832e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3232
+  Triangles: 3168
+  Vertex bounds: min(2.91136e+06,142584,5.6552e+06) max(2.93636e+06,166803,5.66496e+06)
+  Bounding box size: (25000,24218.8,9765.5)
+  Average distance from origin: 6.37156e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.92152e+06,142584,5.65559e+06)
+      v1: (2.92074e+06,142584,5.6552e+06)
+      v2: (2.92074e+06,142584,5.65598e+06)
+      Edge lengths: 873.408, 781, 873.408
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (2.92152e+06,142584,5.6552e+06)
+      v1: (2.92074e+06,142584,5.6552e+06)
+      v2: (2.92152e+06,142584,5.65559e+06)
+      Edge lengths: 781.25, 873.408, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,0]
+      v0: (2.9223e+06,142584,5.65559e+06)
+      v1: (2.92152e+06,142584,5.6552e+06)
+      v2: (2.92152e+06,142584,5.65559e+06)
+      Edge lengths: 873.408, 390.5, 781.25
+      Triangle area: 152539
+  WARNING: 32 degenerate triangles found!
+
+Chunk 20:
+  Position: (3.62086e+06, 237985, 5.23664e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4352
+  Triangles: 4288
+  Vertex bounds: min(3.60836e+06,225485,5.2257e+06) max(3.63336e+06,249704,5.24484e+06)
+  Bounding box size: (25000,24218.8,19140.5)
+  Average distance from origin: 6.37012e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.63102e+06,225485,5.22609e+06)
+      v1: (3.63023e+06,225485,5.2257e+06)
+      v2: (3.63023e+06,225485,5.22648e+06)
+      Edge lengths: 873.408, 781.5, 873.632
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (3.63102e+06,225485,5.2257e+06)
+      v1: (3.63023e+06,225485,5.2257e+06)
+      v2: (3.63102e+06,225485,5.22609e+06)
+      Edge lengths: 781.25, 873.408, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,0]
+      v0: (3.6318e+06,225485,5.22609e+06)
+      v1: (3.63102e+06,225485,5.2257e+06)
+      v2: (3.63102e+06,225485,5.22609e+06)
+      Edge lengths: 873.408, 390.5, 781.25
+      Triangle area: 152539
+  WARNING: 64 degenerate triangles found!
+
+Chunk 21:
+  Position: (4.26058e+06, 288322, 4.728e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3937
+  Triangles: 3811
+  Vertex bounds: min(4.24808e+06,275822,4.72175e+06) max(4.27308e+06,300041,4.7405e+06)
+  Bounding box size: (25000,24218.8,18750)
+  Average distance from origin: 6.37288e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.26527e+06,275822,4.72214e+06)
+      v1: (4.26448e+06,275822,4.72175e+06)
+      v2: (4.26448e+06,275822,4.72253e+06)
+      Edge lengths: 873.632, 781, 873.632
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (4.26527e+06,275822,4.72175e+06)
+      v1: (4.26448e+06,275822,4.72175e+06)
+      v2: (4.26527e+06,275822,4.72214e+06)
+      Edge lengths: 781.5, 873.632, 390.5
+      Triangle area: 152588
+    Triangle 2: [4,3,0]
+      v0: (4.26605e+06,275822,4.72214e+06)
+      v1: (4.26527e+06,275822,4.72175e+06)
+      v2: (4.26527e+06,275822,4.72214e+06)
+      Edge lengths: 873.632, 390.5, 781.5
+      Triangle area: 152588
+  WARNING: 52 degenerate triangles found!
+
+Chunk 22:
+  Position: (4.83167e+06, 305201, 4.14143e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4896
+  Triangles: 4864
+  Vertex bounds: min(4.81917e+06,292701,4.12893e+06) max(4.84417e+06,316920,4.15276e+06)
+  Bounding box size: (25000,24218.8,23828)
+  Average distance from origin: 6.37121e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.84378e+06,292701,4.12971e+06)
+      v1: (4.84339e+06,292701,4.12893e+06)
+      v2: (4.84339e+06,292701,4.12971e+06)
+      Edge lengths: 873.632, 781.25, 391
+      Triangle area: 152734
+    Triangle 1: [0,3,1]
+      v0: (4.84378e+06,292701,4.12971e+06)
+      v1: (4.84417e+06,292701,4.12971e+06)
+      v2: (4.84339e+06,292701,4.12893e+06)
+      Edge lengths: 390.5, 1105.03, 873.632
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (4.84417e+06,292701,4.12971e+06)
+      v1: (4.84417e+06,292701,4.12893e+06)
+      v2: (4.84339e+06,292701,4.12893e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 96 degenerate triangles found!
+
+Chunk 23:
+  Position: (5.32399e+06, 288322, 3.48735e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4448
+  Triangles: 4416
+  Vertex bounds: min(5.31149e+06,275822,3.47485e+06) max(5.32946e+06,300041,3.49946e+06)
+  Bounding box size: (17968.5,24218.8,24609.5)
+  Average distance from origin: 6.37189e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.32907e+06,275822,3.47563e+06)
+      v1: (5.32868e+06,275822,3.47485e+06)
+      v2: (5.32868e+06,275822,3.47563e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.32907e+06,275822,3.47563e+06)
+      v1: (5.32946e+06,275822,3.47563e+06)
+      v2: (5.32868e+06,275822,3.47485e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.32946e+06,275822,3.47563e+06)
+      v1: (5.32946e+06,275822,3.47485e+06)
+      v2: (5.32868e+06,275822,3.47485e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 64 degenerate triangles found!
+
+Chunk 24:
+  Position: (5.72881e+06, 237985, 2.77736e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3872
+  Triangles: 3808
+  Vertex bounds: min(5.72022e+06,225485,2.76486e+06) max(5.73037e+06,249704,2.78986e+06)
+  Bounding box size: (10156.5,24218.8,25000)
+  Average distance from origin: 6.36902e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.72998e+06,225485,2.76564e+06)
+      v1: (5.72959e+06,225485,2.76486e+06)
+      v2: (5.72959e+06,225485,2.76564e+06)
+      Edge lengths: 873.632, 781.25, 391
+      Triangle area: 152734
+    Triangle 1: [0,3,1]
+      v0: (5.72998e+06,225485,2.76564e+06)
+      v1: (5.73037e+06,225485,2.76564e+06)
+      v2: (5.72959e+06,225485,2.76486e+06)
+      Edge lengths: 390.5, 1105.03, 873.632
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.73037e+06,225485,2.76564e+06)
+      v1: (5.73037e+06,225485,2.76486e+06)
+      v2: (5.72959e+06,225485,2.76486e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 32 degenerate triangles found!
+
+Chunk 25:
+  Position: (6.03893e+06, 155084, 2.02408e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3872
+  Triangles: 3808
+  Vertex bounds: min(6.03737e+06,142584,2.01158e+06) max(6.04753e+06,166803,2.03658e+06)
+  Bounding box size: (10156.5,24218.8,25000)
+  Average distance from origin: 6.37146e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (6.04714e+06,142584,2.01236e+06)
+      v1: (6.04675e+06,142584,2.01158e+06)
+      v2: (6.04675e+06,142584,2.01236e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (6.04714e+06,142584,2.01236e+06)
+      v1: (6.04753e+06,142584,2.01236e+06)
+      v2: (6.04675e+06,142584,2.01158e+06)
+      Edge lengths: 391, 1105.03, 873.408
+      Triangle area: 152734
+    Triangle 2: [3,4,1]
+      v0: (6.04753e+06,142584,2.01236e+06)
+      v1: (6.04753e+06,142584,2.01158e+06)
+      v2: (6.04675e+06,142584,2.01158e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 32 degenerate triangles found!
+
+Chunk 26:
+  Position: (6.24886e+06, 41090.4, 1.24086e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3872
+  Triangles: 3808
+  Vertex bounds: min(6.24339e+06,28590.4,1.22836e+06) max(6.25355e+06,52809.2,1.25336e+06)
+  Bounding box size: (10156.5,24218.8,25000)
+  Average distance from origin: 6.37068e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (6.25316e+06,28590.4,1.22914e+06)
+      v1: (6.25276e+06,28590.4,1.22836e+06)
+      v2: (6.25276e+06,28590.4,1.22914e+06)
+      Edge lengths: 873.632, 781.25, 391
+      Triangle area: 152734
+    Triangle 1: [0,3,1]
+      v0: (6.25316e+06,28590.4,1.22914e+06)
+      v1: (6.25355e+06,28590.4,1.22914e+06)
+      v2: (6.25276e+06,28590.4,1.22836e+06)
+      Edge lengths: 390.5, 1105.03, 873.632
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (6.25355e+06,28590.4,1.22914e+06)
+      v1: (6.25355e+06,28590.4,1.22836e+06)
+      v2: (6.25276e+06,28590.4,1.22836e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 32 degenerate triangles found!
+
+Chunk 27:
+  Position: (2.03557e+06, 877114, 5.973e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3447
+  Triangles: 3334
+  Vertex bounds: min(2.02307e+06,864614,5.96285e+06) max(2.04807e+06,888833,5.98199e+06)
+  Bounding box size: (25000,24218.8,19140.5)
+  Average distance from origin: 6.37008e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (2.04338e+06,877114,5.96285e+06)
+      v1: (2.04338e+06,877114,5.96285e+06)
+      v2: (2.04338e+06,877114,5.96363e+06)
+      Edge lengths: 0, 781, 781
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (2.04495e+06,877114,5.96285e+06)
+      v1: (2.04417e+06,877114,5.96285e+06)
+      v2: (2.04417e+06,877114,5.96363e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 2: [2,3,2]
+      v0: (2.04495e+06,877114,5.96285e+06)
+      v1: (2.04417e+06,877114,5.96285e+06)
+      v2: (2.04495e+06,877114,5.96285e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+  WARNING: 51 degenerate triangles found!
+
+Chunk 28:
+  Position: (2.79782e+06, 994236, 5.63678e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4445
+  Triangles: 4320
+  Vertex bounds: min(2.78532e+06,981736,5.62741e+06) max(2.81032e+06,1.00595e+06,5.64655e+06)
+  Bounding box size: (25000,24218.8,19140.5)
+  Average distance from origin: 6.37091e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.80954e+06,981736,5.6278e+06)
+      v1: (2.80876e+06,981736,5.62741e+06)
+      v2: (2.80876e+06,981736,5.62819e+06)
+      Edge lengths: 873.408, 781.5, 873.632
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (2.80954e+06,981736,5.62741e+06)
+      v1: (2.80876e+06,981736,5.62741e+06)
+      v2: (2.80954e+06,981736,5.6278e+06)
+      Edge lengths: 781.25, 873.408, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,0]
+      v0: (2.81032e+06,981736,5.6278e+06)
+      v1: (2.80954e+06,981736,5.62741e+06)
+      v2: (2.80954e+06,981736,5.6278e+06)
+      Edge lengths: 873.408, 390.5, 781.25
+      Triangle area: 152539
+  WARNING: 93 degenerate triangles found!
+
+Chunk 29:
+  Position: (3.51394e+06, 1.07941e+06, 5.20353e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3843
+  Triangles: 3715
+  Vertex bounds: min(3.50144e+06,1.06691e+06,5.19806e+06) max(3.52644e+06,1.09113e+06,5.21603e+06)
+  Bounding box size: (25000,24218.8,17969)
+  Average distance from origin: 6.37125e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.51863e+06,1.06691e+06,5.19845e+06)
+      v1: (3.51785e+06,1.06691e+06,5.19806e+06)
+      v2: (3.51785e+06,1.06691e+06,5.19884e+06)
+      Edge lengths: 873.632, 781.5, 873.408
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (3.51863e+06,1.06691e+06,5.19806e+06)
+      v1: (3.51785e+06,1.06691e+06,5.19806e+06)
+      v2: (3.51863e+06,1.06691e+06,5.19845e+06)
+      Edge lengths: 781.25, 873.632, 391
+      Triangle area: 152734
+    Triangle 2: [4,3,0]
+      v0: (3.51941e+06,1.06691e+06,5.19845e+06)
+      v1: (3.51863e+06,1.06691e+06,5.19806e+06)
+      v2: (3.51863e+06,1.06691e+06,5.19845e+06)
+      Edge lengths: 873.632, 391, 781.25
+      Triangle area: 152734
+  WARNING: 74 degenerate triangles found!
+
+Chunk 30:
+  Position: (4.17122e+06, 1.13113e+06, 4.68093e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4653
+  Triangles: 4573
+  Vertex bounds: min(4.16184e+06,1.11863e+06,4.66843e+06) max(4.18372e+06,1.14285e+06,4.69343e+06)
+  Bounding box size: (21875,24218.8,25000)
+  Average distance from origin: 6.37091e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.18138e+06,1.11941e+06,4.66843e+06)
+      v1: (4.18059e+06,1.11941e+06,4.66843e+06)
+      v2: (4.18059e+06,1.11941e+06,4.66921e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (4.18138e+06,1.1198e+06,4.66843e+06)
+      v1: (4.18059e+06,1.11941e+06,4.66843e+06)
+      v2: (4.18138e+06,1.11941e+06,4.66843e+06)
+      Edge lengths: 873.464, 781.25, 390.625
+      Triangle area: 152588
+    Triangle 2: [4,3,5]
+      v0: (4.18216e+06,1.11941e+06,4.66843e+06)
+      v1: (4.18138e+06,1.1198e+06,4.66843e+06)
+      v2: (4.18138e+06,1.11941e+06,4.66921e+06)
+      Edge lengths: 873.464, 873.688, 1105.03
+      Triangle area: 373862
+  WARNING: 63 degenerate triangles found!
+
+Chunk 31:
+  Position: (4.75798e+06, 1.14847e+06, 4.07827e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5099
+  Triangles: 4996
+  Vertex bounds: min(4.74548e+06,1.13597e+06,4.06577e+06) max(4.76892e+06,1.16019e+06,4.09077e+06)
+  Bounding box size: (23437.5,24218.8,25000)
+  Average distance from origin: 6.37108e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.76853e+06,1.13597e+06,4.06655e+06)
+      v1: (4.76814e+06,1.13597e+06,4.06577e+06)
+      v2: (4.76814e+06,1.13597e+06,4.06655e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (4.76853e+06,1.13597e+06,4.06655e+06)
+      v1: (4.76892e+06,1.13597e+06,4.06655e+06)
+      v2: (4.76814e+06,1.13597e+06,4.06577e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (4.76892e+06,1.13597e+06,4.06655e+06)
+      v1: (4.76892e+06,1.13597e+06,4.06577e+06)
+      v2: (4.76814e+06,1.13597e+06,4.06577e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 132 degenerate triangles found!
+
+Chunk 32:
+  Position: (5.26381e+06, 1.13113e+06, 3.40624e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5182
+  Triangles: 5068
+  Vertex bounds: min(5.25366e+06,1.11863e+06,3.39374e+06) max(5.27319e+06,1.14285e+06,3.41874e+06)
+  Bounding box size: (19531,24218.8,25000)
+  Average distance from origin: 6.37035e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.2728e+06,1.11863e+06,3.39452e+06)
+      v1: (5.27241e+06,1.11863e+06,3.39374e+06)
+      v2: (5.27241e+06,1.11863e+06,3.39452e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.2728e+06,1.11863e+06,3.39452e+06)
+      v1: (5.27319e+06,1.11863e+06,3.39452e+06)
+      v2: (5.27241e+06,1.11863e+06,3.39374e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.27319e+06,1.11863e+06,3.39452e+06)
+      v1: (5.27319e+06,1.11863e+06,3.39374e+06)
+      v2: (5.27241e+06,1.11863e+06,3.39374e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 108 degenerate triangles found!
+
+Chunk 33:
+  Position: (5.67974e+06, 1.07941e+06, 2.67677e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4189
+  Triangles: 4099
+  Vertex bounds: min(5.66724e+06,1.06691e+06,2.66427e+06) max(5.68364e+06,1.09152e+06,2.68927e+06)
+  Bounding box size: (16406,24609.4,25000)
+  Average distance from origin: 6.3705e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.68325e+06,1.06691e+06,2.66505e+06)
+      v1: (5.68286e+06,1.06691e+06,2.66427e+06)
+      v2: (5.68286e+06,1.06691e+06,2.66505e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.68325e+06,1.06691e+06,2.66505e+06)
+      v1: (5.68364e+06,1.06691e+06,2.66505e+06)
+      v2: (5.68286e+06,1.06691e+06,2.66427e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.68364e+06,1.06691e+06,2.66505e+06)
+      v1: (5.68364e+06,1.06691e+06,2.66427e+06)
+      v2: (5.68286e+06,1.06691e+06,2.66427e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 63 degenerate triangles found!
+
+Chunk 34:
+  Position: (5.99837e+06, 994236, 1.90281e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4159
+  Triangles: 4070
+  Vertex bounds: min(5.99134e+06,981736,1.89031e+06) max(6.0015e+06,1.00595e+06,1.91531e+06)
+  Bounding box size: (10156,24218.8,25000)
+  Average distance from origin: 6.37158e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (6.0011e+06,981736,1.89109e+06)
+      v1: (6.00071e+06,981736,1.89031e+06)
+      v2: (6.00071e+06,981736,1.89109e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (6.0011e+06,981736,1.89109e+06)
+      v1: (6.0015e+06,981736,1.89109e+06)
+      v2: (6.00071e+06,981736,1.89031e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (6.0015e+06,981736,1.89109e+06)
+      v1: (6.0015e+06,981736,1.89031e+06)
+      v2: (6.00071e+06,981736,1.89031e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 54 degenerate triangles found!
+
+Chunk 35:
+  Position: (6.21405e+06, 877114, 1.09811e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3756
+  Triangles: 3679
+  Vertex bounds: min(6.20546e+06,864614,1.08561e+06) max(6.21562e+06,888833,1.11061e+06)
+  Bounding box size: (10156,24218.8,25000)
+  Average distance from origin: 6.37141e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (6.21523e+06,864614,1.08639e+06)
+      v1: (6.21484e+06,864614,1.08561e+06)
+      v2: (6.21484e+06,864614,1.08639e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (6.21523e+06,864614,1.08639e+06)
+      v1: (6.21562e+06,864614,1.08639e+06)
+      v2: (6.21484e+06,864614,1.08561e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (6.21562e+06,864614,1.08639e+06)
+      v1: (6.21562e+06,864614,1.08561e+06)
+      v2: (6.21484e+06,864614,1.08561e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 48 degenerate triangles found!
+
+Chunk 36:
+  Position: (1.85304e+06, 1.69757e+06, 5.85441e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3257
+  Triangles: 3132
+  Vertex bounds: min(1.84054e+06,1.68507e+06,5.85129e+06) max(1.86554e+06,1.70929e+06,5.86144e+06)
+  Bounding box size: (25000,24218.8,10156)
+  Average distance from origin: 6.37028e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (1.85773e+06,1.68507e+06,5.85168e+06)
+      v1: (1.85695e+06,1.68507e+06,5.85129e+06)
+      v2: (1.85695e+06,1.68507e+06,5.85207e+06)
+      Edge lengths: 873.408, 781, 873.408
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (1.85773e+06,1.68507e+06,5.85129e+06)
+      v1: (1.85695e+06,1.68507e+06,5.85129e+06)
+      v2: (1.85773e+06,1.68507e+06,5.85168e+06)
+      Edge lengths: 781.25, 873.408, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,0]
+      v0: (1.85851e+06,1.68507e+06,5.85168e+06)
+      v1: (1.85773e+06,1.68507e+06,5.85129e+06)
+      v2: (1.85773e+06,1.68507e+06,5.85168e+06)
+      Edge lengths: 873.408, 390.5, 781.25
+      Triangle area: 152539
+  WARNING: 60 degenerate triangles found!
+
+Chunk 37:
+  Position: (2.62212e+06, 1.81574e+06, 5.51518e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4443
+  Triangles: 4278
+  Vertex bounds: min(2.60962e+06,1.80324e+06,5.50581e+06) max(2.63462e+06,1.82746e+06,5.52534e+06)
+  Bounding box size: (25000,24218.8,19531)
+  Average distance from origin: 6.37117e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (2.63149e+06,1.81027e+06,5.50581e+06)
+      v1: (2.63149e+06,1.81027e+06,5.50581e+06)
+      v2: (2.63149e+06,1.81027e+06,5.50659e+06)
+      Edge lengths: 0, 781, 781
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (2.63306e+06,1.81027e+06,5.50581e+06)
+      v1: (2.63228e+06,1.81027e+06,5.50581e+06)
+      v2: (2.63228e+06,1.81027e+06,5.50659e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 2: [2,3,2]
+      v0: (2.63306e+06,1.81027e+06,5.50581e+06)
+      v1: (2.63228e+06,1.81027e+06,5.50581e+06)
+      v2: (2.63306e+06,1.81027e+06,5.50581e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+  WARNING: 109 degenerate triangles found!
+
+Chunk 38:
+  Position: (3.34465e+06, 1.90168e+06, 5.07805e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4730
+  Triangles: 4569
+  Vertex bounds: min(3.33215e+06,1.88918e+06,5.06711e+06) max(3.35715e+06,1.9134e+06,5.08664e+06)
+  Bounding box size: (25000,24218.8,19531)
+  Average distance from origin: 6.37038e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (3.35012e+06,1.89386e+06,5.06711e+06)
+      v1: (3.35012e+06,1.89386e+06,5.06711e+06)
+      v2: (3.35012e+06,1.89386e+06,5.06789e+06)
+      Edge lengths: 0, 781, 781
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (3.35168e+06,1.89386e+06,5.06711e+06)
+      v1: (3.3509e+06,1.89386e+06,5.06711e+06)
+      v2: (3.3509e+06,1.89386e+06,5.06789e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 2: [2,3,2]
+      v0: (3.35168e+06,1.89386e+06,5.06711e+06)
+      v1: (3.3509e+06,1.89386e+06,5.06711e+06)
+      v2: (3.35168e+06,1.89386e+06,5.06711e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+  WARNING: 120 degenerate triangles found!
+
+Chunk 39:
+  Position: (4.00781e+06, 1.95386e+06, 4.55077e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4154
+  Triangles: 4013
+  Vertex bounds: min(3.99531e+06,1.94136e+06,4.53827e+06) max(4.02031e+06,1.96558e+06,4.56327e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.3712e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.01328e+06,1.95933e+06,4.53827e+06)
+      v1: (4.0125e+06,1.95933e+06,4.53827e+06)
+      v2: (4.0125e+06,1.95933e+06,4.53905e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (4.01328e+06,1.95972e+06,4.53827e+06)
+      v1: (4.0125e+06,1.95933e+06,4.53827e+06)
+      v2: (4.01328e+06,1.95933e+06,4.53827e+06)
+      Edge lengths: 873.464, 781.25, 390.625
+      Triangle area: 152588
+    Triangle 2: [4,3,5]
+      v0: (4.01406e+06,1.95933e+06,4.53827e+06)
+      v1: (4.01328e+06,1.95972e+06,4.53827e+06)
+      v2: (4.01328e+06,1.95933e+06,4.53905e+06)
+      Edge lengths: 873.464, 873.688, 1105.03
+      Triangle area: 373862
+  WARNING: 84 degenerate triangles found!
+
+Chunk 40:
+  Position: (4.59983e+06, 1.97136e+06, 3.94271e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5479
+  Triangles: 5304
+  Vertex bounds: min(4.58733e+06,1.95886e+06,3.93021e+06) max(4.61077e+06,1.98307e+06,3.95521e+06)
+  Bounding box size: (23437.5,24218.8,25000)
+  Average distance from origin: 6.37107e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.61038e+06,1.95886e+06,3.93099e+06)
+      v1: (4.60999e+06,1.95886e+06,3.93021e+06)
+      v2: (4.60999e+06,1.95886e+06,3.93099e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (4.61038e+06,1.95886e+06,3.93099e+06)
+      v1: (4.61077e+06,1.95886e+06,3.93099e+06)
+      v2: (4.60999e+06,1.95886e+06,3.93021e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (4.61077e+06,1.95886e+06,3.93099e+06)
+      v1: (4.61077e+06,1.95886e+06,3.93021e+06)
+      v2: (4.60999e+06,1.95886e+06,3.93021e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 150 degenerate triangles found!
+
+Chunk 41:
+  Position: (5.11019e+06, 1.95386e+06, 3.26466e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4626
+  Triangles: 4526
+  Vertex bounds: min(5.09769e+06,1.94136e+06,3.25216e+06) max(5.12269e+06,1.96558e+06,3.27716e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37059e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.11488e+06,1.94995e+06,3.25216e+06)
+      v1: (5.1141e+06,1.94995e+06,3.25216e+06)
+      v2: (5.1141e+06,1.94995e+06,3.25294e+06)
+      Edge lengths: 781, 781.25, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (5.11488e+06,1.95034e+06,3.25216e+06)
+      v1: (5.1141e+06,1.94995e+06,3.25216e+06)
+      v2: (5.11488e+06,1.94995e+06,3.25216e+06)
+      Edge lengths: 873.24, 781, 390.625
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (5.11566e+06,1.94995e+06,3.25216e+06)
+      v1: (5.11488e+06,1.95034e+06,3.25216e+06)
+      v2: (5.11488e+06,1.94995e+06,3.25294e+06)
+      Edge lengths: 873.24, 873.464, 1104.68
+      Triangle area: 373663
+  WARNING: 84 degenerate triangles found!
+
+Chunk 42:
+  Position: (5.52984e+06, 1.90168e+06, 2.52866e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4684
+  Triangles: 4541
+  Vertex bounds: min(5.51734e+06,1.88918e+06,2.51616e+06) max(5.54234e+06,1.9134e+06,2.54116e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37011e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.53453e+06,1.89386e+06,2.51616e+06)
+      v1: (5.53375e+06,1.89386e+06,2.51616e+06)
+      v2: (5.53375e+06,1.89386e+06,2.51694e+06)
+      Edge lengths: 781, 781.25, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (5.53453e+06,1.89426e+06,2.51616e+06)
+      v1: (5.53375e+06,1.89386e+06,2.51616e+06)
+      v2: (5.53453e+06,1.89386e+06,2.51616e+06)
+      Edge lengths: 873.24, 781, 390.625
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (5.53531e+06,1.89386e+06,2.51616e+06)
+      v1: (5.53453e+06,1.89426e+06,2.51616e+06)
+      v2: (5.53453e+06,1.89386e+06,2.51694e+06)
+      Edge lengths: 873.24, 873.464, 1104.68
+      Triangle area: 373663
+  WARNING: 89 degenerate triangles found!
+
+Chunk 43:
+  Position: (5.85133e+06, 1.81574e+06, 1.74777e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4349
+  Triangles: 4244
+  Vertex bounds: min(5.84195e+06,1.80324e+06,1.73527e+06) max(5.86148e+06,1.82746e+06,1.76027e+06)
+  Bounding box size: (19531,24218.8,25000)
+  Average distance from origin: 6.37167e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.86109e+06,1.80324e+06,1.73605e+06)
+      v1: (5.8607e+06,1.80324e+06,1.73527e+06)
+      v2: (5.8607e+06,1.80324e+06,1.73605e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.86109e+06,1.80324e+06,1.73605e+06)
+      v1: (5.86148e+06,1.80324e+06,1.73605e+06)
+      v2: (5.8607e+06,1.80324e+06,1.73527e+06)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.86148e+06,1.80324e+06,1.73605e+06)
+      v1: (5.86148e+06,1.80324e+06,1.73527e+06)
+      v2: (5.8607e+06,1.80324e+06,1.73527e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 72 degenerate triangles found!
+
+Chunk 44:
+  Position: (6.06894e+06, 1.69757e+06, 935860)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4189
+  Triangles: 4050
+  Vertex bounds: min(6.06582e+06,1.68507e+06,923360) max(6.07598e+06,1.70929e+06,948360)
+  Bounding box size: (10156.5,24218.8,25000)
+  Average distance from origin: 6.37126e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (6.07558e+06,1.68507e+06,924141)
+      v1: (6.07519e+06,1.68507e+06,923360)
+      v2: (6.07519e+06,1.68507e+06,924141)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (6.07558e+06,1.68507e+06,924141)
+      v1: (6.07598e+06,1.68507e+06,924141)
+      v2: (6.07519e+06,1.68507e+06,923360)
+      Edge lengths: 391, 1105.03, 873.408
+      Triangle area: 152734
+    Triangle 2: [3,4,1]
+      v0: (6.07598e+06,1.68507e+06,924141)
+      v1: (6.07598e+06,1.68507e+06,923360)
+      v2: (6.07519e+06,1.68507e+06,923360)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 54 degenerate triangles found!
+
+Chunk 45:
+  Position: (1.63762e+06, 2.48789e+06, 5.6319e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3288
+  Triangles: 3175
+  Vertex bounds: min(1.62512e+06,2.47539e+06,5.62721e+06) max(1.65012e+06,2.49961e+06,5.63737e+06)
+  Bounding box size: (25000,24218.8,10156)
+  Average distance from origin: 6.37025e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (1.63293e+06,2.48242e+06,5.62721e+06)
+      v1: (1.63293e+06,2.48242e+06,5.62721e+06)
+      v2: (1.63293e+06,2.48242e+06,5.62799e+06)
+      Edge lengths: 0, 781, 781
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (1.63449e+06,2.48242e+06,5.62721e+06)
+      v1: (1.63371e+06,2.48242e+06,5.62721e+06)
+      v2: (1.63371e+06,2.48242e+06,5.62799e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 2: [2,3,2]
+      v0: (1.63449e+06,2.48242e+06,5.62721e+06)
+      v1: (1.63371e+06,2.48242e+06,5.62721e+06)
+      v2: (1.63449e+06,2.48242e+06,5.62721e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+  WARNING: 54 degenerate triangles found!
+
+Chunk 46:
+  Position: (2.39987e+06, 2.60501e+06, 5.29568e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4377
+  Triangles: 4206
+  Vertex bounds: min(2.38737e+06,2.59251e+06,5.28318e+06) max(2.41237e+06,2.61673e+06,5.30818e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37168e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.40846e+06,2.61282e+06,5.28318e+06)
+      v1: (2.40768e+06,2.61282e+06,5.28318e+06)
+      v2: (2.40768e+06,2.61282e+06,5.28396e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (2.40846e+06,2.61321e+06,5.28318e+06)
+      v1: (2.40768e+06,2.61282e+06,5.28318e+06)
+      v2: (2.40846e+06,2.61282e+06,5.28318e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (2.40924e+06,2.61282e+06,5.28318e+06)
+      v1: (2.40846e+06,2.61321e+06,5.28318e+06)
+      v2: (2.40846e+06,2.61282e+06,5.28396e+06)
+      Edge lengths: 873.408, 873.185, 1104.68
+      Triangle area: 373623
+  WARNING: 111 degenerate triangles found!
+
+Chunk 47:
+  Position: (3.11599e+06, 2.69018e+06, 4.86242e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5256
+  Triangles: 5061
+  Vertex bounds: min(3.10349e+06,2.67768e+06,4.84992e+06) max(3.12849e+06,2.7019e+06,4.87492e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37026e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.12693e+06,2.69643e+06,4.84992e+06)
+      v1: (3.12615e+06,2.69643e+06,4.84992e+06)
+      v2: (3.12615e+06,2.69643e+06,4.8507e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (3.12693e+06,2.69683e+06,4.84992e+06)
+      v1: (3.12615e+06,2.69643e+06,4.84992e+06)
+      v2: (3.12693e+06,2.69643e+06,4.84992e+06)
+      Edge lengths: 873.52, 781.25, 390.75
+      Triangle area: 152637
+    Triangle 2: [4,3,5]
+      v0: (3.12771e+06,2.69643e+06,4.84992e+06)
+      v1: (3.12693e+06,2.69683e+06,4.84992e+06)
+      v2: (3.12693e+06,2.69643e+06,4.8507e+06)
+      Edge lengths: 873.52, 873.744, 1105.03
+      Triangle area: 373902
+  WARNING: 159 degenerate triangles found!
+
+Chunk 48:
+  Position: (3.77326e+06, 2.7419e+06, 4.33983e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5416
+  Triangles: 5234
+  Vertex bounds: min(3.76076e+06,2.7294e+06,4.32733e+06) max(3.78576e+06,2.75362e+06,4.35233e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37041e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.7803e+06,2.75284e+06,4.32733e+06)
+      v1: (3.77951e+06,2.75284e+06,4.32733e+06)
+      v2: (3.77951e+06,2.75284e+06,4.32811e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (3.7803e+06,2.75323e+06,4.32733e+06)
+      v1: (3.77951e+06,2.75284e+06,4.32733e+06)
+      v2: (3.7803e+06,2.75284e+06,4.32733e+06)
+      Edge lengths: 873.52, 781.25, 390.75
+      Triangle area: 152637
+    Triangle 2: [4,3,5]
+      v0: (3.78108e+06,2.75284e+06,4.32733e+06)
+      v1: (3.7803e+06,2.75323e+06,4.32733e+06)
+      v2: (3.7803e+06,2.75284e+06,4.32811e+06)
+      Edge lengths: 873.52, 873.744, 1105.03
+      Triangle area: 373902
+  WARNING: 153 degenerate triangles found!
+
+Chunk 49:
+  Position: (4.36002e+06, 2.75924e+06, 3.73716e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4919
+  Triangles: 4758
+  Vertex bounds: min(4.34831e+06,2.74674e+06,3.72466e+06) max(4.37252e+06,2.77096e+06,3.74966e+06)
+  Bounding box size: (24218.5,24218.8,25000)
+  Average distance from origin: 6.3703e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.36784e+06,2.75299e+06,3.72466e+06)
+      v1: (4.36706e+06,2.75299e+06,3.72466e+06)
+      v2: (4.36706e+06,2.75299e+06,3.72545e+06)
+      Edge lengths: 781, 781.25, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (4.36784e+06,2.75339e+06,3.72466e+06)
+      v1: (4.36706e+06,2.75299e+06,3.72466e+06)
+      v2: (4.36784e+06,2.75299e+06,3.72466e+06)
+      Edge lengths: 873.296, 781, 390.75
+      Triangle area: 152588
+    Triangle 2: [4,3,5]
+      v0: (4.36862e+06,2.75299e+06,3.72466e+06)
+      v1: (4.36784e+06,2.75339e+06,3.72466e+06)
+      v2: (4.36784e+06,2.75299e+06,3.72545e+06)
+      Edge lengths: 873.296, 873.52, 1104.68
+      Triangle area: 373703
+  WARNING: 96 degenerate triangles found!
+
+Chunk 50:
+  Position: (4.86586e+06, 2.7419e+06, 3.06513e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4862
+  Triangles: 4672
+  Vertex bounds: min(4.85336e+06,2.7294e+06,3.05263e+06) max(4.87836e+06,2.75362e+06,3.07763e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37149e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.87211e+06,2.73409e+06,3.05263e+06)
+      v1: (4.87133e+06,2.73409e+06,3.05263e+06)
+      v2: (4.87133e+06,2.73409e+06,3.05342e+06)
+      Edge lengths: 781.5, 781.25, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (4.87211e+06,2.73448e+06,3.05263e+06)
+      v1: (4.87133e+06,2.73409e+06,3.05263e+06)
+      v2: (4.87211e+06,2.73409e+06,3.05263e+06)
+      Edge lengths: 873.744, 781.5, 390.75
+      Triangle area: 152686
+    Triangle 2: [4,3,5]
+      v0: (4.87289e+06,2.73409e+06,3.05263e+06)
+      v1: (4.87211e+06,2.73448e+06,3.05263e+06)
+      v2: (4.87211e+06,2.73409e+06,3.05342e+06)
+      Edge lengths: 873.744, 873.52, 1105.03
+      Triangle area: 373902
+  WARNING: 116 degenerate triangles found!
+
+Chunk 51:
+  Position: (5.28178e+06, 2.69018e+06, 2.33567e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5205
+  Triangles: 5048
+  Vertex bounds: min(5.27241e+06,2.67768e+06,2.32317e+06) max(5.29428e+06,2.7019e+06,2.34817e+06)
+  Bounding box size: (21875,24218.8,25000)
+  Average distance from origin: 6.3707e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.29194e+06,2.67768e+06,2.32356e+06)
+      v1: (5.29155e+06,2.67768e+06,2.32395e+06)
+      v2: (5.29194e+06,2.67768e+06,2.32395e+06)
+      Edge lengths: 552.427, 390.5, 390.75
+      Triangle area: 76293.9
+    Triangle 1: [3,4,0]
+      v0: (5.29272e+06,2.67768e+06,2.32356e+06)
+      v1: (5.29194e+06,2.67808e+06,2.32317e+06)
+      v2: (5.29194e+06,2.67768e+06,2.32356e+06)
+      Edge lengths: 956.934, 552.25, 781.5
+      Triangle area: 215792
+    Triangle 2: [5,4,3]
+      v0: (5.29272e+06,2.67808e+06,2.32317e+06)
+      v1: (5.29194e+06,2.67808e+06,2.32317e+06)
+      v2: (5.29272e+06,2.67768e+06,2.32356e+06)
+      Edge lengths: 781.5, 956.934, 552.25
+      Triangle area: 215792
+  WARNING: 128 degenerate triangles found!
+
+Chunk 52:
+  Position: (5.60041e+06, 2.60501e+06, 1.56171e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4805
+  Triangles: 4627
+  Vertex bounds: min(5.58948e+06,2.59251e+06,1.54921e+06) max(5.60901e+06,2.61673e+06,1.57421e+06)
+  Bounding box size: (19531.5,24218.8,25000)
+  Average distance from origin: 6.37068e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.60862e+06,2.59251e+06,1.54999e+06)
+      v1: (5.60823e+06,2.59251e+06,1.54921e+06)
+      v2: (5.60823e+06,2.59251e+06,1.54999e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.60862e+06,2.59251e+06,1.54999e+06)
+      v1: (5.60901e+06,2.59251e+06,1.54999e+06)
+      v2: (5.60823e+06,2.59251e+06,1.54921e+06)
+      Edge lengths: 391, 1105.03, 873.408
+      Triangle area: 152734
+    Triangle 2: [3,4,1]
+      v0: (5.60901e+06,2.59251e+06,1.54999e+06)
+      v1: (5.60901e+06,2.59251e+06,1.54921e+06)
+      v2: (5.60823e+06,2.59251e+06,1.54921e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+  WARNING: 91 degenerate triangles found!
+
+Chunk 53:
+  Position: (5.8161e+06, 2.48789e+06, 757001)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4002
+  Triangles: 3872
+  Vertex bounds: min(5.81376e+06,2.47539e+06,744501) max(5.82391e+06,2.49961e+06,769501)
+  Bounding box size: (10156,24218.8,25000)
+  Average distance from origin: 6.37117e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.82352e+06,2.47539e+06,745282)
+      v1: (5.82313e+06,2.47539e+06,744501)
+      v2: (5.82313e+06,2.47539e+06,745282)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.82352e+06,2.47539e+06,745282)
+      v1: (5.82391e+06,2.47539e+06,745282)
+      v2: (5.82313e+06,2.47539e+06,744501)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.82391e+06,2.47539e+06,745282)
+      v1: (5.82391e+06,2.47539e+06,744501)
+      v2: (5.82313e+06,2.47539e+06,744501)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 35 degenerate triangles found!
+
+Chunk 54:
+  Position: (1.39312e+06, 3.23404e+06, 5.30941e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3548
+  Triangles: 3438
+  Vertex bounds: min(1.38062e+06,3.22154e+06,5.30082e+06) max(1.40562e+06,3.24576e+06,5.31917e+06)
+  Bounding box size: (25000,24218.8,18359.5)
+  Average distance from origin: 6.37097e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (1.39e+06,3.23795e+06,5.30082e+06)
+      v1: (1.39e+06,3.23795e+06,5.30082e+06)
+      v2: (1.39e+06,3.23795e+06,5.3016e+06)
+      Edge lengths: 0, 781.5, 781.5
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (1.39156e+06,3.23795e+06,5.30082e+06)
+      v1: (1.39078e+06,3.23795e+06,5.30082e+06)
+      v2: (1.39078e+06,3.23795e+06,5.3016e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+    Triangle 2: [2,3,2]
+      v0: (1.39156e+06,3.23795e+06,5.30082e+06)
+      v1: (1.39078e+06,3.23795e+06,5.30082e+06)
+      v2: (1.39156e+06,3.23795e+06,5.30082e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+  WARNING: 62 degenerate triangles found!
+
+Chunk 55:
+  Position: (2.13502e+06, 3.34804e+06, 4.98217e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4962
+  Triangles: 4747
+  Vertex bounds: min(2.12252e+06,3.33554e+06,4.96967e+06) max(2.14752e+06,3.35976e+06,4.99311e+06)
+  Bounding box size: (25000,24218.8,23437.5)
+  Average distance from origin: 6.37048e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.13736e+06,3.35897e+06,4.96967e+06)
+      v1: (2.13658e+06,3.35897e+06,4.96967e+06)
+      v2: (2.13658e+06,3.35897e+06,4.97045e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (2.13736e+06,3.35936e+06,4.96967e+06)
+      v1: (2.13658e+06,3.35897e+06,4.96967e+06)
+      v2: (2.13736e+06,3.35897e+06,4.96967e+06)
+      Edge lengths: 873.52, 781.25, 390.75
+      Triangle area: 152637
+    Triangle 2: [4,3,5]
+      v0: (2.13814e+06,3.35897e+06,4.96967e+06)
+      v1: (2.13736e+06,3.35936e+06,4.96967e+06)
+      v2: (2.13736e+06,3.35897e+06,4.97045e+06)
+      Edge lengths: 873.52, 873.296, 1104.68
+      Triangle area: 373703
+  WARNING: 136 degenerate triangles found!
+
+Chunk 56:
+  Position: (2.83201e+06, 3.43094e+06, 4.56048e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4141
+  Triangles: 4001
+  Vertex bounds: min(2.81951e+06,3.41844e+06,4.54798e+06) max(2.84451e+06,3.44266e+06,4.57259e+06)
+  Bounding box size: (25000,24218.8,24609.5)
+  Average distance from origin: 6.37065e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.83748e+06,3.43406e+06,4.54798e+06)
+      v1: (2.8367e+06,3.43406e+06,4.54798e+06)
+      v2: (2.8367e+06,3.43406e+06,4.54877e+06)
+      Edge lengths: 781.25, 781.5, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (2.83748e+06,3.43445e+06,4.54798e+06)
+      v1: (2.8367e+06,3.43406e+06,4.54798e+06)
+      v2: (2.83748e+06,3.43406e+06,4.54798e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (2.83826e+06,3.43406e+06,4.54798e+06)
+      v1: (2.83748e+06,3.43445e+06,4.54798e+06)
+      v2: (2.83748e+06,3.43406e+06,4.54877e+06)
+      Edge lengths: 873.408, 873.632, 1105.03
+      Triangle area: 373822
+  WARNING: 96 degenerate triangles found!
+
+Chunk 57:
+  Position: (3.47173e+06, 3.48127e+06, 4.05184e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5512
+  Triangles: 5275
+  Vertex bounds: min(3.45923e+06,3.46877e+06,4.03934e+06) max(3.48423e+06,3.49299e+06,4.06434e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.36961e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.48111e+06,3.48049e+06,4.03934e+06)
+      v1: (3.48033e+06,3.48049e+06,4.03934e+06)
+      v2: (3.48033e+06,3.48049e+06,4.04013e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (3.48111e+06,3.48088e+06,4.03934e+06)
+      v1: (3.48033e+06,3.48049e+06,4.03934e+06)
+      v2: (3.48111e+06,3.48049e+06,4.03934e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (3.48189e+06,3.48049e+06,4.03934e+06)
+      v1: (3.48111e+06,3.48088e+06,4.03934e+06)
+      v2: (3.48111e+06,3.48049e+06,4.04013e+06)
+      Edge lengths: 873.408, 873.408, 1104.85
+      Triangle area: 373723
+  WARNING: 202 degenerate triangles found!
+
+Chunk 58:
+  Position: (4.04282e+06, 3.49815e+06, 3.46528e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5862
+  Triangles: 5646
+  Vertex bounds: min(4.03032e+06,3.48565e+06,3.45278e+06) max(4.05532e+06,3.50987e+06,3.47778e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.36904e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (4.04985e+06,3.49034e+06,3.45278e+06)
+      v1: (4.04985e+06,3.49034e+06,3.45278e+06)
+      v2: (4.04985e+06,3.49034e+06,3.45356e+06)
+      Edge lengths: 0, 781.25, 781.25
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (4.05142e+06,3.49034e+06,3.45278e+06)
+      v1: (4.05064e+06,3.49034e+06,3.45278e+06)
+      v2: (4.05064e+06,3.49034e+06,3.45356e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 2: [2,3,2]
+      v0: (4.05142e+06,3.49034e+06,3.45278e+06)
+      v1: (4.05064e+06,3.49034e+06,3.45278e+06)
+      v2: (4.05142e+06,3.49034e+06,3.45278e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+  WARNING: 178 degenerate triangles found!
+
+Chunk 59:
+  Position: (4.53515e+06, 3.48127e+06, 2.81119e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5498
+  Triangles: 5283
+  Vertex bounds: min(4.52265e+06,3.46877e+06,2.79869e+06) max(4.54765e+06,3.49299e+06,2.82369e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.3705e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.5453e+06,3.47112e+06,2.79869e+06)
+      v1: (4.54452e+06,3.47112e+06,2.79869e+06)
+      v2: (4.54452e+06,3.47112e+06,2.79948e+06)
+      Edge lengths: 781.5, 781.25, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (4.5453e+06,3.47151e+06,2.79869e+06)
+      v1: (4.54452e+06,3.47112e+06,2.79869e+06)
+      v2: (4.5453e+06,3.47112e+06,2.79869e+06)
+      Edge lengths: 873.632, 781.5, 390.5
+      Triangle area: 152588
+    Triangle 2: [4,3,5]
+      v0: (4.54608e+06,3.47112e+06,2.79869e+06)
+      v1: (4.5453e+06,3.47151e+06,2.79869e+06)
+      v2: (4.5453e+06,3.47112e+06,2.79948e+06)
+      Edge lengths: 873.185, 873.408, 1104.68
+      Triangle area: 373623
+  WARNING: 154 degenerate triangles found!
+
+Chunk 60:
+  Position: (4.93996e+06, 3.43094e+06, 2.10121e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4697
+  Triangles: 4529
+  Vertex bounds: min(4.92746e+06,3.41844e+06,2.08871e+06) max(4.95246e+06,3.44266e+06,2.11371e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37143e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.947e+06,3.42469e+06,2.08871e+06)
+      v1: (4.94621e+06,3.42469e+06,2.08871e+06)
+      v2: (4.94621e+06,3.42469e+06,2.08949e+06)
+      Edge lengths: 781.5, 781.25, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (4.947e+06,3.42508e+06,2.08871e+06)
+      v1: (4.94621e+06,3.42469e+06,2.08871e+06)
+      v2: (4.947e+06,3.42469e+06,2.08871e+06)
+      Edge lengths: 873.632, 781.5, 390.5
+      Triangle area: 152588
+    Triangle 2: [4,3,5]
+      v0: (4.94778e+06,3.42469e+06,2.08871e+06)
+      v1: (4.947e+06,3.42508e+06,2.08871e+06)
+      v2: (4.947e+06,3.42469e+06,2.08949e+06)
+      Edge lengths: 873.185, 873.408, 1104.68
+      Triangle area: 373623
+  WARNING: 82 degenerate triangles found!
+
+Chunk 61:
+  Position: (5.25009e+06, 3.34804e+06, 1.34792e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4694
+  Triangles: 4465
+  Vertex bounds: min(5.23759e+06,3.33554e+06,1.33542e+06) max(5.26259e+06,3.35976e+06,1.36042e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37054e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.25477e+06,3.34101e+06,1.33542e+06)
+      v1: (5.25399e+06,3.34101e+06,1.33542e+06)
+      v2: (5.25399e+06,3.34101e+06,1.3362e+06)
+      Edge lengths: 781.5, 781.25, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (5.25477e+06,3.3414e+06,1.33542e+06)
+      v1: (5.25399e+06,3.34101e+06,1.33542e+06)
+      v2: (5.25477e+06,3.34101e+06,1.33542e+06)
+      Edge lengths: 873.632, 781.5, 390.5
+      Triangle area: 152588
+    Triangle 2: [4,3,5]
+      v0: (5.25556e+06,3.34101e+06,1.33542e+06)
+      v1: (5.25477e+06,3.3414e+06,1.33542e+06)
+      v2: (5.25477e+06,3.34101e+06,1.3362e+06)
+      Edge lengths: 873.632, 873.408, 1105.03
+      Triangle area: 373822
+  WARNING: 84 degenerate triangles found!
+
+Chunk 62:
+  Position: (5.46001e+06, 3.23404e+06, 564704)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4693
+  Triangles: 4512
+  Vertex bounds: min(5.44986e+06,3.22154e+06,552204) max(5.46939e+06,3.24576e+06,577204)
+  Bounding box size: (19531,24218.8,25000)
+  Average distance from origin: 6.37095e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.469e+06,3.22154e+06,552986)
+      v1: (5.4686e+06,3.22154e+06,552204)
+      v2: (5.4686e+06,3.22154e+06,552986)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (5.469e+06,3.22154e+06,552986)
+      v1: (5.46939e+06,3.22154e+06,552986)
+      v2: (5.4686e+06,3.22154e+06,552204)
+      Edge lengths: 390.5, 1104.68, 873.408
+      Triangle area: 152539
+    Triangle 2: [3,4,1]
+      v0: (5.46939e+06,3.22154e+06,552986)
+      v1: (5.46939e+06,3.22154e+06,552204)
+      v2: (5.4686e+06,3.22154e+06,552204)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+  WARNING: 76 degenerate triangles found!
+
+Chunk 63:
+  Position: (1.1239e+06, 3.92279e+06, 4.89267e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4058
+  Triangles: 3936
+  Vertex bounds: min(1.1114e+06,3.91029e+06,4.88017e+06) max(1.1364e+06,3.93451e+06,4.90517e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.36991e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (1.11921e+06,3.92826e+06,4.88017e+06)
+      v1: (1.11921e+06,3.92826e+06,4.88017e+06)
+      v2: (1.11921e+06,3.92826e+06,4.88095e+06)
+      Edge lengths: 0, 781, 781
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (1.12077e+06,3.92826e+06,4.88017e+06)
+      v1: (1.11999e+06,3.92826e+06,4.88017e+06)
+      v2: (1.11999e+06,3.92826e+06,4.88095e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 2: [2,3,2]
+      v0: (1.12077e+06,3.92826e+06,4.88017e+06)
+      v1: (1.11999e+06,3.92826e+06,4.88017e+06)
+      v2: (1.12077e+06,3.92826e+06,4.88017e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+  WARNING: 92 degenerate triangles found!
+
+Chunk 64:
+  Position: (1.83226e+06, 4.03163e+06, 4.58022e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4695
+  Triangles: 4514
+  Vertex bounds: min(1.81976e+06,4.01913e+06,4.56772e+06) max(1.84476e+06,4.04335e+06,4.59272e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37149e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (1.82992e+06,4.04023e+06,4.56772e+06)
+      v1: (1.82914e+06,4.04023e+06,4.56772e+06)
+      v2: (1.82914e+06,4.04023e+06,4.5685e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (1.82992e+06,4.04062e+06,4.56772e+06)
+      v1: (1.82914e+06,4.04023e+06,4.56772e+06)
+      v2: (1.82992e+06,4.04023e+06,4.56772e+06)
+      Edge lengths: 873.52, 781.25, 390.75
+      Triangle area: 152637
+    Triangle 2: [4,3,5]
+      v0: (1.8307e+06,4.04023e+06,4.56772e+06)
+      v1: (1.82992e+06,4.04062e+06,4.56772e+06)
+      v2: (1.82992e+06,4.04023e+06,4.5685e+06)
+      Edge lengths: 873.52, 873.296, 1104.68
+      Triangle area: 373703
+  WARNING: 113 degenerate triangles found!
+
+Chunk 65:
+  Position: (2.49776e+06, 4.11079e+06, 4.17759e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3965
+  Triangles: 3805
+  Vertex bounds: min(2.48526e+06,4.09829e+06,4.16509e+06) max(2.51026e+06,4.12251e+06,4.19009e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37125e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.50167e+06,4.11547e+06,4.16509e+06)
+      v1: (2.50089e+06,4.11547e+06,4.16509e+06)
+      v2: (2.50089e+06,4.11547e+06,4.16587e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (2.50167e+06,4.11586e+06,4.16509e+06)
+      v1: (2.50089e+06,4.11547e+06,4.16509e+06)
+      v2: (2.50167e+06,4.11547e+06,4.16509e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (2.50245e+06,4.11547e+06,4.16509e+06)
+      v1: (2.50167e+06,4.11586e+06,4.16509e+06)
+      v2: (2.50167e+06,4.11547e+06,4.16587e+06)
+      Edge lengths: 873.408, 873.408, 1104.85
+      Triangle area: 373723
+  WARNING: 94 degenerate triangles found!
+
+Chunk 66:
+  Position: (3.10857e+06, 4.15885e+06, 3.69194e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4668
+  Triangles: 4482
+  Vertex bounds: min(3.09607e+06,4.14635e+06,3.67944e+06) max(3.12107e+06,4.17057e+06,3.70444e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37013e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.10779e+06,4.16197e+06,3.67944e+06)
+      v1: (3.10701e+06,4.16197e+06,3.67944e+06)
+      v2: (3.10701e+06,4.16197e+06,3.68022e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (3.10779e+06,4.16236e+06,3.67944e+06)
+      v1: (3.10701e+06,4.16197e+06,3.67944e+06)
+      v2: (3.10779e+06,4.16197e+06,3.67944e+06)
+      Edge lengths: 873.52, 781.25, 390.75
+      Triangle area: 152637
+    Triangle 2: [4,3,5]
+      v0: (3.10857e+06,4.16197e+06,3.67944e+06)
+      v1: (3.10779e+06,4.16236e+06,3.67944e+06)
+      v2: (3.10779e+06,4.16197e+06,3.68022e+06)
+      Edge lengths: 873.52, 873.52, 1104.85
+      Triangle area: 373802
+  WARNING: 110 degenerate triangles found!
+
+Chunk 67:
+  Position: (3.65386e+06, 4.17496e+06, 3.13188e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4208
+  Triangles: 3993
+  Vertex bounds: min(3.64136e+06,4.16246e+06,3.11938e+06) max(3.66636e+06,4.18668e+06,3.14438e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37041e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.65854e+06,4.17106e+06,3.11938e+06)
+      v1: (3.65776e+06,4.17106e+06,3.11938e+06)
+      v2: (3.65776e+06,4.17106e+06,3.12016e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (3.65854e+06,4.17145e+06,3.11938e+06)
+      v1: (3.65776e+06,4.17106e+06,3.11938e+06)
+      v2: (3.65854e+06,4.17106e+06,3.11938e+06)
+      Edge lengths: 873.52, 781.25, 390.75
+      Triangle area: 152637
+    Triangle 2: [4,3,5]
+      v0: (3.65932e+06,4.17106e+06,3.11938e+06)
+      v1: (3.65854e+06,4.17145e+06,3.11938e+06)
+      v2: (3.65854e+06,4.17106e+06,3.12016e+06)
+      Edge lengths: 873.52, 873.52, 1104.85
+      Triangle area: 373802
+  WARNING: 82 degenerate triangles found!
+
+Chunk 68:
+  Position: (4.12393e+06, 4.15885e+06, 2.50735e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5434
+  Triangles: 5266
+  Vertex bounds: min(4.11143e+06,4.14635e+06,2.49485e+06) max(4.13643e+06,4.17057e+06,2.51985e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37225e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.13487e+06,4.1526e+06,2.49485e+06)
+      v1: (4.13409e+06,4.1526e+06,2.49485e+06)
+      v2: (4.13409e+06,4.1526e+06,2.49563e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (4.13487e+06,4.15299e+06,2.49485e+06)
+      v1: (4.13409e+06,4.1526e+06,2.49485e+06)
+      v2: (4.13487e+06,4.1526e+06,2.49485e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (4.13565e+06,4.1526e+06,2.49485e+06)
+      v1: (4.13487e+06,4.15299e+06,2.49485e+06)
+      v2: (4.13487e+06,4.1526e+06,2.49563e+06)
+      Edge lengths: 873.408, 873.408, 1104.85
+      Triangle area: 373723
+  WARNING: 145 degenerate triangles found!
+
+Chunk 69:
+  Position: (4.51045e+06, 4.11079e+06, 1.82945e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4915
+  Triangles: 4725
+  Vertex bounds: min(4.49795e+06,4.09829e+06,1.81695e+06) max(4.52295e+06,4.12251e+06,1.84195e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37146e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.51748e+06,4.1061e+06,1.81695e+06)
+      v1: (4.5167e+06,4.1061e+06,1.81695e+06)
+      v2: (4.5167e+06,4.1061e+06,1.81773e+06)
+      Edge lengths: 781.5, 781.25, 1105.03
+      Triangle area: 305273
+    Triangle 1: [3,1,0]
+      v0: (4.51748e+06,4.10649e+06,1.81695e+06)
+      v1: (4.5167e+06,4.1061e+06,1.81695e+06)
+      v2: (4.51748e+06,4.1061e+06,1.81695e+06)
+      Edge lengths: 873.632, 781.5, 390.5
+      Triangle area: 152588
+    Triangle 2: [4,3,5]
+      v0: (4.51826e+06,4.1061e+06,1.81695e+06)
+      v1: (4.51748e+06,4.10649e+06,1.81695e+06)
+      v2: (4.51748e+06,4.1061e+06,1.81773e+06)
+      Edge lengths: 873.185, 873.408, 1104.68
+      Triangle area: 373623
+  WARNING: 91 degenerate triangles found!
+
+Chunk 70:
+  Position: (4.80656e+06, 4.03163e+06, 1.1102e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5252
+  Triangles: 5023
+  Vertex bounds: min(4.79406e+06,4.01913e+06,1.0977e+06) max(4.81906e+06,4.04335e+06,1.1227e+06)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.37073e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.81594e+06,4.02226e+06,1.0977e+06)
+      v1: (4.81516e+06,4.02226e+06,1.0977e+06)
+      v2: (4.81516e+06,4.02226e+06,1.09849e+06)
+      Edge lengths: 781, 781.25, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (4.81594e+06,4.02265e+06,1.0977e+06)
+      v1: (4.81516e+06,4.02226e+06,1.0977e+06)
+      v2: (4.81594e+06,4.02226e+06,1.0977e+06)
+      Edge lengths: 873.185, 781, 390.5
+      Triangle area: 152490
+    Triangle 2: [4,3,5]
+      v0: (4.81672e+06,4.02226e+06,1.0977e+06)
+      v1: (4.81594e+06,4.02265e+06,1.0977e+06)
+      v2: (4.81594e+06,4.02226e+06,1.09849e+06)
+      Edge lengths: 873.185, 873.408, 1104.68
+      Triangle area: 373623
+  WARNING: 117 degenerate triangles found!
+
+Chunk 71:
+  Position: (5.007e+06, 3.92279e+06, 362383)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4696
+  Triangles: 4521
+  Vertex bounds: min(4.9945e+06,3.91029e+06,349883) max(5.0195e+06,3.93451e+06,374883)
+  Bounding box size: (25000,24218.8,25000)
+  Average distance from origin: 6.36936e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (5.01169e+06,3.91029e+06,349883)
+      v1: (5.01091e+06,3.91029e+06,349883)
+      v2: (5.01091e+06,3.91029e+06,350664)
+      Edge lengths: 781, 781.25, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (5.01169e+06,3.91068e+06,349883)
+      v1: (5.01091e+06,3.91029e+06,349883)
+      v2: (5.01169e+06,3.91029e+06,349883)
+      Edge lengths: 873.185, 781, 390.5
+      Triangle area: 152490
+    Triangle 2: [4,3,5]
+      v0: (5.01247e+06,3.91029e+06,349883)
+      v1: (5.01169e+06,3.91068e+06,349883)
+      v2: (5.01169e+06,3.91029e+06,350664)
+      Edge lengths: 873.185, 873.408, 1104.68
+      Triangle area: 373623
+  WARNING: 51 degenerate triangles found!
+
+Chunk 72:
+  Position: (834720, 4.5419e+06, 4.38908e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4713
+  Triangles: 4530
+  Vertex bounds: min(822220,4.5294e+06,4.37658e+06) max(847220,4.55401e+06,4.40158e+06)
+  Bounding box size: (25000,24609.5,25000)
+  Average distance from origin: 6.37004e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (830033,4.54424e+06,4.37658e+06)
+      v1: (830033,4.54424e+06,4.37658e+06)
+      v2: (830033,4.54424e+06,4.37736e+06)
+      Edge lengths: 0, 781, 781
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (831595,4.54424e+06,4.37658e+06)
+      v1: (830814,4.54424e+06,4.37658e+06)
+      v2: (830814,4.54424e+06,4.37736e+06)
+      Edge lengths: 781.25, 781, 1104.68
+      Triangle area: 305078
+    Triangle 2: [2,3,2]
+      v0: (831595,4.54424e+06,4.37658e+06)
+      v1: (830814,4.54424e+06,4.37658e+06)
+      v2: (831595,4.54424e+06,4.37658e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+  WARNING: 125 degenerate triangles found!
+
+Chunk 73:
+  Position: (1.49699e+06, 4.64366e+06, 4.09696e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 3650
+  Triangles: 3521
+  Vertex bounds: min(1.48449e+06,4.63116e+06,4.08759e+06) max(1.50949e+06,4.65538e+06,4.10946e+06)
+  Bounding box size: (25000,24219,21875)
+  Average distance from origin: 6.3708e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (1.48527e+06,4.64757e+06,4.08759e+06)
+      v1: (1.48449e+06,4.64757e+06,4.08759e+06)
+      v2: (1.48449e+06,4.64757e+06,4.08837e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [0,1,0]
+      v0: (1.48527e+06,4.64757e+06,4.08759e+06)
+      v1: (1.48449e+06,4.64757e+06,4.08759e+06)
+      v2: (1.48527e+06,4.64757e+06,4.08759e+06)
+      Edge lengths: 781.25, 781.25, 0
+      Triangle area: 0
+    Triangle 2: [3,0,4]
+      v0: (1.48605e+06,4.64757e+06,4.08759e+06)
+      v1: (1.48527e+06,4.64757e+06,4.08759e+06)
+      v2: (1.48527e+06,4.64757e+06,4.08837e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+  WARNING: 68 degenerate triangles found!
+
+Chunk 74:
+  Position: (2.11917e+06, 4.71766e+06, 3.72054e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4782
+  Triangles: 4604
+  Vertex bounds: min(2.10667e+06,4.70516e+06,3.70804e+06) max(2.13167e+06,4.72938e+06,3.73304e+06)
+  Bounding box size: (25000,24218.5,25000)
+  Average distance from origin: 6.37075e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.11917e+06,4.72157e+06,3.70804e+06)
+      v1: (2.11839e+06,4.72157e+06,3.70804e+06)
+      v2: (2.11839e+06,4.72157e+06,3.70882e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (2.11917e+06,4.72196e+06,3.70804e+06)
+      v1: (2.11839e+06,4.72157e+06,3.70804e+06)
+      v2: (2.11917e+06,4.72157e+06,3.70804e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (2.11995e+06,4.72157e+06,3.70804e+06)
+      v1: (2.11917e+06,4.72196e+06,3.70804e+06)
+      v2: (2.11917e+06,4.72157e+06,3.70882e+06)
+      Edge lengths: 873.408, 873.408, 1104.85
+      Triangle area: 373723
+  WARNING: 119 degenerate triangles found!
+
+Chunk 75:
+  Position: (2.69023e+06, 4.7626e+06, 3.26649e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5224
+  Triangles: 5033
+  Vertex bounds: min(2.67773e+06,4.7501e+06,3.25399e+06) max(2.70273e+06,4.77432e+06,3.27899e+06)
+  Bounding box size: (25000,24218.5,25000)
+  Average distance from origin: 6.37049e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (2.68789e+06,4.76885e+06,3.25399e+06)
+      v1: (2.68711e+06,4.76885e+06,3.25399e+06)
+      v2: (2.68711e+06,4.76885e+06,3.25477e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (2.68789e+06,4.76924e+06,3.25399e+06)
+      v1: (2.68711e+06,4.76885e+06,3.25399e+06)
+      v2: (2.68789e+06,4.76885e+06,3.25399e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (2.68867e+06,4.76885e+06,3.25399e+06)
+      v1: (2.68789e+06,4.76924e+06,3.25399e+06)
+      v2: (2.68789e+06,4.76885e+06,3.25477e+06)
+      Edge lengths: 873.408, 873.408, 1104.85
+      Triangle area: 373723
+  WARNING: 148 degenerate triangles found!
+
+Chunk 76:
+  Position: (3.20003e+06, 4.77766e+06, 2.74288e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 5283
+  Triangles: 5025
+  Vertex bounds: min(3.18753e+06,4.76516e+06,2.73038e+06) max(3.21253e+06,4.78938e+06,2.75538e+06)
+  Bounding box size: (25000,24218.5,25000)
+  Average distance from origin: 6.37079e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.20159e+06,4.77766e+06,2.73038e+06)
+      v1: (3.20081e+06,4.77766e+06,2.73038e+06)
+      v2: (3.20081e+06,4.77766e+06,2.73116e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (3.20159e+06,4.77806e+06,2.73038e+06)
+      v1: (3.20081e+06,4.77766e+06,2.73038e+06)
+      v2: (3.20159e+06,4.77766e+06,2.73038e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (3.20237e+06,4.77766e+06,2.73038e+06)
+      v1: (3.20159e+06,4.77806e+06,2.73038e+06)
+      v2: (3.20159e+06,4.77766e+06,2.73116e+06)
+      Edge lengths: 873.408, 873.408, 1104.85
+      Triangle area: 373723
+  WARNING: 150 degenerate triangles found!
+
+Chunk 77:
+  Position: (3.63951e+06, 4.7626e+06, 2.159e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4921
+  Triangles: 4673
+  Vertex bounds: min(3.62701e+06,4.7501e+06,2.1465e+06) max(3.65201e+06,4.77432e+06,2.1715e+06)
+  Bounding box size: (25000,24218.5,25000)
+  Average distance from origin: 6.37065e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (3.64029e+06,4.75947e+06,2.1465e+06)
+      v1: (3.63951e+06,4.75947e+06,2.1465e+06)
+      v2: (3.63951e+06,4.75947e+06,2.14728e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+    Triangle 1: [3,1,0]
+      v0: (3.64029e+06,4.75986e+06,2.1465e+06)
+      v1: (3.63951e+06,4.75947e+06,2.1465e+06)
+      v2: (3.64029e+06,4.75947e+06,2.1465e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 2: [4,3,5]
+      v0: (3.64107e+06,4.75947e+06,2.1465e+06)
+      v1: (3.64029e+06,4.75986e+06,2.1465e+06)
+      v2: (3.64029e+06,4.75947e+06,2.14728e+06)
+      Edge lengths: 873.408, 873.408, 1104.85
+      Triangle area: 373723
+  WARNING: 111 degenerate triangles found!
+
+Chunk 78:
+  Position: (4.00088e+06, 4.71766e+06, 1.52522e+06)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4955
+  Triangles: 4749
+  Vertex bounds: min(3.98838e+06,4.70516e+06,1.51272e+06) max(4.01338e+06,4.72938e+06,1.53772e+06)
+  Bounding box size: (25000,24218.5,25000)
+  Average distance from origin: 6.37067e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.01298e+06,4.70516e+06,1.5135e+06)
+      v1: (4.01259e+06,4.70516e+06,1.51272e+06)
+      v2: (4.01259e+06,4.70516e+06,1.5135e+06)
+      Edge lengths: 873.408, 781.25, 390.5
+      Triangle area: 152539
+    Triangle 1: [0,3,1]
+      v0: (4.01298e+06,4.70516e+06,1.5135e+06)
+      v1: (4.01338e+06,4.70516e+06,1.5135e+06)
+      v2: (4.01259e+06,4.70516e+06,1.51272e+06)
+      Edge lengths: 390.75, 1104.85, 873.408
+      Triangle area: 152637
+    Triangle 2: [3,4,1]
+      v0: (4.01338e+06,4.70516e+06,1.5135e+06)
+      v1: (4.01338e+06,4.70516e+06,1.51272e+06)
+      v2: (4.01259e+06,4.70516e+06,1.51272e+06)
+      Edge lengths: 781.25, 781.25, 1104.85
+      Triangle area: 305176
+  WARNING: 111 degenerate triangles found!
+
+Chunk 79:
+  Position: (4.27771e+06, 4.64366e+06, 852782)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4184
+  Triangles: 3981
+  Vertex bounds: min(4.26521e+06,4.63116e+06,840282) max(4.29021e+06,4.65538e+06,865282)
+  Bounding box size: (25000,24219,25000)
+  Average distance from origin: 6.3708e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.28396e+06,4.63819e+06,840282)
+      v1: (4.28318e+06,4.63819e+06,840282)
+      v2: (4.28318e+06,4.63819e+06,841063)
+      Edge lengths: 781, 781.25, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (4.28396e+06,4.63858e+06,840282)
+      v1: (4.28318e+06,4.63819e+06,840282)
+      v2: (4.28396e+06,4.63819e+06,840282)
+      Edge lengths: 873.408, 781, 391
+      Triangle area: 152686
+    Triangle 2: [4,3,5]
+      v0: (4.28474e+06,4.63819e+06,840282)
+      v1: (4.28396e+06,4.63858e+06,840282)
+      v2: (4.28396e+06,4.63819e+06,841063)
+      Edge lengths: 873.408, 873.632, 1104.68
+      Triangle area: 373782
+  WARNING: 83 degenerate triangles found!
+
+Chunk 80:
+  Position: (4.46511e+06, 4.5419e+06, 153629)
+  Voxel Size: 781.25
+  LOD Level: 0
+  Vertices: 4491
+  Triangles: 4224
+  Vertex bounds: min(4.45261e+06,4.53487e+06,141129) max(4.47761e+06,4.55401e+06,166129)
+  Bounding box size: (25000,19141,25000)
+  Average distance from origin: 6.37304e+06
+  First 3 triangles (indices):
+    Triangle 0: [0,1,2]
+      v0: (4.47058e+06,4.53487e+06,141129)
+      v1: (4.46979e+06,4.53487e+06,141129)
+      v2: (4.46979e+06,4.53487e+06,141910)
+      Edge lengths: 781, 781.25, 1104.68
+      Triangle area: 305078
+    Triangle 1: [3,1,0]
+      v0: (4.47058e+06,4.53526e+06,141129)
+      v1: (4.46979e+06,4.53487e+06,141129)
+      v2: (4.47058e+06,4.53487e+06,141129)
+      Edge lengths: 873.408, 781, 391
+      Triangle area: 152686
+    Triangle 2: [4,3,5]
+      v0: (4.47136e+06,4.53487e+06,141129)
+      v1: (4.47058e+06,4.53526e+06,141129)
+      v2: (4.47058e+06,4.53487e+06,141910)
+      Edge lengths: 873.855, 873.632, 1105.03
+      Triangle area: 373982
+  WARNING: 64 degenerate triangles found!
+
+
+=== SUMMARY ===
+Valid chunks: 81 / 81
+Total vertices: 363523
+Total triangles: 352295

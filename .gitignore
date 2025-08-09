@@ -45,6 +45,7 @@ test_*
 
 # debug information files
 *.dwo
+*nul
 
 # Build directories
 build*/

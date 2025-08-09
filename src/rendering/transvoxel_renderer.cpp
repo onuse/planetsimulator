@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <iomanip>
 
 namespace rendering {
 
@@ -141,20 +143,171 @@ void TransvoxelRenderer::generateMesh(TransvoxelChunk& chunk, const octree::Octr
     chunk.isDirty = false;
 }
 
+void TransvoxelRenderer::dumpMeshDataToFile(const std::vector<TransvoxelChunk>& chunks) {
+    std::cout << "Dumping mesh data to debug files...\n";
+    
+    // Dump comprehensive mesh data
+    std::ofstream meshDump("mesh_debug_dump.txt");
+    std::ofstream objFile("mesh_debug.obj");  // OBJ format for visualization
+    
+    if (!meshDump.is_open() || !objFile.is_open()) {
+        std::cerr << "Failed to open debug files!\n";
+        return;
+    }
+    
+    meshDump << "=== TRANSVOXEL MESH DEBUG DUMP ===\n";
+    meshDump << "Total chunks: " << chunks.size() << "\n\n";
+    
+    int validChunks = 0;
+    int totalVerts = 0;  // Renamed to avoid shadowing
+    int totalTris = 0;    // Renamed to avoid shadowing
+    int vertexOffset = 1; // OBJ format uses 1-based indexing
+    
+    // Analyze each chunk
+    for (size_t i = 0; i < chunks.size(); ++i) {
+        const auto& chunk = chunks[i];
+        
+        if (!chunk.hasValidMesh || chunk.vertices.empty()) {
+            meshDump << "Chunk " << i << ": INVALID/EMPTY\n";
+            continue;
+        }
+        
+        validChunks++;
+        int triangleCount = static_cast<int>(chunk.indices.size() / 3);
+        totalVerts += static_cast<int>(chunk.vertices.size());
+        totalTris += triangleCount;
+        
+        meshDump << "Chunk " << i << ":\n";
+        meshDump << "  Position: (" << chunk.position.x << ", " << chunk.position.y << ", " << chunk.position.z << ")\n";
+        meshDump << "  Voxel Size: " << chunk.voxelSize << "\n";
+        meshDump << "  LOD Level: " << chunk.lodLevel << "\n";
+        meshDump << "  Vertices: " << chunk.vertices.size() << "\n";
+        meshDump << "  Triangles: " << triangleCount << "\n";
+        
+        // Analyze vertex positions for sanity
+        glm::vec3 minPos(1e10f), maxPos(-1e10f);
+        float avgDist = 0;
+        for (const auto& v : chunk.vertices) {
+            minPos = glm::min(minPos, v.position);
+            maxPos = glm::max(maxPos, v.position);
+            avgDist += glm::length(v.position);
+            
+            // Write to OBJ file
+            objFile << "v " << v.position.x << " " << v.position.y << " " << v.position.z << "\n";
+        }
+        avgDist /= chunk.vertices.size();
+        
+        meshDump << "  Vertex bounds: min(" << minPos.x << "," << minPos.y << "," << minPos.z 
+                 << ") max(" << maxPos.x << "," << maxPos.y << "," << maxPos.z << ")\n";
+        meshDump << "  Bounding box size: (" << (maxPos.x - minPos.x) << "," 
+                 << (maxPos.y - minPos.y) << "," << (maxPos.z - minPos.z) << ")\n";
+        meshDump << "  Average distance from origin: " << avgDist << "\n";
+        
+        // Write vertex normals to OBJ
+        for (const auto& v : chunk.vertices) {
+            objFile << "vn " << v.normal.x << " " << v.normal.y << " " << v.normal.z << "\n";
+        }
+        
+        // Sample first few triangles
+        meshDump << "  First 3 triangles (indices):\n";
+        for (size_t t = 0; t < std::min(size_t(3), chunk.indices.size()/3); ++t) {
+            uint32_t i0 = chunk.indices[t*3];
+            uint32_t i1 = chunk.indices[t*3+1];
+            uint32_t i2 = chunk.indices[t*3+2];
+            
+            meshDump << "    Triangle " << t << ": [" << i0 << "," << i1 << "," << i2 << "]\n";
+            
+            if (i0 < chunk.vertices.size() && i1 < chunk.vertices.size() && i2 < chunk.vertices.size()) {
+                glm::vec3 v0 = chunk.vertices[i0].position;
+                glm::vec3 v1 = chunk.vertices[i1].position;
+                glm::vec3 v2 = chunk.vertices[i2].position;
+                
+                meshDump << "      v0: (" << v0.x << "," << v0.y << "," << v0.z << ")\n";
+                meshDump << "      v1: (" << v1.x << "," << v1.y << "," << v1.z << ")\n";
+                meshDump << "      v2: (" << v2.x << "," << v2.y << "," << v2.z << ")\n";
+                
+                // Calculate triangle size
+                float edge1 = glm::length(v1 - v0);
+                float edge2 = glm::length(v2 - v1);
+                float edge3 = glm::length(v0 - v2);
+                meshDump << "      Edge lengths: " << edge1 << ", " << edge2 << ", " << edge3 << "\n";
+                
+                // Calculate triangle area
+                glm::vec3 cross = glm::cross(v1 - v0, v2 - v0);
+                float area = glm::length(cross) * 0.5f;
+                meshDump << "      Triangle area: " << area << "\n";
+            }
+            
+            // Write to OBJ (adjusting for 1-based indexing)
+            objFile << "f " << (i0 + vertexOffset) << "//" << (i0 + vertexOffset) 
+                    << " " << (i1 + vertexOffset) << "//" << (i1 + vertexOffset)
+                    << " " << (i2 + vertexOffset) << "//" << (i2 + vertexOffset) << "\n";
+        }
+        
+        // Check for degenerate triangles
+        int degenerateCount = 0;
+        for (size_t t = 0; t < chunk.indices.size()/3; ++t) {
+            uint32_t i0 = chunk.indices[t*3];
+            uint32_t i1 = chunk.indices[t*3+1];
+            uint32_t i2 = chunk.indices[t*3+2];
+            
+            if (i0 == i1 || i1 == i2 || i0 == i2) {
+                degenerateCount++;
+            } else if (i0 < chunk.vertices.size() && i1 < chunk.vertices.size() && i2 < chunk.vertices.size()) {
+                glm::vec3 v0 = chunk.vertices[i0].position;
+                glm::vec3 v1 = chunk.vertices[i1].position;
+                glm::vec3 v2 = chunk.vertices[i2].position;
+                
+                float area = glm::length(glm::cross(v1 - v0, v2 - v0)) * 0.5f;
+                if (area < 0.0001f) {
+                    degenerateCount++;
+                }
+            }
+        }
+        
+        if (degenerateCount > 0) {
+            meshDump << "  WARNING: " << degenerateCount << " degenerate triangles found!\n";
+        }
+        
+        vertexOffset += static_cast<int>(chunk.vertices.size());
+        meshDump << "\n";
+    }
+    
+    meshDump << "\n=== SUMMARY ===\n";
+    meshDump << "Valid chunks: " << validChunks << " / " << chunks.size() << "\n";
+    meshDump << "Total vertices: " << totalVerts << "\n";
+    meshDump << "Total triangles: " << totalTris << "\n";
+    
+    meshDump.close();
+    objFile.close();
+    
+    std::cout << "Mesh debug data written to mesh_debug_dump.txt and mesh_debug.obj\n";
+    std::cout << "Summary: " << validChunks << " valid chunks, " 
+              << totalVerts << " vertices, " << totalTris << " triangles\n";
+}
+
 void TransvoxelRenderer::render(
     const std::vector<TransvoxelChunk>& chunks,
     VkCommandBuffer commandBuffer,
-    VkPipelineLayout pipelineLayout) {
+    VkPipelineLayout /*pipelineLayout*/) {  // Unused parameter
     
     static int renderCallCount = 0;
-    bool debugThis = (renderCallCount++ % 60 == 0); // Debug every 60 calls
+    bool debugThis = false;
+    //bool debugThis = (renderCallCount++ % 60 == 0); // Debug every 60 calls
+    
+    // Dump mesh data on first render
+    static bool firstDump = true;
+    if (firstDump && !chunks.empty()) {
+        firstDump = false;
+        dumpMeshDataToFile(chunks);
+    }
     
     if (debugThis) {
         std::cout << "TransvoxelRenderer::render called with " << chunks.size() << " chunks\n";
     }
     
     int validMeshCount = 0;
-    int totalTriangles = 0;
+    int totalTriangleCount = 0;  // Renamed to avoid shadowing
     
     for (const auto& chunk : chunks) {
         if (debugThis) {
@@ -165,7 +318,7 @@ void TransvoxelRenderer::render(
         if (!chunk.hasValidMesh || chunk.vertices.empty()) continue;
         
         validMeshCount++;
-        totalTriangles += chunk.indices.size() / 3;
+        totalTriangleCount += static_cast<int>(chunk.indices.size() / 3);
         
         // Bind vertex and index buffers
         VkBuffer vertexBuffers[] = {chunk.vertexBuffer};
@@ -182,11 +335,11 @@ void TransvoxelRenderer::render(
     }
     
     if (debugThis) {
-        std::cout << "  Rendered " << validMeshCount << " valid meshes with " << totalTriangles << " total triangles\n";
+        std::cout << "  Rendered " << validMeshCount << " valid meshes with " << totalTriangleCount << " total triangles\n";
     }
 }
 
-void TransvoxelRenderer::invalidateChunk(const glm::vec3& position) {
+void TransvoxelRenderer::invalidateChunk(const glm::vec3& /*position*/) {  // Unused parameter
     // TODO: Mark chunks at the given position as dirty for regeneration
     // This will be called when the planet data changes
 }

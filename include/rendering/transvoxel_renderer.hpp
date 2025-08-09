@@ -99,6 +99,9 @@ public:
     uint32_t getTriangleCount() const { return totalTriangles.load(); }
     uint32_t getChunkCount() const { return activeChunks.load(); }
     
+    // Debug functionality
+    void dumpMeshDataToFile(const std::vector<TransvoxelChunk>& chunks);
+    
 private:
     // Vulkan resources
     VkDevice device;

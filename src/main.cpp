@@ -22,6 +22,7 @@ struct Config {
     float autoTerminate = 0;     // Auto-terminate after N seconds (0 = disabled)
     float screenshotInterval = 0; // Screenshot interval in seconds (0 = disabled)
     bool quiet = false;          // Suppress verbose output
+    bool vertexDump = false;      // Dump vertex data on exit for debugging
     // Hierarchical GPU octree is always enabled - no config option
 };
 
@@ -47,6 +48,8 @@ Config parseArgs(int argc, char** argv) {
             config.screenshotInterval = std::stof(argv[++i]);
         } else if (arg == "-quiet") {
             config.quiet = true;
+        } else if (arg == "-vertex-dump") {
+            config.vertexDump = true;
         } else if (arg == "-gpu-octree" || arg == "-no-gpu-octree") {
             std::cout << "Warning: GPU octree flags are deprecated. Hierarchical GPU octree is always enabled.\n";
         } else if (arg == "-help" || arg == "-h") {
@@ -59,7 +62,8 @@ Config parseArgs(int argc, char** argv) {
                       << "  -height <pixels>        Window height (default: 720)\n"
                       << "  -auto-terminate <sec>   Exit after N seconds (default: 0 = disabled)\n"
                       << "  -screenshot-interval <sec> Screenshot interval (default: 0 = disabled)\n"
-                      << "  -quiet                  Suppress verbose output\n";
+                      << "  -quiet                  Suppress verbose output\n"
+                      << "  -vertex-dump            Dump vertex data on exit for debugging\n";
             std::exit(0);
         }
     }
@@ -246,6 +250,11 @@ private:
     }
     
     void cleanup() {
+        // Dump vertex data if requested
+        if (config.vertexDump) {
+            std::cout << "Dumping vertex data before exit...\n";
+            renderer.dumpVertexData();
+        }
         // cleanup handled by destructor
     }
     
