@@ -11,7 +11,7 @@ include_directories(${CMAKE_SOURCE_DIR}/../include)
 
 # Test executable for material pipeline
 add_executable(test_material_pipeline 
-    test_material_pipeline.cpp
+    pipeline/test_material_pipeline.cpp
     ../src/core/octree.cpp
 )
 
@@ -26,5 +26,29 @@ add_executable(test_octree_materials
 )
 
 target_link_libraries(test_octree_materials
+    glm::glm
+)
+
+# Test executable for Transvoxel algorithm
+add_executable(test_transvoxel_algorithm
+    test_transvoxel_algorithm.cpp
+    ../src/algorithms/mesh_generation.cpp
+    ../src/core/octree.cpp
+    ../src/core/material_table.cpp
+)
+
+target_link_libraries(test_transvoxel_algorithm
+    glm::glm
+)
+
+# Debug test for Transvoxel algorithm
+add_executable(test_transvoxel_debug
+    test_transvoxel_debug.cpp
+    ../src/algorithms/mesh_generation.cpp
+    ../src/core/octree.cpp
+    ../src/core/material_table.cpp
+)
+
+target_link_libraries(test_transvoxel_debug
     glm::glm
 )

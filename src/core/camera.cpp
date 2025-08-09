@@ -16,7 +16,7 @@ Camera::Camera(uint32_t width, uint32_t height)
     : viewportWidth(width)
     , viewportHeight(height)
     , aspectRatio(static_cast<float>(width) / static_cast<float>(height))
-    , position(0.0f, 0.0f, 10000000.0f)  // Start 10,000 km from origin
+    , position(0.0f, 0.0f, 6400000.0f)  // Start ~30km above planet surface
     , target(0.0f, 0.0f, 0.0f)
     , up(0.0f, 1.0f, 0.0f)
     , orientation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)) {

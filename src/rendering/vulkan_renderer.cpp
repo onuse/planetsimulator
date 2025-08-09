@@ -22,7 +22,8 @@ namespace rendering {
 VulkanRenderer::VulkanRenderer(uint32_t width, uint32_t height) 
     : windowWidth(width), windowHeight(height), instanceBuffer(VK_NULL_HANDLE), 
       instanceBufferMemory(VK_NULL_HANDLE), instanceBufferMapped(nullptr),
-      materialTableBuffer(VK_NULL_HANDLE), materialTableBufferMemory(VK_NULL_HANDLE) {
+      materialTableBuffer(VK_NULL_HANDLE), materialTableBufferMemory(VK_NULL_HANDLE),
+      pipelineLayout(VK_NULL_HANDLE), graphicsPipeline(VK_NULL_HANDLE), wireframePipeline(VK_NULL_HANDLE) {
     lastFrameTime = std::chrono::steady_clock::now();
 }
 
@@ -42,7 +43,7 @@ bool VulkanRenderer::initialize() {
         createImageViews();
         createRenderPass();
         createDescriptorSetLayout();
-        createGraphicsPipeline();
+//         createGraphicsPipeline();
         createCommandPool();
         createDepthResources();
         createFramebuffers();
@@ -55,6 +56,8 @@ bool VulkanRenderer::initialize() {
         createCommandBuffers();
         createSyncObjects();
         
+        // Initialize Transvoxel descriptor sets
+        
         // Initialize ImGui
         QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
         if (!imguiManager.initialize(window, instance, physicalDevice, device,
@@ -63,19 +66,10 @@ bool VulkanRenderer::initialize() {
             throw std::runtime_error("Failed to initialize ImGui");
         }
         
-        // Enable GPU octree ray marching for better performance
-        if (useGPUOctree) {
-            gpuOctree = std::make_unique<GPUOctree>(device, physicalDevice);
-            createRayMarchPipeline();
-            std::cout << "GPU octree ray marching initialized\n";
-        }
-        
-        // Enable hierarchical GPU octree with frustum culling and LOD
-        if (useHierarchicalOctree) {
-            hierarchicalGpuOctree = std::make_unique<HierarchicalGPUOctree>(device, physicalDevice);
-            createRayMarchPipeline();  // Can reuse the same pipeline
-            std::cout << "Hierarchical GPU octree with frustum culling initialized\n";
-        }
+        // Initialize Transvoxel renderer - THE ONLY rendering path
+        transvoxelRenderer = std::make_unique<TransvoxelRenderer>(device, physicalDevice, commandPool, graphicsQueue);
+        createTransvoxelPipeline();
+        std::cout << "Transvoxel mesh renderer initialized\n";
         
         std::cout << "Vulkan renderer initialized successfully\n";
         return true;
@@ -94,62 +88,70 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     frameTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
     lastFrameTime = currentTime;
     
-    // Dynamically adjust near/far planes based on distance to planet
-    // This fixes depth buffer precision issues
+    // Calculate camera distance metrics
     glm::vec3 cameraPos = camera->getPosition();
     float distanceToOrigin = glm::length(cameraPos);
     float planetRadius = planet->getRadius();
-    float distanceToPlanetSurface = std::max(100.0f, distanceToOrigin - planetRadius);
+    float distanceToPlanetSurface = std::max(0.0f, distanceToOrigin - planetRadius);
     
-    // Set near/far planes for good depth precision (ratio ~10,000:1)
-    float nearPlane = distanceToPlanetSurface * 0.001f;  // 0.1% of distance
-    float farPlane = distanceToPlanetSurface * 100.0f;   // 100x distance (enough to see whole planet)
-    camera->setNearFar(nearPlane, farPlane);
+    // Adaptive near/far planes for optimal depth precision at all scales
+    float nearPlane, farPlane;
     
-    // Upload octree to GPU if using GPU octree (do this once or when octree changes)
-    static bool octreeUploaded = false;
-    if (useGPUOctree && gpuOctree && !octreeUploaded) {
-        // Get camera matrices for proper filtering
-        glm::mat4 view = camera->getViewMatrix();
-        glm::mat4 proj = camera->getProjectionMatrix(static_cast<float>(windowWidth) / static_cast<float>(windowHeight));
-        glm::mat4 viewProj = proj * view;
-        glm::vec3 viewPos = camera->getPosition();
-        
-        // Upload with proper filtering using prepareRenderData
-        gpuOctree->uploadOctree(planet, viewPos, viewProj, commandPool, graphicsQueue);
-        createRayMarchDescriptorSets();  // Create descriptor sets after uploading
-        octreeUploaded = true;
-        std::cout << "Octree uploaded to GPU\n";
+    if (distanceToPlanetSurface < 1000.0f) {
+        // Very close to surface - high precision for terrain
+        nearPlane = 0.1f;
+        farPlane = 50000.0f;
+    } else if (distanceToPlanetSurface < 10000.0f) {
+        // Low altitude flight
+        nearPlane = 1.0f;
+        farPlane = 500000.0f;
+    } else if (distanceToPlanetSurface < 100000.0f) {
+        // Medium altitude - see horizon and curvature
+        nearPlane = 10.0f;
+        farPlane = distanceToOrigin * 3.0f;
+    } else if (distanceToPlanetSurface < 1000000.0f) {
+        // High altitude - significant portion of planet visible
+        nearPlane = 100.0f;  // Much better than 1000.0f for nearby chunk visibility
+        farPlane = distanceToOrigin * 3.0f;
+    } else {
+        // Space view - entire planet visible
+        nearPlane = 500.0f;
+        farPlane = distanceToOrigin * 4.0f;
     }
     
-    // Upload hierarchical octree with view-dependent culling
-    if (useHierarchicalOctree && hierarchicalGpuOctree) {
-        // Build view-projection matrix for frustum culling
-        glm::mat4 view = camera->getViewMatrix();
-        glm::mat4 proj = camera->getProjectionMatrix(static_cast<float>(windowWidth) / static_cast<float>(windowHeight));
-        glm::mat4 viewProj = proj * view;
-        glm::vec3 viewPos = camera->getPosition();
+    camera->setNearFar(nearPlane, farPlane);
+    
+    // Debug output to understand clipping
+    static int debugFrame = 0;
+    if (debugFrame++ % 60 == 0) {
+        std::cout << "Clipping planes: near=" << nearPlane << "m, far=" << farPlane 
+                  << "m (distance to origin=" << distanceToOrigin 
+                  << "m, to surface=" << distanceToPlanetSurface << "m)\n";
+    }
+    // std::cout << "Camera at distance " << distanceToOrigin << "m from origin, "
+    //           << distanceToPlanetSurface << "m from surface. Using near=" << nearPlane 
+    //           << "m, far=" << farPlane << "m\n";
+    
+    // Choose rendering path based on settings
+    if (false) { // Surface extraction disabled - using transvoxel
+        // Removed parallel path - only transvoxel rendering now
         
-        // Upload with frustum culling and LOD selection
-        hierarchicalGpuOctree->uploadOctree(planet, viewProj, viewPos, commandPool, graphicsQueue);
-        
-        // Update descriptor sets if needed
-        if (!octreeUploaded) {
-            createRayMarchDescriptorSets();
-            octreeUploaded = true;
+        // Debug output occasionally
+        static int frameCounter = 0;
+        if (frameCounter++ % 60 == 0) {
+            std::cout << "Surface extraction renderer active" << std::endl;
         }
+    } else if (transvoxelRenderer) {
+        // Use legacy transvoxel path
+        updateChunks(planet, camera);
+        generateChunkMeshes(planet);
         
-        // Print visibility stats
-        const auto& visInfo = hierarchicalGpuOctree->getVisibilityInfo();
-        if (visInfo.totalNodes > 0) {
-            float cullingRatio = static_cast<float>(visInfo.culledNodes) / visInfo.totalNodes;
-            // Debug output only occasionally to avoid spam
-            static int frameCounter = 0;
-            if (frameCounter++ % 60 == 0) {
-                std::cout << "Hierarchical octree: " << visInfo.visibleNodes.size() 
-                          << " visible / " << visInfo.totalNodes << " total (" 
-                          << (cullingRatio * 100.0f) << "% culled)\n";
-            }
+        // Debug output occasionally  
+        static int frameCounter2 = 0;
+        if (frameCounter2++ % 60 == 0) {
+            std::cout << "Transvoxel renderer: " << activeChunks.size() 
+                      << " chunks, " << transvoxelRenderer->getTriangleCount() 
+                      << " triangles\n";
         }
     }
     
@@ -165,15 +167,32 @@ void VulkanRenderer::cleanup() {
     // Cleanup ImGui
     imguiManager.cleanup();
     
-    // Cleanup ray march pipeline if created
-    if (rayMarchPipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(device, rayMarchPipeline, nullptr);
+    // Cleanup Transvoxel renderer and chunk buffers
+    if (transvoxelRenderer) {
+        // Clean up all chunk buffers first
+        for (auto& chunk : activeChunks) {
+            transvoxelRenderer->destroyChunkBuffers(chunk);
+        }
+        activeChunks.clear();
+        transvoxelRenderer->clearCache();
+        transvoxelRenderer.reset();
     }
-    if (rayMarchPipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(device, rayMarchPipelineLayout, nullptr);
+    
+    // Cleanup Transvoxel pipelines
+    if (hierarchicalPipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, hierarchicalPipeline, nullptr);
+        hierarchicalPipeline = VK_NULL_HANDLE;
     }
-    if (rayMarchDescriptorSetLayout != VK_NULL_HANDLE) {
-        vkDestroyDescriptorSetLayout(device, rayMarchDescriptorSetLayout, nullptr);
+    if (trianglePipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, trianglePipeline, nullptr);
+        trianglePipeline = VK_NULL_HANDLE;
+    }
+    if (hierarchicalPipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(device, hierarchicalPipelineLayout, nullptr);
+        hierarchicalPipelineLayout = VK_NULL_HANDLE;
+    }
+    if (hierarchicalDescriptorSetLayout != VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(device, hierarchicalDescriptorSetLayout, nullptr);
     }
     
     cleanupSwapChain();

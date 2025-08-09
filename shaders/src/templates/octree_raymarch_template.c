@@ -124,6 +124,112 @@ vec2 raySphere(vec3 origin, vec3 dir, vec3 center, float radius) {
     return result;
 }
 
+// Simple 3D noise for procedural detail
+float hash3D(vec3 p) {
+    p.x = p.x * 127.1 + p.y * 311.7 + p.z * 74.7;
+    p.y = p.x * 269.5 + p.y * 183.3 + p.z * 246.1;
+    p.z = p.x * 113.3 + p.y * 271.9 + p.z * 124.6;
+    
+    // Simple pseudo-random using sin
+    float h = sin(p.x) * sin(p.y) * sin(p.z) * 43758.5453123;
+    return h - floor(h);
+}
+
+// Smooth 3D noise
+float noise3D(vec3 p) {
+    vec3 i;
+    i.x = floor(p.x); i.y = floor(p.y); i.z = floor(p.z);
+    vec3 f;
+    f.x = p.x - i.x; f.y = p.y - i.y; f.z = p.z - i.z;
+    
+    // Smooth interpolation
+    f.x = f.x * f.x * (3.0 - 2.0 * f.x);
+    f.y = f.y * f.y * (3.0 - 2.0 * f.y);
+    f.z = f.z * f.z * (3.0 - 2.0 * f.z);
+    
+    // 8 corners of the cube
+    float n000 = hash3D(i);
+    vec3 i001; i001.x = i.x; i001.y = i.y; i001.z = i.z + 1.0;
+    float n001 = hash3D(i001);
+    vec3 i010; i010.x = i.x; i010.y = i.y + 1.0; i010.z = i.z;
+    float n010 = hash3D(i010);
+    vec3 i011; i011.x = i.x; i011.y = i.y + 1.0; i011.z = i.z + 1.0;
+    float n011 = hash3D(i011);
+    vec3 i100; i100.x = i.x + 1.0; i100.y = i.y; i100.z = i.z;
+    float n100 = hash3D(i100);
+    vec3 i101; i101.x = i.x + 1.0; i101.y = i.y; i101.z = i.z + 1.0;
+    float n101 = hash3D(i101);
+    vec3 i110; i110.x = i.x + 1.0; i110.y = i.y + 1.0; i110.z = i.z;
+    float n110 = hash3D(i110);
+    vec3 i111; i111.x = i.x + 1.0; i111.y = i.y + 1.0; i111.z = i.z + 1.0;
+    float n111 = hash3D(i111);
+    
+    // Trilinear interpolation
+    float n00 = n000 * (1.0 - f.x) + n100 * f.x;
+    float n01 = n001 * (1.0 - f.x) + n101 * f.x;
+    float n10 = n010 * (1.0 - f.x) + n110 * f.x;
+    float n11 = n011 * (1.0 - f.x) + n111 * f.x;
+    
+    float n0 = n00 * (1.0 - f.y) + n10 * f.y;
+    float n1 = n01 * (1.0 - f.y) + n11 * f.y;
+    
+    return n0 * (1.0 - f.z) + n1 * f.z;
+}
+
+// Multi-octave noise for more detail
+float fbm(vec3 p, uint materialId) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    float frequency = 0.0001; // Scale for planet-sized features
+    
+    // Material-specific noise parameters
+    if (materialId == 2u) { // Rock - rough, mountainous
+        for (int i = 0; i < 4; i++) {
+            vec3 scaled;
+            scaled.x = p.x * frequency;
+            scaled.y = p.y * frequency;
+            scaled.z = p.z * frequency;
+            value = value + amplitude * noise3D(scaled);
+            frequency = frequency * 2.3;
+            amplitude = amplitude * 0.45;
+        }
+    } else if (materialId == 3u) { // Water - gentle waves
+        for (int i = 0; i < 2; i++) {
+            vec3 scaled;
+            scaled.x = p.x * frequency * 0.5;
+            scaled.y = p.y * frequency * 0.5;
+            scaled.z = p.z * frequency * 0.5;
+            value = value + amplitude * 0.3 * noise3D(scaled);
+            frequency = frequency * 1.8;
+            amplitude = amplitude * 0.5;
+        }
+    } else if (materialId == 4u) { // Sand - fine detail
+        vec3 scaled;
+        scaled.x = p.x * frequency * 2.0;
+        scaled.y = p.y * frequency * 2.0;
+        scaled.z = p.z * frequency * 2.0;
+        value = amplitude * 0.2 * noise3D(scaled);
+    }
+    
+    return value;
+}
+
+// Simple atmospheric scattering
+vec3 atmosphericScattering(vec3 color, vec3 rayDir, float distance) {
+    // Basic Rayleigh scattering approximation
+    vec3 scatterColor;
+    scatterColor.x = 0.5; scatterColor.y = 0.7; scatterColor.z = 1.0;  // Blue sky color
+    
+    float scatterAmount = 1.0 - exp(-distance / (pc.planetRadius * 2.0));
+    scatterAmount = scatterAmount * max(0.0, 1.0 - dot(rayDir, vec3(0.0, 1.0, 0.0)));
+    
+    color.x = color.x * (1.0 - scatterAmount * 0.5) + scatterColor.x * scatterAmount * 0.3;
+    color.y = color.y * (1.0 - scatterAmount * 0.5) + scatterColor.y * scatterAmount * 0.3;
+    color.z = color.z * (1.0 - scatterAmount * 0.5) + scatterColor.z * scatterAmount * 0.3;
+    
+    return color;
+}
+
 vec4 traverseOctree(vec3 rayOrigin, vec3 rayDir) {
     vec4 blackSpace;
     blackSpace.x = 0.0; blackSpace.y = 0.0; 
@@ -158,9 +264,10 @@ vec4 traverseOctree(vec3 rayOrigin, vec3 rayDir) {
     rayStart.y = rayOrigin.y + rayDir.y * startDist;
     rayStart.z = rayOrigin.z + rayDir.z * startDist;
     
-    // Traversal constants
-    const int MAX_STEPS = 400;
-    const float MIN_STEP = 10.0;  // Reduced from 100.0 to avoid gaps
+    // Traversal constants - optimized for performance
+    const int MAX_STEPS = 100;  // Lower for better performance
+    const float MIN_STEP = 50.0;  // Larger steps (50m minimum)
+    const float COARSE_STEP = 10000.0; // 10km steps in empty space
     float MAX_DISTANCE = pc.planetRadius * 2.0;
     
     float t = 0.0;
@@ -183,8 +290,8 @@ vec4 traverseOctree(vec3 rayOrigin, vec3 rayDir) {
         uint nodeIndex = 0;
         float currentNodeSize = nodeBuffer.nodes[0].centerAndSize.w;
         
-        // Traverse down to leaf (max 15 levels)
-        for (int depth = 0; depth < 15; depth++) {
+        // Traverse down to leaf (max 8 levels for performance)
+        for (int depth = 0; depth < 8; depth++) {
             struct OctreeNode node = nodeBuffer.nodes[nodeIndex];
             
             // Check if this is a leaf
@@ -202,17 +309,68 @@ vec4 traverseOctree(vec3 rayOrigin, vec3 rayDir) {
                     // Direct lookup - no mapping needed!
                     vec4 color = materialTable.materials[materialId].color;
                     
-                    // Simple lighting
-                    vec3 normal = normalize(currentPos);
+                    // Disable procedural noise for now - too expensive
+                    float noiseDetail = 0.0;
+                    
+                    // Displace position slightly based on noise (creates surface detail)
+                    vec3 detailedPos = currentPos;
+                    vec3 sphereNormal = normalize(currentPos);
+                    detailedPos.x = detailedPos.x + sphereNormal.x * noiseDetail * 1000.0; // 1km max displacement
+                    detailedPos.y = detailedPos.y + sphereNormal.y * noiseDetail * 1000.0;
+                    detailedPos.z = detailedPos.z + sphereNormal.z * noiseDetail * 1000.0;
+                    
+                    // Calculate normal with procedural detail
+                    vec3 normal = normalize(detailedPos);
+                    
+                    // Add high-frequency detail to normal for material-specific texture
+                    if (materialId == 2u) { // Rock - bumpy surface
+                        vec3 bumpPos;
+                        bumpPos.x = currentPos.x * 0.001;
+                        bumpPos.y = currentPos.y * 0.001;
+                        bumpPos.z = currentPos.z * 0.001;
+                        float bump = noise3D(bumpPos) * 0.1;
+                        normal.x = normal.x + bump * 0.2;
+                        normal.y = normal.y + bump * 0.2;
+                        normal = normalize(normal);
+                    }
+                    
+                    // Better lighting setup
                     vec3 lightDir;
-                    lightDir.x = 1.0; lightDir.y = 1.0; lightDir.z = 0.5;
+                    lightDir.x = 0.5; lightDir.y = 0.8; lightDir.z = 0.3;
                     lightDir = normalize(lightDir);
+                    
+                    // Diffuse lighting
                     float NdotL = max(dot(normal, lightDir), 0.0);
                     
-                    color.x = color.x * (0.3 + 0.7 * NdotL);
-                    color.y = color.y * (0.3 + 0.7 * NdotL);
-                    color.z = color.z * (0.3 + 0.7 * NdotL);
+                    // Add rim lighting for better depth
+                    vec3 viewDir = normalize(rayOrigin - currentPos);
+                    float rim = 1.0 - max(0.0, dot(viewDir, normal));
+                    rim = pow(rim, 2.0) * 0.3;
                     
+                    // Combine lighting
+                    float ambient = 0.4;
+                    float diffuse = 0.6 * NdotL;
+                    float lighting = ambient + diffuse + rim;
+                    
+                    // Apply procedural color variation
+                    if (materialId == 2u) { // Rock - vary between gray and brown
+                        float colorVar = noiseDetail * 0.3 + 0.7;
+                        color.x = color.x * colorVar * (0.9 + 0.1 * noise3D(detailedPos));
+                        color.y = color.y * colorVar;
+                        color.z = color.z * colorVar * (0.95 + 0.05 * noise3D(detailedPos));
+                    } else if (materialId == 3u) { // Water - vary depth/clarity
+                        float depth = 1.0 - noiseDetail * 0.5;
+                        color.x = color.x * depth;
+                        color.y = color.y * depth;
+                        color.z = color.z * (depth * 0.9 + 0.1); // Keep more blue
+                    }
+                    
+                    color.x = color.x * lighting;
+                    color.y = color.y * lighting;
+                    color.z = color.z * lighting;
+                    
+                    // Skip atmospheric scattering for now (expensive)
+                    // Just return the lit color immediately when we hit surface
                     return color;
                 }
                 break; // Leaf with air, continue marching
@@ -245,8 +403,9 @@ vec4 traverseOctree(vec3 rayOrigin, vec3 rayDir) {
             }
         }
         
-        // Step forward with smaller steps to avoid gaps
-        float stepSize = max(MIN_STEP, currentNodeSize * 0.25);  // Reduced from 0.5 to 0.25
+        // Simple adaptive step size based on node size
+        // This is much faster than complex distance calculations
+        float stepSize = max(MIN_STEP, currentNodeSize * 0.5);
         t = t + stepSize;
     }
     

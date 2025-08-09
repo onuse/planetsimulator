@@ -122,7 +122,7 @@ private:
     glm::vec3 right;
     
     // Orbital mode parameters
-    float orbitDistance = 10000000.0f;  // 10,000 km default
+    float orbitDistance = 6400000.0f;  // ~30km above planet surface default
     float orbitAzimuth = 0.0f;          // Horizontal angle (radians)
     float orbitElevation = 0.0f;        // Vertical angle (radians)
     glm::vec3 orbitCenter = glm::vec3(0.0f); // Usually planet center
@@ -134,7 +134,7 @@ private:
     float rollAngle = 0.0f;
     
     // Projection parameters
-    float fov = 60.0f;          // Field of view in degrees
+    float fov = 75.0f;          // Field of view in degrees - wider to see more planet
     float aspectRatio = 16.0f / 9.0f;
     float nearPlane = 100.0f;   // 100 meters
     float farPlane = 100000000.0f; // 100,000 km

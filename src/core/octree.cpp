@@ -82,6 +82,29 @@ Voxel* OctreeNode::getVoxel(const glm::vec3& position) {
     }
 }
 
+const Voxel* OctreeNode::getVoxel(const glm::vec3& position) const {
+    if (isLeaf()) {
+        // For leaf nodes, determine which voxel in the 2x2x2 block
+        glm::vec3 localPos = position - center;
+        int voxelIndex = 0;
+        if (localPos.x > 0) voxelIndex |= 1;
+        if (localPos.y > 0) voxelIndex |= 2;
+        if (localPos.z > 0) voxelIndex |= 4;
+        
+        if (voxelIndex < LEAF_VOXELS) {
+            return &voxels[voxelIndex];
+        }
+        return nullptr;
+    } else {
+        // Recurse to appropriate child
+        int childIndex = getChildIndex(position);
+        if (children[childIndex]) {
+            return children[childIndex]->getVoxel(position);
+        }
+        return nullptr;
+    }
+}
+
 void OctreeNode::setVoxel(const glm::vec3& position, const Voxel& voxel) {
     if (isLeaf()) {
         // For leaf nodes, determine which voxel in the 2x2x2 block
@@ -290,6 +313,10 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                 voxel = MixedVoxel::createPure(core::MaterialID::Rock);
                 voxel.temperature = 255;  // Hot core (normalized)
                 voxel.pressure = 255;     // High pressure
+                if (surfaceDebugCount++ < 5) {
+                    std::cout << "    Set ROCK for voxel at dist=" << voxelDist 
+                              << " (inside planet core)\n";
+                }
             } else if (voxelDist < radius) {
                 // Use simple height-based distribution for testing
                 // This ensures we get both water and land at all scales
@@ -344,6 +371,10 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                     // Ocean - pure water
                     voxel = MixedVoxel::createPure(core::MaterialID::Water);
                     voxel.temperature = 128;
+                    if (surfaceDebugCount++ < 5) {
+                        std::cout << "    Set WATER for voxel at dist=" << voxelDist 
+                                  << " (ocean, continent=" << continentValue << ")\n";
+                    }
                 } else {
                     // Deep ocean trenches - water with some sediment
                     voxel = MixedVoxel::createMix(
@@ -635,6 +666,10 @@ void OctreePlanet::updateLOD(const glm::vec3& viewPos) {
 }
 
 Voxel* OctreePlanet::getVoxel(const glm::vec3& position) {
+    return root->getVoxel(position);
+}
+
+const Voxel* OctreePlanet::getVoxel(const glm::vec3& position) const {
     return root->getVoxel(position);
 }
 

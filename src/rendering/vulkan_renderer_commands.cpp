@@ -84,74 +84,51 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     
-    // Use GPU octree ray marching if available and initialized
-    if (useGPUOctree && rayMarchPipeline != VK_NULL_HANDLE && !rayMarchDescriptorSets.empty()) {
-        // Use ray marching pipeline for GPU octree
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rayMarchPipeline);
-        
-        // Push constants for runtime parameters
-        struct PushConstants {
-            float resolution[2];
-            float planetRadius;
-            int debugMode;
-        } pushConstants;
-        
-        pushConstants.resolution[0] = static_cast<float>(swapChainExtent.width);
-        pushConstants.resolution[1] = static_cast<float>(swapChainExtent.height);
-        // Use the actual planet radius from the octree root node
-        // Root halfSize is approximately 9.5565e+06 meters
-        // The planet fits within a sphere of this radius
-        pushConstants.planetRadius = 9556500.0f; // 9.5565 million meters (root halfSize)
-        pushConstants.debugMode = 0; // Normal rendering mode
-        
-        vkCmdPushConstants(commandBuffer, rayMarchPipelineLayout,
-                          VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                          sizeof(pushConstants), &pushConstants);
-        
-        // Bind ray march descriptor sets
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                               rayMarchPipelineLayout, 0, 1, &rayMarchDescriptorSets[currentFrame], 0, nullptr);
-        
-        // Draw full-screen triangle (3 vertices, no vertex buffer needed)
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
-    } else {
-        // Use traditional instanced rendering
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    // TRANSVOXEL MESH RENDERING - Single path, triangle meshes
+    // The transvoxel system generates triangle meshes from octree voxel data
     
-    // Bind vertex and instance buffers together if we have instances
-    if (instanceBuffer != VK_NULL_HANDLE && visibleNodeCount > 0) {
-        // Bind both vertex and instance buffers in one call
-        VkBuffer buffers[] = {vertexBuffer, instanceBuffer};
-        VkDeviceSize offsets[] = {0, 0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 2, buffers, offsets);
-        
-        // Debug output disabled for performance
-        // std::cout << "Bound vertex buffer: " << vertexBuffer << " and instance buffer: " << instanceBuffer 
-        //           << " with " << visibleNodeCount << " instances" << std::endl;
-    } else {
-        // Just bind vertex buffer
-        VkBuffer vertexBuffers[] = {vertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        
-        // std::cout << "WARNING: No instance buffer to bind! instanceBuffer=" 
-        //           << (instanceBuffer != VK_NULL_HANDLE ? "valid" : "null")
-        //           << ", visibleNodeCount=" << visibleNodeCount << std::endl;
+    static int debugFrameCount = 0;
+    bool shouldDebug = (debugFrameCount++ % 60 == 0); // Debug every 60 frames
+    
+    if (shouldDebug) {
+        std::cout << "Render frame: activeChunks.size()=" << activeChunks.size() 
+                  << ", transvoxelRenderer=" << (transvoxelRenderer ? "valid" : "null") << "\n";
     }
     
-        // Bind index buffer
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-        
-        // Bind descriptor sets (uniforms)
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                               pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-        
-        // Draw command
-        if (visibleNodeCount > 0) {
-            // Draw instanced cubes for octree nodes
-            vkCmdDrawIndexed(commandBuffer, indexCount, visibleNodeCount, 0, 0, 0);
+    if (transvoxelRenderer && !activeChunks.empty()) {
+        // Bind the triangle mesh pipeline for Transvoxel rendering
+        if (trianglePipeline == VK_NULL_HANDLE) {
+            std::cerr << "ERROR: trianglePipeline is NULL when rendering chunks!" << std::endl;
         }
-    } // End of else (traditional rendering)
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+        
+        // Bind uniform descriptor sets
+        if (!hierarchicalDescriptorSets.empty()) {
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                   hierarchicalPipelineLayout, 0, 1, 
+                                   &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
+        }
+        
+        // Render all active chunks with valid meshes
+        if (shouldDebug) {
+            std::cout << "About to render " << activeChunks.size() << " chunks\n";
+        }
+        transvoxelRenderer->render(activeChunks, commandBuffer, hierarchicalPipelineLayout);
+        if (shouldDebug) {
+            std::cout << "Finished rendering chunks\n";
+        }
+    } else {
+        // Fallback: draw a simple triangle if no chunks available
+        if (shouldDebug) {
+            std::cout << "Using fallback triangle render\n";
+        }
+        // Use trianglePipeline for fallback render since hierarchicalPipeline is not created
+        if (trianglePipeline == VK_NULL_HANDLE) {
+            std::cerr << "ERROR: trianglePipeline is NULL in fallback render!" << std::endl;
+        }
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    }
     
     // Render ImGui
     imguiManager.render(commandBuffer);
@@ -219,18 +196,8 @@ void VulkanRenderer::drawFrame(octree::OctreePlanet* planet, core::Camera* camer
     // Update uniform buffer with camera matrices
     updateUniformBuffer(currentFrame, camera);
     
-    // Update instance buffer with octree nodes
-    // static int updateCount = 0;
-    // std::cout << "About to call prepareRenderData and updateInstanceBuffer (frame " << ++updateCount << ")" << std::endl;
-    auto renderData = planet->prepareRenderData(camera->getPosition(), camera->getViewProjectionMatrix());
-    // std::cout << "RenderData has " << renderData.visibleNodes.size() << " visible nodes" << std::endl;
-    updateInstanceBuffer(renderData);
-    
-    static bool debugOnce = true;
-    if (debugOnce && visibleNodeCount > 0) {
-        std::cout << "Rendering " << visibleNodeCount << " nodes" << std::endl;
-        debugOnce = false;
-    }
+    // No instance buffer needed for Transvoxel rendering
+    // Chunks are managed and rendered directly via vertex/index buffers
     
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
     

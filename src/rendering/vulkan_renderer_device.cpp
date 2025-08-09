@@ -355,9 +355,18 @@ void VulkanRenderer::cleanupSwapChain() {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
     }
     
-    vkDestroyPipeline(device, graphicsPipeline, nullptr);
-    vkDestroyPipeline(device, wireframePipeline, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    if (graphicsPipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, graphicsPipeline, nullptr);
+        graphicsPipeline = VK_NULL_HANDLE;
+    }
+    if (wireframePipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, wireframePipeline, nullptr);
+        wireframePipeline = VK_NULL_HANDLE;
+    }
+    if (pipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        pipelineLayout = VK_NULL_HANDLE;
+    }
     vkDestroyRenderPass(device, renderPass, nullptr);
     
     for (auto imageView : swapChainImageViews) {
@@ -382,7 +391,7 @@ void VulkanRenderer::recreateSwapChain() {
     createSwapChain();
     createImageViews();
     createRenderPass();
-    createGraphicsPipeline();
+//     createGraphicsPipeline();
     createDepthResources();
     createFramebuffers();
 }

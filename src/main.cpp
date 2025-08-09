@@ -15,14 +15,14 @@
 // Command line arguments
 struct Config {
     float radius = 6371000.0f;  // Earth radius in meters
-    int maxDepth = 7;            // Octree depth (7 gives ~40K nodes at 40+ FPS)
+    int maxDepth = 10;           // Octree depth (10 for good balance of quality/performance)
     uint32_t seed = 42;          // Random seed
     int width = 1280;            // Window width
     int height = 720;            // Window height
     float autoTerminate = 0;     // Auto-terminate after N seconds (0 = disabled)
     float screenshotInterval = 0; // Screenshot interval in seconds (0 = disabled)
     bool quiet = false;          // Suppress verbose output
-    bool useGPUOctree = true;    // Enable GPU octree rendering (now default!)
+    // Hierarchical GPU octree is always enabled - no config option
 };
 
 Config parseArgs(int argc, char** argv) {
@@ -47,10 +47,8 @@ Config parseArgs(int argc, char** argv) {
             config.screenshotInterval = std::stof(argv[++i]);
         } else if (arg == "-quiet") {
             config.quiet = true;
-        } else if (arg == "-gpu-octree") {
-            config.useGPUOctree = true;
-        } else if (arg == "-no-gpu-octree") {
-            config.useGPUOctree = false;
+        } else if (arg == "-gpu-octree" || arg == "-no-gpu-octree") {
+            std::cout << "Warning: GPU octree flags are deprecated. Hierarchical GPU octree is always enabled.\n";
         } else if (arg == "-help" || arg == "-h") {
             std::cout << "Usage: octree_planet [options]\n"
                       << "Options:\n"
@@ -61,8 +59,7 @@ Config parseArgs(int argc, char** argv) {
                       << "  -height <pixels>        Window height (default: 720)\n"
                       << "  -auto-terminate <sec>   Exit after N seconds (default: 0 = disabled)\n"
                       << "  -screenshot-interval <sec> Screenshot interval (default: 0 = disabled)\n"
-                      << "  -quiet                  Suppress verbose output\n"
-                      << "  -no-gpu-octree          Disable GPU octree rendering (use CPU instancing)\n";
+                      << "  -quiet                  Suppress verbose output\n";
             std::exit(0);
         }
     }
@@ -221,12 +218,9 @@ private:
             std::cout << "Initializing Vulkan renderer...\n" << std::flush;
         }
         try {
-            // Enable GPU octree if requested
-            if (config.useGPUOctree) {
-                renderer.enableGPUOctree(true);
-                if (!config.quiet) {
-                    std::cout << "GPU octree rendering enabled\n" << std::flush;
-                }
+            // Hierarchical GPU octree is always enabled
+            if (!config.quiet) {
+                std::cout << "Hierarchical GPU octree rendering enabled\n" << std::flush;
             }
             
             if (!renderer.initialize()) {
@@ -241,8 +235,8 @@ private:
         }
         
         // Set initial camera position - back away from planet to see whole sphere
-        // 2.5x radius gives a good view of the entire planet with both rock and water visible
-        float initialDistance = config.radius * 2.5f;
+        // 1.6x radius gives a good close view of the planet globe
+        float initialDistance = config.radius * 1.6f;
         camera.setPosition(glm::vec3(initialDistance * 0.7f, initialDistance * 0.3f, initialDistance * 0.6f));
         camera.lookAt(glm::vec3(0, 0, 0));
         if (!config.quiet) {

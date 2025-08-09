@@ -164,8 +164,8 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer) {
         float frameTime = renderer->getFrameTime();
         float fps = frameTime > 0.0f ? 1.0f / frameTime : 0.0f;  // frameTime is in seconds
         renderStatsWindow(fps, 
-                         renderer->getNodeCount(), 
-                         renderer->getNodeCount() * 36); // 36 vertices per cube
+                         renderer->getChunkCount(), 
+                         renderer->getTriangleCount()); // Get actual triangle count from Transvoxel
     }
     
     // Show camera window with placeholder data for now
@@ -179,7 +179,7 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer) {
     }
 }
 
-void ImGuiManager::renderStatsWindow(float fps, uint32_t nodeCount, uint32_t triangleCount) {
+void ImGuiManager::renderStatsWindow(float fps, uint32_t chunkCount, uint32_t triangleCount) {
     ImGui::SetNextWindowPos(ImVec2(10, 30), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
     
@@ -192,7 +192,7 @@ void ImGuiManager::renderStatsWindow(float fps, uint32_t nodeCount, uint32_t tri
         ImGui::Spacing();
         ImGui::Text("Rendering");
         ImGui::Separator();
-        ImGui::Text("Visible Nodes: %u", nodeCount);
+        ImGui::Text("Active Chunks: %u", chunkCount);
         ImGui::Text("Triangles: %u", triangleCount);
         ImGui::Text("Vertices: %u", triangleCount * 3);
         

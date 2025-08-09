@@ -13,6 +13,7 @@
 #include "core/octree.hpp"
 #include "core/camera.hpp"
 #include "rendering/imgui_manager.hpp"
+#include "rendering/transvoxel_renderer.hpp"
 
 namespace rendering {
 
@@ -89,8 +90,9 @@ public:
     void setRenderMode(int mode) { renderMode = mode; }
     void setWireframe(bool enabled) { wireframeEnabled = enabled; }
     void setVSync(bool enabled);
-    void enableGPUOctree(bool enable) { useGPUOctree = enable; }
-    void enableHierarchicalOctree(bool enable) { useHierarchicalOctree = enable; }
+    // Hierarchical GPU octree is always enabled - no option to disable
+    
+    // Removed parallel paths - only transvoxel rendering now
     
     // Screenshot support
     bool captureScreenshot(const std::string& filename);
@@ -98,6 +100,10 @@ public:
     // Stats
     float getFrameTime() const { return frameTime; }
     uint32_t getNodeCount() const { return visibleNodeCount; }
+    uint32_t getChunkCount() const { return static_cast<uint32_t>(activeChunks.size()); }
+    uint32_t getTriangleCount() const { 
+        return transvoxelRenderer ? transvoxelRenderer->getTriangleCount() : 0; 
+    }
     
 private:
     // Window
@@ -182,6 +188,7 @@ private:
     // Rendering state
     int renderMode = 0; // 0: material, 1: temperature, 2: elevation, etc.
     bool wireframeEnabled = false;
+    // Removed parallel rendering paths
     uint32_t visibleNodeCount = 0;
     std::vector<InstanceData> instances;
     
@@ -195,17 +202,20 @@ private:
     // ImGui manager
     ImGuiManager imguiManager;
     
-    // GPU octree (optional - only used if enabled)
-    std::unique_ptr<class GPUOctree> gpuOctree;
-    std::unique_ptr<class HierarchicalGPUOctree> hierarchicalGpuOctree;
-    bool useGPUOctree = false;
-    bool useHierarchicalOctree = false;
+    // Transvoxel renderer - THE ONLY rendering path
+    std::unique_ptr<TransvoxelRenderer> transvoxelRenderer;
     
-    // Ray marching pipeline (for GPU octree)
-    VkPipeline rayMarchPipeline = VK_NULL_HANDLE;
-    VkPipelineLayout rayMarchPipelineLayout = VK_NULL_HANDLE;
-    VkDescriptorSetLayout rayMarchDescriptorSetLayout = VK_NULL_HANDLE;
-    std::vector<VkDescriptorSet> rayMarchDescriptorSets;
+    // Chunk management
+    std::vector<TransvoxelChunk> activeChunks;
+    
+    // Hierarchical pipeline (single rendering path)
+    VkPipeline hierarchicalPipeline = VK_NULL_HANDLE;
+    VkPipelineLayout hierarchicalPipelineLayout = VK_NULL_HANDLE;
+    
+    // Triangle mesh pipeline for Transvoxel rendering
+    VkPipeline trianglePipeline = VK_NULL_HANDLE;
+    VkDescriptorSetLayout hierarchicalDescriptorSetLayout = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> hierarchicalDescriptorSets;
     
     // Initialization functions
     void createWindow();
@@ -273,9 +283,18 @@ private:
     VkShaderModule createShaderModule(const std::vector<char>& code);
     std::vector<char> readFile(const std::string& filename);
     
-    // Ray marching pipeline
-    void createRayMarchPipeline();
-    void createRayMarchDescriptorSets();
+    // Transvoxel rendering
+    void createTransvoxelPipeline();
+    void createTransvoxelDescriptorSets();
+    void createTrianglePipeline();
+    void updateChunks(octree::OctreePlanet* planet, core::Camera* camera);
+    void generateChunkMeshes(octree::OctreePlanet* planet);
+    
+    // Removed parallel rendering paths
+    
+    // Legacy hierarchical functions (still used by Transvoxel for MVP)
+    void createHierarchicalPipeline();
+    void createHierarchicalDescriptorSets();
     
     // Callbacks
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);

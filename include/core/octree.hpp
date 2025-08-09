@@ -39,6 +39,7 @@ public:
     
     // Voxel access
     Voxel* getVoxel(const glm::vec3& position);
+    const Voxel* getVoxel(const glm::vec3& position) const;
     void setVoxel(const glm::vec3& position, const Voxel& voxel);
     
     // LOD operations
@@ -108,6 +109,7 @@ public:
     
     // Access
     Voxel* getVoxel(const glm::vec3& position);
+    const Voxel* getVoxel(const glm::vec3& position) const;
     void setVoxel(const glm::vec3& position, const Voxel& voxel);
     
     // LOD management

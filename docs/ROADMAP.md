@@ -22,12 +22,12 @@ A scientifically accurate **planet evolution simulator** that models 4.5 billion
 - [x] Frustum culling
 - [x] Octree traversal on CPU (GPU traversal future work)
 
-## Phase 3: Rendering 🚧 IN PROGRESS
-- [x] Hierarchical rasterization (instanced cube rendering)
+## Phase 3: Rendering ✅ COMPLETE (Legacy Instance Rendering)
+- [x] Hierarchical rasterization (instanced cube rendering) - DEPRECATED
 - [x] Material system (rock, water, magma, etc.) ✅
 - [x] Basic lighting and shading
-- [ ] Atmosphere rendering
-- [ ] Smooth shading / Grid artifact reduction
+- [x] Initial implementation complete
+- *NOTE: Moving to Transvoxel mesh generation for performance*
 
 ## Phase 3.5: Dear ImGui Integration ✅ COMPLETE
 *Essential for development and debugging*
@@ -52,45 +52,54 @@ A scientifically accurate **planet evolution simulator** that models 4.5 billion
 - [x] Update time vs render time (frame time)
 - [x] Frustum culling efficiency (visible nodes)
 
-## Phase 3.6: GPU Octree Rendering 🚀 **← CRITICAL NEXT**
-*Move from CPU instance rendering to GPU-native octree*
+## Phase 3.6: Transvoxel Mesh Generation 🚀 **← CRITICAL NEXT**
+*Replace instance rendering with high-performance triangle meshes*
 
-### Why This Is Critical
-- Current approach: 44k draw calls for 94k nodes (after fidelity reduction)
-- Target: Single draw call for millions of voxels
-- Enable full detail (depth 10+) at 60+ FPS
+### Why Transvoxel?
+- Current approach: 44k draw calls for 94k nodes (0.3 FPS at full detail)
+- Target: 100-500k triangles total (60+ FPS)
+- Industry proven (Astroneer, Osiris: New Dawn)
+- Seamless LOD transitions without cracks
+- Sharp feature preservation (cliffs, ridges)
 
-### 3.6.1 GPU Octree Storage
-- [ ] Design GPU-friendly octree layout (3D texture or SSBO)
-- [ ] Implement octree upload to GPU
-- [ ] Node pointer encoding for GPU traversal
-- [ ] Material and property storage
+### 3.6.1 Basic Transvoxel Implementation (MVP)
+- [ ] CPU implementation of Transvoxel algorithm
+- [ ] Convert octree voxels to triangle meshes
+- [ ] Single LOD level initially
+- [ ] Integration with MixedVoxel materials
+- [ ] Replace instance buffer with vertex/index buffers
+- [ ] Target: 30 FPS with 100k triangles
 
-### 3.6.2 Ray Marching Renderer
-- [ ] Fragment shader octree traversal
-- [ ] Hierarchical ray-octree intersection
-- [ ] Early termination optimization
-- [ ] Empty space skipping
+### 3.6.2 Multi-LOD System
+- [ ] LOD 0: < 1km (full resolution)
+- [ ] LOD 1: 1-10km (every 2nd voxel)
+- [ ] LOD 2: 10-100km (every 4th voxel)
+- [ ] LOD 3: 100km+ (every 8th voxel)
+- [ ] Transvoxel transition cells (prevent cracks)
+- [ ] Target: 60 FPS with adaptive detail
 
-### 3.6.3 Screen-Space LOD
-- [ ] Adaptive subdivision based on pixel coverage
-- [ ] Temporal coherence (cache traversal)
-- [ ] Progressive refinement
-- [ ] Smooth LOD transitions
+### 3.6.3 Mesh Caching System
+- [ ] LRU cache for generated meshes
+- [ ] Dirty tracking for modified chunks
+- [ ] Async mesh generation
+- [ ] Placeholder meshes during generation
+- [ ] Memory budget: 512 MB cache
 
-### 3.6.4 Hybrid Rendering
-- [ ] Combine ray marching with rasterization
-- [ ] Use compute shader for traversal
-- [ ] Generate mesh on GPU (marching cubes)
-- [ ] Instanced rendering fallback
+### 3.6.4 GPU Compute Acceleration
+- [ ] Move Transvoxel to compute shaders
+- [ ] Parallel chunk processing
+- [ ] Direct GPU buffer output
+- [ ] Density field generation
+- [ ] Target: 120+ FPS
 
 ### 3.6.5 Performance Optimizations
-- [ ] Brick maps for locality
-- [ ] Hierarchical Z-buffer
-- [ ] Frustum culling in shader
-- [ ] Async compute for updates
+- [ ] Temporal caching
+- [ ] Predictive pre-generation
+- [ ] Mesh simplification
+- [ ] Texture atlasing for materials
+- [ ] Hierarchical culling
 
-## Phase 4: Initial Planet State 🌍 **← NEXT AFTER GPU**
+## Phase 4: Initial Planet State 🌍 **← NEXT AFTER TRANSVOXEL**
 *Create a geologically young planet as evolution starting point*
 
 ### 4.1 Simple Initial Conditions
@@ -239,7 +248,7 @@ A scientifically accurate **planet evolution simulator** that models 4.5 billion
 2. ~~**Camera Controls**: Implement WASD movement and mouse look~~ ✅
 3. ~~**Buffer Cleanup**: Fix validation errors on exit~~ ✅
 4. ~~**Dear ImGui Integration**: Add debug UI for real-time monitoring and control~~ ✅
-5. **GPU Octree**: Move to GPU-native rendering for full fidelity
+5. **Transvoxel Implementation**: Replace instance rendering with triangle meshes
 
 ## Implementation Strategy
 
@@ -247,8 +256,8 @@ A scientifically accurate **planet evolution simulator** that models 4.5 billion
 1. ~~Camera controls (WASD + mouse look)~~ ✅
 2. ~~Dear ImGui integration for debug UI~~ ✅
 3. ~~Performance monitoring dashboard~~ ✅
-4. **GPU Octree implementation** ← CURRENT FOCUS
-5. Better terrain generation with noise
+4. **Transvoxel mesh generation** ← CURRENT FOCUS
+5. Multi-LOD system with seamless transitions
 
 ### Short Term (1 Month)
 1. Basic plate tectonics

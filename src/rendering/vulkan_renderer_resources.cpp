@@ -233,172 +233,7 @@ void VulkanRenderer::createCubeGeometry() {
     // Already created in createVertexBuffer and createIndexBuffer
 }
 
-void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData& renderData) {
-    static int callNum = 0;
-    std::cout << "[1-UPDATE-" << ++callNum << "] updateInstanceBuffer called" << std::endl;
-    
-    visibleNodeCount = static_cast<uint32_t>(renderData.visibleNodes.size());
-    
-    if (visibleNodeCount == 0) {
-        return;
-    }
-    
-    // Prepare instance data
-    instances.clear();
-    instances.reserve(visibleNodeCount * 8); // Reserve for up to 8 voxels per node
-    
-    // DEBUG: Track material conversion
-    static bool debugOnce = true;
-    int materialCounts[4] = {0, 0, 0, 0}; // Air, Rock, Water, Magma
-    int debugWaterCount = 0;
-    int debugRockCount = 0;
-    
-    for (uint32_t nodeIdx : renderData.visibleNodes) {
-        const auto& node = renderData.nodes[nodeIdx];
-        
-        // For leaf nodes, render each voxel individually
-        if (node.flags & 1) { // Check leaf flag
-            uint32_t voxelIdx = node.voxelIndex;
-            if (voxelIdx != 0xFFFFFFFF && voxelIdx + 8 <= renderData.voxels.size()) {
-                // Render 8 voxels (2x2x2)
-                float voxelSize = node.halfSize * 0.5f; // Each voxel is 1/2 the node size
-                for (int i = 0; i < 8; i++) {
-                    const auto& voxel = renderData.voxels[voxelIdx + i];
-                    
-                    // Skip pure air voxels
-                    core::MaterialID mat = voxel.getDominantMaterialID();
-                    if ((mat == core::MaterialID::Air || mat == core::MaterialID::Vacuum) && 
-                        voxel.getMaterialAmount(0) > 200) {
-                        continue;
-                    }
-                    
-                    // Calculate voxel center offset from node center
-                    glm::vec3 offset(
-                        (i & 1) ? voxelSize : -voxelSize,
-                        (i & 2) ? voxelSize : -voxelSize,
-                        (i & 4) ? voxelSize : -voxelSize
-                    );
-                    
-                    InstanceData instance;
-                    instance.center = node.center + offset;
-                    instance.halfSize = voxelSize;
-                    
-                    // Use MaterialID values directly (shader now expects MaterialID enum values)
-                    core::MaterialID dominantID = voxel.getDominantMaterialID();
-                    float materialType = static_cast<float>(dominantID);
-                    
-                    // DEBUG: Track water voxels specifically with sequence numbers (Water = MaterialID 3)
-                    if (materialType == 3.0f && debugOnce) {
-                        debugWaterCount++;
-                        if (debugWaterCount <= 5) {
-                            std::cout << "[3-VOXEL-" << debugWaterCount << "] Water voxel materialType=" 
-                                      << materialType << "f at position (" 
-                                      << (node.center + offset).x << ", " 
-                                      << (node.center + offset).y << ", " 
-                                      << (node.center + offset).z << ")" << std::endl;
-                        }
-                    }
-                    
-                    // Count materials for debugging (using MaterialID values)
-                    int materialInt = static_cast<int>(materialType + 0.5f);
-                    if (materialInt < 4) {
-                        materialCounts[materialInt]++;
-                    }
-                    
-                    // Get color from material table or voxel for consistency
-                    glm::vec3 color = voxel.getColor();
-                    
-                    instance.colorAndMaterial = glm::vec4(color, materialType); // Pack material in w
-                    
-                    // DEBUG: Track water instances before pushing (Water = MaterialID 3)
-                    if (materialInt == 3 && debugOnce && debugWaterCount <= 5) {
-                        std::cout << "[4-INSTANCE] Water instance created with colorAndMaterial.w=" 
-                                  << instance.colorAndMaterial.w << "f"
-                                  << " color=(" << instance.colorAndMaterial.x << ", " << instance.colorAndMaterial.y 
-                                  << ", " << instance.colorAndMaterial.z << ")" << std::endl;
-                    }
-                    
-                    instances.push_back(instance);
-                }
-            }
-        }
-    }
-    
-    if (debugOnce) {
-        std::cout << "Material distribution in " << renderData.visibleNodes.size() << " visible nodes:\n";
-        std::cout << "  Air: " << materialCounts[0] << "\n";
-        std::cout << "  Rock: " << materialCounts[1] << "\n";
-        std::cout << "  Water: " << materialCounts[2] << "\n";
-        std::cout << "  Magma: " << materialCounts[3] << "\n";
-        
-        // Debug the actual instance colors being set
-        std::cout << "First 10 instance colors:\n";
-        for (size_t i = 0; i < std::min(size_t(10), instances.size()); i++) {
-            std::cout << "  Instance " << i << ": color=(" 
-                      << instances[i].colorAndMaterial.r << "," 
-                      << instances[i].colorAndMaterial.g << "," 
-                      << instances[i].colorAndMaterial.b << "), material=" 
-                      << instances[i].colorAndMaterial.w << "\n";
-        }
-        debugOnce = false;
-    }
-    
-    // Update or create instance buffer
-    VkDeviceSize bufferSize = sizeof(InstanceData) * instances.size();
-    
-    // If buffer is too small or doesn't exist, recreate it
-    static VkDeviceSize currentBufferSize = 0;
-    if (bufferSize > currentBufferSize || instanceBuffer == VK_NULL_HANDLE) {
-        // std::cout << "Creating/resizing instance buffer: " << bufferSize << " bytes for " 
-        //           << instances.size() << " instances" << std::endl;
-        // Clean up old buffer
-        if (instanceBuffer != VK_NULL_HANDLE) {
-            vkDestroyBuffer(device, instanceBuffer, nullptr);
-            vkFreeMemory(device, instanceBufferMemory, nullptr);
-        }
-        
-        // Create new buffer with some extra space
-        currentBufferSize = bufferSize * 2; // Double size to reduce reallocations
-        createBuffer(currentBufferSize, 
-                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    instanceBuffer, instanceBufferMemory);
-        
-        vkMapMemory(device, instanceBufferMemory, 0, currentBufferSize, 0, &instanceBufferMapped);
-    }
-    
-    // Copy instance data to buffer
-    memcpy(instanceBufferMapped, instances.data(), bufferSize);
-    
-    // Update the visible node count to the actual number of instances we're drawing
-    visibleNodeCount = static_cast<uint32_t>(instances.size());
-    
-    // DEBUG: Verify water instances in buffer
-    static int bufferCheckCount = 0;
-    if (bufferCheckCount++ < 3) {
-        InstanceData* bufferData = static_cast<InstanceData*>(instanceBufferMapped);
-        int waterInBuffer = 0;
-        int rockInBuffer = 0;
-        for (size_t i = 0; i < instances.size(); i++) {
-            int matInt = static_cast<int>(bufferData[i].colorAndMaterial.w + 0.5f);
-            if (matInt == 2) {
-                waterInBuffer++;
-                if (waterInBuffer <= 3) {
-                    std::cout << "[5-BUFFER-" << waterInBuffer << "] Water in buffer at index " << i 
-                              << " has colorAndMaterial.w=" << bufferData[i].colorAndMaterial.w << "f" << std::endl;
-                }
-            } else if (matInt == 1) {
-                rockInBuffer++;
-            }
-        }
-        std::cout << "PIPELINE STAGE 3 - Buffer stats: " << waterInBuffer << " water, " 
-                  << rockInBuffer << " rock out of " << instances.size() << " total" << std::endl;
-    }
-    
-    if (debugOnce) {
-        debugOnce = false;
-    }
-}
+// Instance buffer update removed - using Transvoxel mesh rendering instead
 
 // ============================================================================
 // Descriptor Pool and Sets
@@ -407,15 +242,15 @@ void VulkanRenderer::updateInstanceBuffer(const octree::OctreePlanet::RenderData
 void VulkanRenderer::createDescriptorPool() {
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2); // Extra for ray march
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 4); // Extra for multiple pipelines
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2); // 2 SSBOs per frame
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 8); // 4 SSBOs per Transvoxel set
     
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2); // Extra sets for ray march
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 4); // Extra sets for multiple pipelines
     
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
