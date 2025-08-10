@@ -45,6 +45,23 @@ if exist %SRC_TEMPLATES%\triangle_fragment_template.c (
     )
 )
 
+REM Transpile quadtree shaders for LOD system
+if exist %SRC_TEMPLATES%\quadtree_vertex_template.c (
+    echo Transpiling quadtree_vertex_template.c to quadtree_patch.vert...
+    python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\quadtree_vertex_template.c %SRC_VERTEX%\quadtree_patch.vert
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to transpile quadtree vertex template
+    )
+)
+
+if exist %SRC_TEMPLATES%\quadtree_fragment_template.c (
+    echo Transpiling quadtree_fragment_template.c to quadtree_patch.frag...
+    python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\quadtree_fragment_template.c %SRC_FRAGMENT%\quadtree_patch.frag
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to transpile quadtree fragment template
+    )
+)
+
 REM Compile triangle shaders for Transvoxel
 echo Compiling triangle.vert...
 "%GLSLC%" %SRC_VERTEX%\triangle.vert -o triangle.vert.spv
@@ -58,6 +75,23 @@ echo Compiling triangle.frag...
 if %errorlevel% neq 0 (
     echo ERROR: Failed to compile triangle.frag
     exit /b 1
+)
+
+REM Compile quadtree shaders for LOD system
+if exist %SRC_VERTEX%\quadtree_patch.vert (
+    echo Compiling quadtree_patch.vert...
+    "%GLSLC%" %SRC_VERTEX%\quadtree_patch.vert -o quadtree_patch.vert.spv
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to compile quadtree_patch.vert
+    )
+)
+
+if exist %SRC_FRAGMENT%\quadtree_patch.frag (
+    echo Compiling quadtree_patch.frag...
+    "%GLSLC%" %SRC_FRAGMENT%\quadtree_patch.frag -o quadtree_patch.frag.spv
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to compile quadtree_patch.frag
+    )
 )
 
 echo.

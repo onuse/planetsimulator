@@ -14,6 +14,7 @@
 #include "core/camera.hpp"
 #include "rendering/imgui_manager.hpp"
 #include "rendering/transvoxel_renderer.hpp"
+#include "rendering/lod_manager.hpp"
 
 namespace rendering {
 
@@ -211,6 +212,9 @@ private:
     // Transvoxel renderer - THE ONLY rendering path
     std::unique_ptr<TransvoxelRenderer> transvoxelRenderer;
     
+    // LOD manager for comprehensive LOD system
+    std::unique_ptr<LODManager> lodManager;
+    
     // Chunk management
     std::vector<TransvoxelChunk> activeChunks;
     
@@ -222,6 +226,12 @@ private:
     VkPipeline trianglePipeline = VK_NULL_HANDLE;
     VkDescriptorSetLayout hierarchicalDescriptorSetLayout = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> hierarchicalDescriptorSets;
+    
+    // Quadtree pipeline for LOD terrain rendering
+    VkPipeline quadtreePipeline = VK_NULL_HANDLE;
+    VkPipelineLayout quadtreePipelineLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout quadtreeDescriptorSetLayout = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> quadtreeDescriptorSets;
     
     // Initialization functions
     void createWindow();
@@ -293,6 +303,11 @@ private:
     void createTransvoxelPipeline();
     void createTransvoxelDescriptorSets();
     void createTrianglePipeline();
+    
+    // Quadtree rendering
+    void createQuadtreePipeline();
+    void createQuadtreeDescriptorSets();
+    void updateQuadtreeInstanceBuffer(VkBuffer instanceBuffer);
     void updateChunks(octree::OctreePlanet* planet, core::Camera* camera);
     void generateChunkMeshes(octree::OctreePlanet* planet);
     

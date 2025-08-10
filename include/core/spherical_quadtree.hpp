@@ -1,0 +1,176 @@
+#pragma once
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <memory>
+#include <array>
+#include <vector>
+#include <functional>
+#include <atomic>
+#include "density_field.hpp"
+
+namespace core {
+
+// Forward declarations
+class SphericalQuadtreeNode;
+class Camera;
+
+// Represents a single patch on the sphere surface
+struct QuadtreePatch {
+    glm::vec3 center;           // Center position on sphere
+    glm::vec3 corners[4];       // Corner positions
+    float size;                 // Angular size (radians)
+    uint32_t level;            // LOD level (0 = root)
+    float morphFactor;         // For smooth LOD transitions (0-1)
+    float screenSpaceError;    // Current screen space error
+    
+    // Neighbor information for crack prevention
+    SphericalQuadtreeNode* neighbors[4] = {nullptr, nullptr, nullptr, nullptr};
+    uint32_t neighborLevels[4] = {0, 0, 0, 0};
+    
+    // Rendering data
+    bool isVisible = false;
+    bool needsUpdate = true;
+};
+
+// Node in the spherical quadtree
+class SphericalQuadtreeNode {
+public:
+    enum Face {
+        FACE_POS_X = 0,
+        FACE_NEG_X = 1,
+        FACE_POS_Y = 2,
+        FACE_NEG_Y = 3,
+        FACE_POS_Z = 4,
+        FACE_NEG_Z = 5
+    };
+    
+    enum Edge {
+        EDGE_TOP = 0,
+        EDGE_RIGHT = 1,
+        EDGE_BOTTOM = 2,
+        EDGE_LEFT = 3
+    };
+    
+    SphericalQuadtreeNode(const glm::vec3& center, float size, uint32_t level, 
+                         Face face, SphericalQuadtreeNode* parent = nullptr);
+    ~SphericalQuadtreeNode() = default;
+    
+    // Subdivision
+    void subdivide(const DensityField& densityField);
+    void merge();
+    bool isLeaf() const { return children[0] == nullptr; }
+    bool hasChildren() const { return !isLeaf(); }
+    
+    // LOD selection
+    float calculateScreenSpaceError(const glm::vec3& viewPos, const glm::mat4& viewProj) const;
+    void selectLOD(const glm::vec3& viewPos, const glm::mat4& viewProj, 
+                  float errorThreshold, uint32_t maxLevel,
+                  std::vector<QuadtreePatch>& visiblePatches);
+    
+    // Morphing
+    void updateMorphFactor(float targetError, float morphRegion);
+    
+    // Neighbor management
+    void setNeighbor(Edge edge, SphericalQuadtreeNode* neighbor);
+    SphericalQuadtreeNode* getNeighbor(Edge edge) const { return neighbors[edge]; }
+    void updateNeighborReferences();
+    
+    // Data access
+    const QuadtreePatch& getPatch() const { return patch; }
+    QuadtreePatch& getPatch() { return patch; }
+    uint32_t getLevel() const { return level; }
+    Face getFace() const { return face; }
+    
+    // Height sampling
+    void sampleHeights(const DensityField& densityField, uint32_t resolution);
+    const std::vector<float>& getHeights() const { return heights; }
+    
+private:
+    // Tree structure
+    std::array<std::unique_ptr<SphericalQuadtreeNode>, 4> children;
+    SphericalQuadtreeNode* parent;
+    std::array<SphericalQuadtreeNode*, 4> neighbors;
+    
+    // Node data
+    QuadtreePatch patch;
+    uint32_t level;
+    Face face;
+    
+    // Height data (cached)
+    std::vector<float> heights;
+    uint32_t heightResolution = 0;
+    
+    // Helper functions
+    glm::vec3 cubeToSphere(const glm::vec3& cubePos, float radius) const;
+    glm::vec3 getChildCenter(int childIndex) const;
+    void fixTJunctions();
+};
+
+// Main spherical quadtree for planet surface
+class SphericalQuadtree {
+public:
+    struct Config {
+        float planetRadius = 6371000.0f;
+        uint32_t maxLevel = 20;
+        float pixelError = 2.0f;        // Maximum pixel error
+        float morphRegion = 0.3f;        // Size of morph region (0-1)
+        size_t maxNodes = 10000;         // Maximum active nodes
+        bool enableMorphing = true;      // Enable vertex morphing
+        bool enableCrackFixes = true;    // Enable T-junction prevention
+    };
+    
+    SphericalQuadtree(const Config& config, std::shared_ptr<DensityField> densityField);
+    ~SphericalQuadtree() = default;
+    
+    // Main update function
+    void update(const glm::vec3& viewPos, const glm::mat4& viewProj, float deltaTime);
+    
+    // Get visible patches for rendering
+    const std::vector<QuadtreePatch>& getVisiblePatches() const { return visiblePatches; }
+    
+    // Configuration
+    Config& getConfig() { return config; }
+    const Config& getConfig() const { return config; }
+    
+    // Statistics
+    struct Stats {
+        uint32_t visibleNodes = 0;
+        uint32_t totalNodes = 0;
+        uint32_t subdivisions = 0;
+        uint32_t merges = 0;
+        float lodSelectionTime = 0.0f;
+        float morphUpdateTime = 0.0f;
+    };
+    
+    const Stats& getStats() const { return stats; }
+    
+    // Integration with octree system
+    bool shouldUseOctree(float altitude) const;
+    float getTransitionBlendFactor(float altitude) const;
+    
+private:
+    Config config;
+    std::shared_ptr<DensityField> densityField;
+    
+    // Six root nodes (cube faces)
+    std::array<std::unique_ptr<SphericalQuadtreeNode>, 6> roots;
+    
+    // Visible patches for current frame
+    std::vector<QuadtreePatch> visiblePatches;
+    
+    // Statistics
+    mutable Stats stats;
+    std::atomic<uint32_t> totalNodeCount{6};
+    
+    // LOD selection helpers
+    float calculateErrorThreshold(const glm::vec3& viewPos) const;
+    void preventCracks(std::vector<QuadtreePatch>& patches);
+    void updateMorphFactors(std::vector<QuadtreePatch>& patches, float deltaTime);
+    
+    // Initialization
+    void initializeRoots();
+    glm::mat4 getFaceTransform(SphericalQuadtreeNode::Face face) const;
+};
+
+} // namespace core

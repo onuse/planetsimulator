@@ -71,6 +71,13 @@ bool VulkanRenderer::initialize() {
         createTransvoxelPipeline();
         // Transvoxel mesh renderer initialized
         
+        // Create Quadtree pipeline for LOD rendering
+        createQuadtreePipeline();
+        
+        // Initialize LOD manager
+        lodManager = std::make_unique<LODManager>(device, physicalDevice, commandPool, graphicsQueue);
+        // LOD manager will be initialized with planet data when first planet is rendered
+        
         // Vulkan renderer initialized successfully
         return true;
     } catch (const std::exception& e) {
@@ -91,41 +98,45 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     frameTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
     lastFrameTime = currentTime;
     
-    // Calculate camera distance metrics
-    // glm::vec3 cameraPos = camera->getPosition();
-    // float distanceToOrigin = glm::length(cameraPos);
-    // float planetRadius = planet->getRadius();
-    // float distanceToPlanetSurface = std::max(0.0f, distanceToOrigin - planetRadius);
+    // Initialize LOD manager with planet data if needed
+    static bool lodInitialized = false;
+    if (lodManager && !lodInitialized) {
+        lodManager->initialize(planet->getRadius(), 42); // Use default seed for now
+        lodInitialized = true;
+    }
     
-    // Don't override camera settings - they are managed by autoAdjustClipPlanes
-    // The camera already has proper near/far planes set based on altitude
-    
-    // Note: Removing hardcoded setNearFar that was causing degenerate matrices
-    // camera->setNearFar(nearPlane, farPlane);  // REMOVED - was overriding proper values
-    
-    // Set a reasonable FOV if needed (though this could also be managed elsewhere)
-    // camera->setFieldOfView(60.0f);  // Consider removing this too
-    
-    // Debug output removed - now shown in ImGui UI instead
-    // std::cout << "Camera at distance " << distanceToOrigin << "m from origin, "
-    //           << distanceToPlanetSurface << "m from surface. Using near=" << nearPlane 
-    //           << "m, far=" << farPlane << "m\n";
-    
-    // Choose rendering path based on settings
-    if (false) { // Surface extraction disabled - using transvoxel
-        // Removed parallel path - only transvoxel rendering now
+    // Update LOD system
+    if (lodManager) {
+        glm::mat4 viewProj = camera->getProjectionMatrix() * camera->getViewMatrix();
+        lodManager->update(camera->getPosition(), viewProj, frameTime);
         
-        // Debug output occasionally
-        static int frameCounter = 0;
-        if (frameCounter++ % 60 == 0) {
-            std::cout << "Surface extraction renderer active" << std::endl;
+        // Update descriptor set with current instance buffer (only if changed)
+        static VkBuffer lastInstanceBuffer = VK_NULL_HANDLE;
+        VkBuffer instanceBuf = lodManager->getQuadtreeInstanceBuffer();
+        if (instanceBuf != VK_NULL_HANDLE && instanceBuf != lastInstanceBuffer) {
+            updateQuadtreeInstanceBuffer(instanceBuf);
+            lastInstanceBuffer = instanceBuf;
         }
-    } else if (transvoxelRenderer) {
-        // Use legacy transvoxel path
-        updateChunks(planet, camera);
-        generateChunkMeshes(planet);
         
-        // Debug output removed - now shown in ImGui UI
+        // Use LOD manager for rendering decision
+        auto lodMode = lodManager->getCurrentMode();
+        if (lodMode == LODManager::OCTREE_TRANSVOXEL) {
+            // Use transvoxel ONLY for close-range rendering (not during quadtree mode)
+            updateChunks(planet, camera);
+            generateChunkMeshes(planet);
+        } else if (lodMode == LODManager::TRANSITION_ZONE) {
+            // In transition, prepare chunks but don't generate yet
+            // This avoids conflicts with quadtree rendering
+            updateChunks(planet, camera);
+            // Don't generate meshes - let LOD manager handle the transition
+        }
+        // For QUADTREE_ONLY mode, don't update chunks at all
+    } else {
+        // Fallback to legacy transvoxel path
+        if (transvoxelRenderer) {
+            updateChunks(planet, camera);
+            generateChunkMeshes(planet);
+        }
     }
     
     // Draw the frame
@@ -139,6 +150,11 @@ void VulkanRenderer::cleanup() {
     
     // Cleanup ImGui
     imguiManager.cleanup();
+    
+    // Cleanup LOD manager
+    if (lodManager) {
+        lodManager.reset();
+    }
     
     // Cleanup Transvoxel renderer and chunk buffers
     if (transvoxelRenderer) {
@@ -166,6 +182,20 @@ void VulkanRenderer::cleanup() {
     }
     if (hierarchicalDescriptorSetLayout != VK_NULL_HANDLE) {
         vkDestroyDescriptorSetLayout(device, hierarchicalDescriptorSetLayout, nullptr);
+    }
+    
+    // Cleanup Quadtree pipeline
+    if (quadtreePipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, quadtreePipeline, nullptr);
+        quadtreePipeline = VK_NULL_HANDLE;
+    }
+    if (quadtreePipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(device, quadtreePipelineLayout, nullptr);
+        quadtreePipelineLayout = VK_NULL_HANDLE;
+    }
+    if (quadtreeDescriptorSetLayout != VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(device, quadtreeDescriptorSetLayout, nullptr);
+        quadtreeDescriptorSetLayout = VK_NULL_HANDLE;
     }
     
     cleanupSwapChain();

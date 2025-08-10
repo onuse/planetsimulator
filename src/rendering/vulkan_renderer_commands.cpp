@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <array>
 #include <iostream>
+#include <glm/glm.hpp>
 
 namespace rendering {
 
@@ -84,8 +85,50 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     
-    // TRANSVOXEL MESH RENDERING - Single path, triangle meshes
-    // The transvoxel system generates triangle meshes from octree voxel data
+    // EXCLUSIVE RENDERING PATHS - Only one system renders at a time
+    bool renderedSomething = false;
+    
+    // LOD SYSTEM RENDERING
+    if (lodManager) {
+        auto lodMode = lodManager->getCurrentMode();
+        
+        if (lodMode == rendering::LODManager::QUADTREE_ONLY) {
+            // Render LOD quadtree patches when at far distance
+            if (quadtreePipeline != VK_NULL_HANDLE) {
+                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, quadtreePipeline);
+                
+                // Bind quadtree descriptor sets
+                if (!quadtreeDescriptorSets.empty()) {
+                    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                           quadtreePipelineLayout, 0, 1,
+                                           &quadtreeDescriptorSets[currentFrame], 0, nullptr);
+                }
+                
+                // Render the LOD terrain
+                lodManager->render(commandBuffer, quadtreePipelineLayout, glm::mat4(1.0f));
+                renderedSomething = true;
+            }
+        } else if (lodMode == rendering::LODManager::TRANSITION_ZONE) {
+            // In transition zone, render both with blending
+            // For now, just render quadtree until transition is fully implemented
+            if (quadtreePipeline != VK_NULL_HANDLE) {
+                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, quadtreePipeline);
+                if (!quadtreeDescriptorSets.empty()) {
+                    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                           quadtreePipelineLayout, 0, 1,
+                                           &quadtreeDescriptorSets[currentFrame], 0, nullptr);
+                }
+                lodManager->render(commandBuffer, quadtreePipelineLayout, glm::mat4(1.0f));
+                renderedSomething = true;
+            }
+        } else if (lodMode == rendering::LODManager::OCTREE_TRANSVOXEL) {
+            // Close range - use transvoxel rendering
+            // Fall through to transvoxel rendering below
+            renderedSomething = false; // Let transvoxel handle it
+        }
+    }
+    
+    // TRANSVOXEL MESH RENDERING - Only if LOD didn't render
     
     // Debug output for investigating chunk rendering issue
     static int debugFrameCount = 0;
@@ -104,30 +147,33 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         //           << ", transvoxelRenderer: " << (transvoxelRenderer ? "valid" : "null") << std::endl;
     }
     
-    if (transvoxelRenderer && !activeChunks.empty()) {
-        // Bind the triangle mesh pipeline for Transvoxel rendering
-        if (trianglePipeline == VK_NULL_HANDLE) {
-            std::cerr << "ERROR: trianglePipeline is NULL when rendering chunks!" << std::endl;
+    // Only render transvoxel if LOD system didn't render anything
+    if (!renderedSomething) {
+        if (transvoxelRenderer && !activeChunks.empty()) {
+            // Bind the triangle mesh pipeline for Transvoxel rendering
+            if (trianglePipeline == VK_NULL_HANDLE) {
+                std::cerr << "ERROR: trianglePipeline is NULL when rendering chunks!" << std::endl;
+            }
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+            
+            // Bind uniform descriptor sets
+            if (!hierarchicalDescriptorSets.empty()) {
+                vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                       hierarchicalPipelineLayout, 0, 1, 
+                                       &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
+            }
+            
+            // Render all active chunks with valid meshes
+            transvoxelRenderer->render(activeChunks, commandBuffer, hierarchicalPipelineLayout);
+        } else if (!lodManager) {
+            // Only use fallback triangle if no LOD manager exists
+            // Use trianglePipeline for fallback render since hierarchicalPipeline is not created
+            if (trianglePipeline == VK_NULL_HANDLE) {
+                std::cerr << "ERROR: trianglePipeline is NULL in fallback render!" << std::endl;
+            }
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+            vkCmdDraw(commandBuffer, 3, 1, 0, 0);
         }
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-        
-        // Bind uniform descriptor sets
-        if (!hierarchicalDescriptorSets.empty()) {
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                   hierarchicalPipelineLayout, 0, 1, 
-                                   &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
-        }
-        
-        // Render all active chunks with valid meshes
-        transvoxelRenderer->render(activeChunks, commandBuffer, hierarchicalPipelineLayout);
-    } else {
-        // Fallback: draw a simple triangle if no chunks available
-        // Use trianglePipeline for fallback render since hierarchicalPipeline is not created
-        if (trianglePipeline == VK_NULL_HANDLE) {
-            std::cerr << "ERROR: trianglePipeline is NULL in fallback render!" << std::endl;
-        }
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
     }
     
     // Render ImGui
@@ -180,13 +226,17 @@ void VulkanRenderer::drawFrame(octree::OctreePlanet* /*planet*/, core::Camera* c
     
     // Acquire image from swap chain
     uint32_t imageIndex;
-    VkResult result = vkAcquireNextImageKHR(device, swapChain, 100000000, // 100ms timeout
+    VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, // No timeout - wait indefinitely
                                            imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
     
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreateSwapChain();
         return;
+    } else if (result == VK_TIMEOUT) {
+        std::cerr << "Warning: Swap chain acquire timed out, retrying..." << std::endl;
+        return; // Skip this frame
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        std::cerr << "Swap chain acquire failed with error code: " << result << std::endl;
         throw std::runtime_error("failed to acquire swap chain image!");
     }
     

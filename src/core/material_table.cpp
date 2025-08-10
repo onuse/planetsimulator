@@ -23,7 +23,7 @@ MaterialTable::MaterialTable() {
     );
     
     materials[static_cast<size_t>(MaterialID::Water)] = MaterialProperties(
-        glm::vec3(0.2f, 0.4f, 0.6f),  // Ocean blue
+        glm::vec3(0.05f, 0.3f, 0.55f),  // Deep ocean blue
         0.0f, 0.0f, 0.0f, 1000.0f, 0.0f, "Water"
     );
     

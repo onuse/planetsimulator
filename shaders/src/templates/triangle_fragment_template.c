@@ -110,6 +110,8 @@ vec4 fragment_main(
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec3 fragWorldPos;
+layout(location = 3) in float fragAltitude;
+layout(location = 4) in vec3 fragViewDir;
 
 // Uniform buffer
 layout(binding = 0) uniform UniformBufferObject {
@@ -125,15 +127,118 @@ layout(binding = 0) uniform UniformBufferObject {
 // Output color
 layout(location = 0) out vec4 outColor;
 
+// Altitude-based coloring thresholds
+const float OCEAN_DEPTH = -4000.0;
+const float SEA_LEVEL = 0.0;
+const float BEACH_HEIGHT = 50.0;
+const float GRASS_HEIGHT = 1000.0;
+const float ROCK_HEIGHT = 2500.0;
+const float SNOW_HEIGHT = 4000.0;
+
+// Material colors
+const vec3 DEEP_OCEAN = vec3(0.02, 0.15, 0.35);
+const vec3 SHALLOW_OCEAN = vec3(0.05, 0.25, 0.45);
+const vec3 BEACH_SAND = vec3(0.9, 0.85, 0.65);
+const vec3 GRASS_GREEN = vec3(0.2, 0.5, 0.15);
+const vec3 FOREST_GREEN = vec3(0.1, 0.35, 0.08);
+const vec3 ROCK_BROWN = vec3(0.4, 0.3, 0.2);
+const vec3 MOUNTAIN_GRAY = vec3(0.5, 0.45, 0.4);
+const vec3 SNOW_WHITE = vec3(0.95, 0.95, 0.98);
+
+vec3 getTerrainColor(float altitude) {
+    vec3 color;
+    
+    if (altitude < OCEAN_DEPTH) {
+        color = DEEP_OCEAN;
+    } else if (altitude < SEA_LEVEL) {
+        // Interpolate ocean depth
+        float t = (altitude - OCEAN_DEPTH) / (SEA_LEVEL - OCEAN_DEPTH);
+        color = mix(DEEP_OCEAN, SHALLOW_OCEAN, t);
+    } else if (altitude < BEACH_HEIGHT) {
+        // Beach transition
+        float t = altitude / BEACH_HEIGHT;
+        color = mix(SHALLOW_OCEAN, BEACH_SAND, smoothstep(0.0, 1.0, t));
+    } else if (altitude < GRASS_HEIGHT) {
+        // Grassland/forest
+        float t = (altitude - BEACH_HEIGHT) / (GRASS_HEIGHT - BEACH_HEIGHT);
+        color = mix(GRASS_GREEN, FOREST_GREEN, t);
+    } else if (altitude < ROCK_HEIGHT) {
+        // Rocky terrain
+        float t = (altitude - GRASS_HEIGHT) / (ROCK_HEIGHT - GRASS_HEIGHT);
+        color = mix(FOREST_GREEN, ROCK_BROWN, smoothstep(0.0, 1.0, t));
+    } else if (altitude < SNOW_HEIGHT) {
+        // Mountain slopes
+        float t = (altitude - ROCK_HEIGHT) / (SNOW_HEIGHT - ROCK_HEIGHT);
+        color = mix(ROCK_BROWN, MOUNTAIN_GRAY, t);
+    } else {
+        // Snow caps
+        float t = min((altitude - SNOW_HEIGHT) / 1000.0, 1.0);
+        color = mix(MOUNTAIN_GRAY, SNOW_WHITE, smoothstep(0.0, 1.0, t));
+    }
+    
+    // Mix with vertex color for material variation
+    color = mix(color, fragColor, 0.3);
+    
+    return color;
+}
+
+vec3 atmosphericScattering(vec3 color, float distance) {
+    // Simple atmospheric scattering
+    const vec3 atmosphereColor = vec3(0.5, 0.7, 1.0);
+    const float atmosphereDensity = 0.000002;
+    
+    float scatterAmount = 1.0 - exp(-distance * atmosphereDensity);
+    scatterAmount = pow(scatterAmount, 1.5); // Adjust falloff
+    
+    return mix(color, atmosphereColor, scatterAmount * 0.4);
+}
+
 void main() {
-    // Simple shading to see 3D structure
-    vec3 lightDir = normalize(vec3(0.5, -0.7, -0.5));
-    float lighting = max(dot(normalize(fragNormal), -lightDir), 0.0);
+    vec3 normal = normalize(fragNormal);
+    vec3 viewDir = normalize(fragViewDir);
     
-    // Use vertex color with simple lighting
-    vec3 finalColor = fragColor * (0.3 + 0.7 * lighting);
+    // Primary light source (sun)
+    vec3 sunDir = normalize(vec3(0.5, 0.8, 0.3));
+    vec3 sunColor = vec3(1.0, 0.95, 0.8);
     
-    outColor = vec4(finalColor, 1.0);
+    // Diffuse lighting
+    float NdotL = max(dot(normal, sunDir), 0.0);
+    vec3 diffuse = sunColor * NdotL;
+    
+    // Specular lighting for water
+    vec3 specular = vec3(0.0);
+    if (fragAltitude < SEA_LEVEL) {
+        vec3 halfDir = normalize(sunDir + viewDir);
+        float spec = pow(max(dot(normal, halfDir), 0.0), 32.0);
+        specular = sunColor * spec * 0.5;
+    }
+    
+    // Ambient lighting with sky color
+    vec3 skyColor = vec3(0.4, 0.6, 0.9);
+    vec3 groundColor = vec3(0.2, 0.15, 0.1);
+    float skyFactor = normal.y * 0.5 + 0.5;
+    vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.3;
+    
+    // Get terrain color based on altitude
+    vec3 terrainColor = getTerrainColor(fragAltitude);
+    
+    // Combine lighting
+    vec3 color = terrainColor * (ambient + diffuse * 0.8) + specular;
+    
+    // Rim lighting for atmosphere effect
+    float rim = 1.0 - max(dot(normal, viewDir), 0.0);
+    rim = pow(rim, 2.0);
+    color += skyColor * rim * 0.15;
+    
+    // Apply atmospheric scattering
+    float distance = length(fragWorldPos - ubo.viewPos);
+    color = atmosphericScattering(color, distance);
+    
+    // Tone mapping and gamma correction
+    color = color / (color + vec3(1.0)); // Reinhard tone mapping
+    color = pow(color, vec3(1.0/2.2));   // Gamma correction
+    
+    outColor = vec4(color, 1.0);
 }
 // GLSL_END
 

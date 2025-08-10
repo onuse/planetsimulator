@@ -46,6 +46,7 @@ test_*
 # debug information files
 *.dwo
 *nul
+*.log
 
 # Build directories
 build*/
@@ -109,6 +110,7 @@ CLAUDE.md
 all_tests.txt
 built_tests.txt
 *_list.txt
+output.txt
 
 # Build artifacts in root
 build_*/

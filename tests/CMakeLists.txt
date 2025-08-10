@@ -52,3 +52,14 @@ add_executable(test_transvoxel_debug
 target_link_libraries(test_transvoxel_debug
     glm::glm
 )
+
+# Test executable for LOD system
+add_executable(test_lod_system
+    test_lod_system.cpp
+    ../src/core/density_field.cpp
+    ../src/core/spherical_quadtree.cpp
+)
+
+target_link_libraries(test_lod_system
+    glm::glm
+)
