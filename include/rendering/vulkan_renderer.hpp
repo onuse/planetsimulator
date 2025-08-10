@@ -258,10 +258,10 @@ private:
     void updateMaterialTableBuffer();
     
     // Device selection helpers
-    bool isDeviceSuitable(VkPhysicalDevice device);
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-    bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+    bool isDeviceSuitable(VkPhysicalDevice physDevice);
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physDevice);
+    bool checkDeviceExtensionSupport(VkPhysicalDevice physDevice);
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice physDevice);
     
     // Swap chain helpers
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);

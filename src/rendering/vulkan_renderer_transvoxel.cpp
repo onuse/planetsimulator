@@ -377,7 +377,7 @@ void VulkanRenderer::updateChunks(octree::OctreePlanet* planet, core::Camera* ca
     return;
 }
 
-void VulkanRenderer::generateChunkMeshes(octree::OctreePlanet* planet) {
+void VulkanRenderer::generateChunkMeshes(octree::OctreePlanet* /*planet*/) {
     if (!transvoxelRenderer) return;
     
     // Track mesh generation

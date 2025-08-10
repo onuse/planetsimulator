@@ -92,9 +92,9 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     lastFrameTime = currentTime;
     
     // Calculate camera distance metrics
-    glm::vec3 cameraPos = camera->getPosition();
-    float distanceToOrigin = glm::length(cameraPos);
-    float planetRadius = planet->getRadius();
+    // glm::vec3 cameraPos = camera->getPosition();
+    // float distanceToOrigin = glm::length(cameraPos);
+    // float planetRadius = planet->getRadius();
     // float distanceToPlanetSurface = std::max(0.0f, distanceToOrigin - planetRadius);
     
     // Don't override camera settings - they are managed by autoAdjustClipPlanes

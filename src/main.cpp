@@ -107,9 +107,9 @@ public:
         }
         
         // Main loop
-        auto startTime = std::chrono::high_resolution_clock::now();
-        auto lastScreenshot = startTime;
-        auto lastFrame = startTime;
+        auto loopStartTime = std::chrono::high_resolution_clock::now();
+        auto lastScreenshot = loopStartTime;
+        auto lastFrame = loopStartTime;
         
         int frameCount = 0;
         float simulationTime = 0.0f; // In million years
@@ -124,7 +124,7 @@ public:
         
         while (!shouldExit()) {
             auto currentTime = std::chrono::high_resolution_clock::now();
-            float elapsed = std::chrono::duration<float>(currentTime - startTime).count();
+            float elapsed = std::chrono::duration<float>(currentTime - loopStartTime).count();
             float deltaTime = std::chrono::duration<float>(currentTime - lastFrame).count();
             lastFrame = currentTime;
             
