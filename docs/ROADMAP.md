@@ -18,8 +18,8 @@ A scientifically accurate **planet evolution simulator** that models 4.5 billion
 
 ## Phase 2: Octree Implementation ✅
 - [x] Sparse voxel octree with GPU-friendly layout
-- [ ] Level-of-detail (LOD) system (disabled - needs optimization)
-- [x] Frustum culling
+- [ ] Level-of-detail (LOD) system (reverted due to moiré patterns)
+- [ ] Frustum culling (reverted)
 - [x] Octree traversal on CPU (GPU traversal future work)
 
 ## Phase 3: Rendering ✅ COMPLETE (Legacy Instance Rendering)

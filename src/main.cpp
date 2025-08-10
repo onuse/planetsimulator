@@ -334,10 +334,22 @@ private:
         
         // Zoom with scroll wheel - only if ImGui doesn't want mouse
         if (!imguiWantsMouse && input.scrollDelta.y != 0) {
-            // Pass scroll delta directly to zoom function
-            // Positive scroll (up) should zoom in
-            // Negative scroll (down) should zoom out
-            float zoomDelta = input.scrollDelta.y * 0.5f; // Scale but don't invert
+            // Scale zoom speed based on altitude - MUCH slower when closer
+            // altitude is already calculated above
+            float altitudeRatio = altitude / config.radius;
+            
+            // Use exponential scaling for smooth speed reduction
+            // This gives us very fine control near the surface
+            float scaleFactor = 0.5f * std::pow(altitudeRatio * 10.0f, 2.0f);
+            scaleFactor = std::max(0.001f, std::min(0.5f, scaleFactor));  // Clamp between 0.001 and 0.5
+            
+            // Additional safety: prevent zooming below a minimum altitude
+            if (altitude < config.radius * 0.0001f && input.scrollDelta.y > 0) {
+                // At very low altitude, only allow zooming out
+                scaleFactor = 0.0f;
+            }
+            
+            float zoomDelta = input.scrollDelta.y * scaleFactor;
             camera.zoom(zoomDelta);
         }
         
