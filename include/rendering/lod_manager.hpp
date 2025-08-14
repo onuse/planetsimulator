@@ -50,6 +50,13 @@ public:
     // Get quadtree instance buffer for descriptor set binding
     VkBuffer getQuadtreeInstanceBuffer() const { return quadtreeData.instanceBuffer; }
     
+    // Check if instance buffer was updated and needs descriptor set update
+    bool isBufferUpdateRequired() { 
+        bool result = bufferUpdateRequired;
+        bufferUpdateRequired = false;  // Reset flag after checking
+        return result;
+    }
+    
     // Access to subsystems
     core::DensityField* getDensityField() { return densityField.get(); }
     core::SphericalQuadtree* getQuadtree() { return quadtree.get(); }
@@ -106,6 +113,9 @@ private:
     
     // Octree/Transvoxel rendering data
     std::vector<TransvoxelChunk> octreeChunks;
+    
+    // Buffer update tracking
+    bool bufferUpdateRequired = false;
     
     // Helper functions
     RenderingMode selectRenderingMode(float altitude);

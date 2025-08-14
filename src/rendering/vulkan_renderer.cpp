@@ -110,12 +110,18 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
         glm::mat4 viewProj = camera->getProjectionMatrix() * camera->getViewMatrix();
         lodManager->update(camera->getPosition(), viewProj, frameTime);
         
-        // Update descriptor set with current instance buffer (only if changed)
+        // Check if instance buffer was recreated and needs descriptor set update
+        // This MUST happen before any draw calls to prevent GPU crashes
         static VkBuffer lastInstanceBuffer = VK_NULL_HANDLE;
-        VkBuffer instanceBuf = lodManager->getQuadtreeInstanceBuffer();
-        if (instanceBuf != VK_NULL_HANDLE && instanceBuf != lastInstanceBuffer) {
-            updateQuadtreeInstanceBuffer(instanceBuf);
-            lastInstanceBuffer = instanceBuf;
+        if (lodManager->isBufferUpdateRequired()) {
+            VkBuffer instanceBuf = lodManager->getQuadtreeInstanceBuffer();
+            if (instanceBuf != VK_NULL_HANDLE) {
+                // Wait for GPU to finish before updating descriptor sets
+                vkDeviceWaitIdle(device);
+                updateQuadtreeInstanceBuffer(instanceBuf);
+                lastInstanceBuffer = instanceBuf;
+                std::cout << "[VulkanRenderer] Instance buffer updated, descriptor sets refreshed" << std::endl;
+            }
         }
         
         // Use LOD manager for rendering decision

@@ -1,4 +1,5 @@
 #include "rendering/lod_manager.hpp"
+#include "core/global_patch_generator.hpp"
 #include <cstring>
 #include <stdexcept>
 #include <iostream>
@@ -42,6 +43,9 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
     quadConfig.morphRegion = 0.3f;
     quadConfig.enableMorphing = true;
     quadConfig.enableCrackFixes = true;
+    quadConfig.enableFaceCulling = false;  // TEMPORARILY DISABLED FOR DEBUGGING
+    quadConfig.enableFrustumCulling = false;  // DISABLED - test without frustum culling
+    quadConfig.enableDistanceCulling = false;  // DISABLED - test without distance culling
     
     quadtree = std::make_unique<core::SphericalQuadtree>(quadConfig, densityField);
     
@@ -55,15 +59,19 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
     );
     
     // Create initial buffers for quadtree rendering
-    // Base mesh is a subdivided quad
+    // Base mesh is a subdivided quad with skirt vertices
     const uint32_t baseResolution = 64; // 64x64 grid per patch
-    const uint32_t vertexCount = baseResolution * baseResolution;
-    const uint32_t indexCount = (baseResolution - 1) * (baseResolution - 1) * 6;
+    const uint32_t skirtVertexCount = baseResolution * 4; // Skirt vertices around all 4 edges
+    const uint32_t vertexCount = baseResolution * baseResolution + skirtVertexCount;
+    const uint32_t mainIndexCount = (baseResolution - 1) * (baseResolution - 1) * 6;
+    const uint32_t skirtIndexCount = (baseResolution - 1) * 4 * 6; // 4 edges, 2 triangles per quad
+    const uint32_t indexCount = mainIndexCount + skirtIndexCount;
     
     // Generate base mesh vertices (unit quad)
     std::vector<glm::vec2> baseVertices;
     baseVertices.reserve(vertexCount);
     
+    // Main patch vertices
     for (uint32_t y = 0; y < baseResolution; y++) {
         for (uint32_t x = 0; x < baseResolution; x++) {
             float u = static_cast<float>(x) / (baseResolution - 1);
@@ -72,10 +80,38 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
         }
     }
     
+    // Skirt vertices - push vertices slightly outside the patch
+    const float skirtOffset = -0.05f; // Negative to push down/out
+    
+    // Top edge skirt (v = 0, pushed up)
+    for (uint32_t x = 0; x < baseResolution; x++) {
+        float u = static_cast<float>(x) / (baseResolution - 1);
+        baseVertices.push_back(glm::vec2(u, skirtOffset));
+    }
+    
+    // Bottom edge skirt (v = 1, pushed down)
+    for (uint32_t x = 0; x < baseResolution; x++) {
+        float u = static_cast<float>(x) / (baseResolution - 1);
+        baseVertices.push_back(glm::vec2(u, 1.0f - skirtOffset));
+    }
+    
+    // Left edge skirt (u = 0, pushed left)
+    for (uint32_t y = 0; y < baseResolution; y++) {
+        float v = static_cast<float>(y) / (baseResolution - 1);
+        baseVertices.push_back(glm::vec2(skirtOffset, v));
+    }
+    
+    // Right edge skirt (u = 1, pushed right)
+    for (uint32_t y = 0; y < baseResolution; y++) {
+        float v = static_cast<float>(y) / (baseResolution - 1);
+        baseVertices.push_back(glm::vec2(1.0f - skirtOffset, v));
+    }
+    
     // Generate indices
     std::vector<uint32_t> indices;
     indices.reserve(indexCount);
     
+    // Main patch indices
     for (uint32_t y = 0; y < baseResolution - 1; y++) {
         for (uint32_t x = 0; x < baseResolution - 1; x++) {
             uint32_t topLeft = y * baseResolution + x;
@@ -93,6 +129,84 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
             indices.push_back(bottomLeft);
             indices.push_back(bottomRight);
         }
+    }
+    
+    // Skirt indices
+    uint32_t skirtStart = baseResolution * baseResolution;
+    
+    // Top edge skirt
+    for (uint32_t x = 0; x < baseResolution - 1; x++) {
+        uint32_t mainTop = x;
+        uint32_t mainTopRight = mainTop + 1;
+        uint32_t skirtTop = skirtStart + x;
+        uint32_t skirtTopRight = skirtTop + 1;
+        
+        // First triangle
+        indices.push_back(mainTop);
+        indices.push_back(skirtTop);
+        indices.push_back(mainTopRight);
+        
+        // Second triangle
+        indices.push_back(mainTopRight);
+        indices.push_back(skirtTop);
+        indices.push_back(skirtTopRight);
+    }
+    
+    // Bottom edge skirt
+    uint32_t bottomSkirtStart = skirtStart + baseResolution;
+    for (uint32_t x = 0; x < baseResolution - 1; x++) {
+        uint32_t mainBottom = (baseResolution - 1) * baseResolution + x;
+        uint32_t mainBottomRight = mainBottom + 1;
+        uint32_t skirtBottom = bottomSkirtStart + x;
+        uint32_t skirtBottomRight = skirtBottom + 1;
+        
+        // First triangle
+        indices.push_back(mainBottom);
+        indices.push_back(mainBottomRight);
+        indices.push_back(skirtBottom);
+        
+        // Second triangle
+        indices.push_back(mainBottomRight);
+        indices.push_back(skirtBottomRight);
+        indices.push_back(skirtBottom);
+    }
+    
+    // Left edge skirt
+    uint32_t leftSkirtStart = skirtStart + baseResolution * 2;
+    for (uint32_t y = 0; y < baseResolution - 1; y++) {
+        uint32_t mainLeft = y * baseResolution;
+        uint32_t mainLeftBottom = (y + 1) * baseResolution;
+        uint32_t skirtLeft = leftSkirtStart + y;
+        uint32_t skirtLeftBottom = skirtLeft + 1;
+        
+        // First triangle
+        indices.push_back(mainLeft);
+        indices.push_back(mainLeftBottom);
+        indices.push_back(skirtLeft);
+        
+        // Second triangle
+        indices.push_back(mainLeftBottom);
+        indices.push_back(skirtLeftBottom);
+        indices.push_back(skirtLeft);
+    }
+    
+    // Right edge skirt
+    uint32_t rightSkirtStart = skirtStart + baseResolution * 3;
+    for (uint32_t y = 0; y < baseResolution - 1; y++) {
+        uint32_t mainRight = y * baseResolution + (baseResolution - 1);
+        uint32_t mainRightBottom = (y + 1) * baseResolution + (baseResolution - 1);
+        uint32_t skirtRight = rightSkirtStart + y;
+        uint32_t skirtRightBottom = skirtRight + 1;
+        
+        // First triangle
+        indices.push_back(mainRight);
+        indices.push_back(skirtRight);
+        indices.push_back(mainRightBottom);
+        
+        // Second triangle
+        indices.push_back(mainRightBottom);
+        indices.push_back(skirtRight);
+        indices.push_back(skirtRightBottom);
     }
     
     // Create vertex buffer
@@ -176,10 +290,11 @@ void LODManager::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
                        const glm::mat4& viewProj) {
     
     static int renderCount = 0;
-    if (renderCount++ % 300 == 0) {
+    if (renderCount++ % 300 == 0 || currentAltitude <= 10000.0f) {
         std::cout << "[LODManager::render] Mode: " << currentMode 
                   << ", Instances: " << quadtreeData.instanceCount
-                  << ", Indices: " << quadtreeData.indexCount << std::endl;
+                  << ", Indices: " << quadtreeData.indexCount 
+                  << ", Altitude: " << currentAltitude << "m" << std::endl;
     }
     
     switch (currentMode) {
@@ -197,6 +312,40 @@ void LODManager::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
                 
                 // Note: Instance buffer should be bound as a storage buffer via descriptor set,
                 // not as a vertex buffer. This is handled by the descriptor set binding.
+                
+                // Debug output before draw
+                static int drawCallCount = 0;
+                drawCallCount++;
+                
+                // Always log when instance count is high or on every 100th call
+                if (quadtreeData.instanceCount > 1000 || drawCallCount % 100 == 0) {
+                    std::cout << "[LODManager::DrawIndexed] Call #" << drawCallCount 
+                              << " - Indices: " << quadtreeData.indexCount
+                              << ", Instances: " << quadtreeData.instanceCount
+                              << ", Altitude: " << stats.altitude
+                              << "m" << std::endl;
+                    
+                    // Warn about potentially problematic instance counts
+                    if (quadtreeData.instanceCount > 5000) {
+                        std::cerr << "[WARNING] Very high instance count: " 
+                                  << quadtreeData.instanceCount << std::endl;
+                    }
+                    
+                    // Safety check - prevent drawing with excessive instances
+                    // Increased limit to handle close-up views with many patches
+                    if (quadtreeData.instanceCount > 50000) {
+                        std::cerr << "[ERROR] Instance count exceeds safety limit (50000): " 
+                                  << quadtreeData.instanceCount << std::endl;
+                        std::cerr << "Clamping to prevent potential issues" << std::endl;
+                        // Don't skip draw call - just warn
+                    }
+                }
+                
+                // Final safety check before draw
+                if (quadtreeData.indexCount == 0) {
+                    std::cerr << "[ERROR] Attempting to draw with 0 indices!" << std::endl;
+                    break;
+                }
                 
                 // Draw instanced
                 vkCmdDrawIndexed(commandBuffer, quadtreeData.indexCount, 
@@ -255,11 +404,12 @@ void LODManager::updateQuadtreeBuffers(const std::vector<core::QuadtreePatch>& p
     
     // Calculate required instance buffer size
     // Each instance needs: transform matrix, morph params, height texture coords, patch info
+    // MUST match the shader struct exactly! Using double precision for transform
     struct InstanceData {
-        glm::mat4 transform;
-        glm::vec4 morphParams; // morphFactor, neighborLODs
+        glm::dmat4 patchTransform;  // Double precision transform matrix
+        glm::vec4 morphParams;      // morphFactor, neighborLODs
         glm::vec4 heightTexCoord;
-        glm::vec4 patchInfo; // level, size, unused, unused
+        glm::vec4 patchInfo;        // level, size, unused, unused
     };
     
     VkDeviceSize instanceBufferSize = sizeof(InstanceData) * patches.size();
@@ -271,80 +421,305 @@ void LODManager::updateQuadtreeBuffers(const std::vector<core::QuadtreePatch>& p
     if (quadtreeData.instanceBuffer == VK_NULL_HANDLE || 
         instanceBufferSize > currentBufferSize) {
         
-        // Clean up old buffer if it exists
-        if (quadtreeData.instanceBuffer != VK_NULL_HANDLE) {
-            destroyBuffer(quadtreeData.instanceBuffer, quadtreeData.instanceMemory);
-        }
+        // Store old buffer to destroy after creating new one
+        VkBuffer oldBuffer = quadtreeData.instanceBuffer;
+        VkDeviceMemory oldMemory = quadtreeData.instanceMemory;
         
-        // Create new buffer with some extra space to avoid frequent recreations
-        VkDeviceSize allocSize = instanceBufferSize + sizeof(InstanceData) * 10; // Add space for 10 extra instances
+        // Create new buffer with extra space to avoid frequent recreations
+        // Use exponential growth strategy: allocate 2x required or at least 1000 instances
+        VkDeviceSize minSize = sizeof(InstanceData) * 1000;  // Support at least 1000 patches
+        VkDeviceSize allocSize = std::max(instanceBufferSize * 2, minSize);
+        
+        std::cout << "[LODManager] Reallocating instance buffer: " 
+                  << "Required: " << patches.size() << " patches (" << instanceBufferSize << " bytes), "
+                  << "Allocating: " << (allocSize / sizeof(InstanceData)) << " patches (" << allocSize << " bytes)" 
+                  << std::endl;
+        
+        // Create new buffer before destroying old one
+        quadtreeData.instanceBuffer = VK_NULL_HANDLE;
+        quadtreeData.instanceMemory = VK_NULL_HANDLE;
+        
         createBuffer(allocSize,
                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                     quadtreeData.instanceBuffer, quadtreeData.instanceMemory);
         currentBufferSize = allocSize;
+        
+        // Notify renderer that instance buffer has changed
+        // This is critical to update descriptor sets before next draw
+        bufferUpdateRequired = true;
+        
+        // Clean up old buffer after new one is created
+        if (oldBuffer != VK_NULL_HANDLE) {
+            // Wait for GPU to finish using old buffer
+            vkDeviceWaitIdle(device);
+            destroyBuffer(oldBuffer, oldMemory);
+        }
     }
     
     // Map memory and update instance data
     void* data;
-    vkMapMemory(device, quadtreeData.instanceMemory, 0, instanceBufferSize, 0, &data);
+    if (vkMapMemory(device, quadtreeData.instanceMemory, 0, instanceBufferSize, 0, &data) != VK_SUCCESS) {
+        std::cerr << "[ERROR] Failed to map instance buffer memory!" << std::endl;
+        return;
+    }
     
     InstanceData* instanceArray = static_cast<InstanceData*>(data);
     
-    // Debug: Log patches with transform details
+    // Enhanced debug logging
     static int debugCounter = 0;
-    if (debugCounter++ % 100 == 0 && patches.size() > 0) {
-        std::cout << "[UpdateQuadtreeBuffers] Updating " << patches.size() << " patches:" << std::endl;
-        for (size_t j = 0; j < patches.size(); j++) {
+    debugCounter++;
+    
+    // Track valid/invalid patches for summary
+    int validPatches = 0;
+    int degeneratePatches = 0;
+    int invertedPatches = 0;
+    int invalidDataPatches = 0;
+    
+    // Log on high patch counts or periodically
+    if (patches.size() > 1000 || debugCounter % 100 == 0) {
+        std::cout << "[UpdateQuadtreeBuffers] Frame " << debugCounter 
+                  << " - Updating " << patches.size() << " patches" << std::endl;
+        
+        if (patches.size() > 5000) {
+            std::cerr << "[WARNING] Excessive patch count in buffer update: " 
+                      << patches.size() << std::endl;
+        }
+    }
+    
+    // Detailed logging for debugging - log at specific patch counts that are problematic
+    static bool logged2000 = false;
+    if (patches.size() == 6 || (patches.size() > 2000 && !logged2000)) {
+        if (patches.size() > 2000) logged2000 = true;
+        std::cout << "[UpdateQuadtreeBuffers] DETAILED - " << patches.size() << " patches:" << std::endl;
+        for (size_t j = 0; j < std::min(size_t(3), patches.size()); j++) {
             std::cout << "  Patch " << j << ":" << std::endl;
             std::cout << "    Center: " << patches[j].center.x << "," << patches[j].center.y << "," << patches[j].center.z << std::endl;
             std::cout << "    Corners: [0](" << patches[j].corners[0].x << "," << patches[j].corners[0].y << "," << patches[j].corners[0].z << ")"
                       << " [1](" << patches[j].corners[1].x << "," << patches[j].corners[1].y << "," << patches[j].corners[1].z << ")"
                       << " [2](" << patches[j].corners[2].x << "," << patches[j].corners[2].y << "," << patches[j].corners[2].z << ")"
                       << " [3](" << patches[j].corners[3].x << "," << patches[j].corners[3].y << "," << patches[j].corners[3].z << ")" << std::endl;
+            std::cout << "    Level: " << patches[j].level << ", Size: " << patches[j].size << std::endl;
         }
     }
     
     for (size_t i = 0; i < patches.size(); i++) {
         const auto& patch = patches[i];
         
-        // Compute transform matrix for this patch
-        // The patch corners are in cube space (-1 to 1), need to create a transform
-        // that maps UV coordinates (0-1) to cube face positions
-        glm::mat4 transform = glm::mat4(1.0f);
+        // Validate patch data thoroughly
+        bool isValid = true;
         
-        // Patch corners are in cube space, build transform from them
-        glm::vec3 bottomLeft = patch.corners[0];
-        glm::vec3 bottomRight = patch.corners[1];
-        glm::vec3 topRight = patch.corners[2];
-        glm::vec3 topLeft = patch.corners[3];
+        // Check corners for NaN/Inf
+        for (int c = 0; c < 4; c++) {
+            if (!std::isfinite(patch.corners[c].x) || !std::isfinite(patch.corners[c].y) || !std::isfinite(patch.corners[c].z)) {
+                std::cerr << "[ERROR] Patch " << i << " corner " << c << " is NaN/Inf!" << std::endl;
+                isValid = false;
+            }
+            // Check for extreme values that might cause issues
+            // Check for extreme values - cube space should be normalized (-1 to 1)
+            float magnitude = glm::length(patch.corners[c]);
+            if (magnitude > 2.0f) {  // sqrt(3) ≈ 1.73 is max for unit cube corner
+                std::cerr << "[ERROR] Patch " << i << " corner " << c << " has extreme magnitude: " << magnitude 
+                          << " (expected <= 1.73 for unit cube)" << std::endl;
+                std::cerr << "  Corner value: (" << patch.corners[c].x << ", " << patch.corners[c].y << ", " << patch.corners[c].z << ")" << std::endl;
+                isValid = false;
+            }
+        }
         
-        // Build basis vectors - these define how the UV quad maps to cube face
-        glm::vec3 right = bottomRight - bottomLeft;
-        glm::vec3 up = topLeft - bottomLeft; // Correct up vector
+        // Check center
+        if (!std::isfinite(patch.center.x) || !std::isfinite(patch.center.y) || !std::isfinite(patch.center.z)) {
+            std::cerr << "[ERROR] Patch " << i << " center is NaN/Inf!" << std::endl;
+            isValid = false;
+        }
         
-        // Transform maps from UV space (0,0)-(1,1) to cube face positions
-        // UV (0,0) should map to bottomLeft, UV(1,1) to topRight
-        transform[0] = glm::vec4(right, 0.0f);
-        transform[1] = glm::vec4(up, 0.0f);
-        transform[2] = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); // Not used for 2D patches
+        // Check level
+        if (patch.level > 20 || patch.level < 0) {
+            std::cerr << "[ERROR] Patch " << i << " level invalid: " << patch.level << std::endl;
+            isValid = false;
+        }
         
-        // Translation is the bottom-left corner (UV origin)
-        transform[3] = glm::vec4(bottomLeft, 1.0f);
+        // Check neighbor levels
+        for (int n = 0; n < 4; n++) {
+            if (patch.neighborLevels[n] > 20 || patch.neighborLevels[n] < 0) {
+                std::cerr << "[ERROR] Patch " << i << " neighbor " << n << " level invalid: " << patch.neighborLevels[n] << std::endl;
+                isValid = false;
+            }
+        }
         
-        instanceArray[i].transform = transform;
+        if (!isValid) {
+            // Skip this patch by setting zero transform
+            instanceArray[i].patchTransform = glm::dmat4(0.0);
+            instanceArray[i].morphParams = glm::vec4(0.0f);
+            instanceArray[i].heightTexCoord = glm::vec4(0.0f);
+            instanceArray[i].patchInfo = glm::vec4(0.0f);
+            invalidDataPatches++;
+            continue;
+        }
         
-        // Set morph parameters
+        // Create a GlobalPatch from the patch data to get the correct transform
+        core::GlobalPatchGenerator::GlobalPatch globalPatch;
+        
+        // FIXED: For face-aligned patches, we need to preserve the semantic ordering of corners
+        // The corners are ordered as: bottom-left, bottom-right, top-right, top-left
+        // We need to identify which dimension is fixed and set bounds accordingly
+        glm::vec3 minBounds, maxBounds;
+        
+        // Check which dimension has no variation (that's the fixed face dimension)
+        float xRange = std::abs(patch.corners[2].x - patch.corners[0].x);
+        float yRange = std::abs(patch.corners[2].y - patch.corners[0].y);
+        float zRange = std::abs(patch.corners[2].z - patch.corners[0].z);
+        const float eps = 0.001f;
+        
+        if (xRange < eps) {
+            // X is fixed - patch is on +X or -X face
+            // Corners are ordered: (x, minY, minZ), (x, minY, maxZ), (x, maxY, maxZ), (x, maxY, minZ)
+            float x = patch.corners[0].x;
+            minBounds = glm::vec3(x, 
+                                 std::min(patch.corners[0].y, patch.corners[2].y),
+                                 std::min(patch.corners[0].z, patch.corners[2].z));
+            maxBounds = glm::vec3(x,
+                                 std::max(patch.corners[0].y, patch.corners[2].y),
+                                 std::max(patch.corners[0].z, patch.corners[2].z));
+        }
+        else if (yRange < eps) {
+            // Y is fixed - patch is on +Y or -Y face
+            // Corners are ordered: (minX, y, minZ), (maxX, y, minZ), (maxX, y, maxZ), (minX, y, maxZ)
+            float y = patch.corners[0].y;
+            minBounds = glm::vec3(patch.corners[0].x, y, patch.corners[0].z);
+            maxBounds = glm::vec3(patch.corners[2].x, y, patch.corners[2].z);
+        }
+        else if (zRange < eps) {
+            // Z is fixed - patch is on +Z or -Z face
+            // Corners are ordered: (minX, minY, z), (maxX, minY, z), (maxX, maxY, z), (minX, maxY, z)
+            float z = patch.corners[0].z;
+            minBounds = glm::vec3(patch.corners[0].x, patch.corners[0].y, z);
+            maxBounds = glm::vec3(patch.corners[2].x, patch.corners[2].y, z);
+        }
+        else {
+            // Not a face patch - fall back to calculating from all corners
+            minBounds = glm::vec3(1e9f);
+            maxBounds = glm::vec3(-1e9f);
+            for (int j = 0; j < 4; j++) {
+                minBounds = glm::min(minBounds, patch.corners[j]);
+                maxBounds = glm::max(maxBounds, patch.corners[j]);
+            }
+        }
+        
+        globalPatch.minBounds = minBounds;
+        globalPatch.maxBounds = maxBounds;
+        globalPatch.center = patch.center;
+        globalPatch.level = patch.level;
+        globalPatch.faceId = patch.faceId;
+        
+        // Get the globally consistent transform
+        glm::dmat4 transform = globalPatch.createTransform();
+        
+        // Validate transform matrix before setting
+        bool transformValid = true;
+        for (int col = 0; col < 4; col++) {
+            for (int row = 0; row < 4; row++) {
+                if (!std::isfinite(transform[col][row])) {
+                    std::cerr << "[ERROR] Patch " << i << " transform[" << col << "][" << row << "] is NaN/Inf!" << std::endl;
+                    transformValid = false;
+                }
+            }
+        }
+        
+        // Check determinant to detect degenerate transforms
+        // Note: Negative determinants are OK - they just mean left-handed coordinate system
+        double det = glm::determinant(transform);
+        if (std::abs(det) < 1e-10) {
+            std::cerr << "[ERROR] Patch " << i << " has DEGENERATE transform (det=" << det << ")!" << std::endl;
+            std::cerr << "  Face " << patch.faceId << ", Level " << patch.level << std::endl;
+            std::cerr << "  Corners: [0](" << patch.corners[0].x << "," << patch.corners[0].y << "," << patch.corners[0].z << ")" << std::endl;
+            std::cerr << "          [1](" << patch.corners[1].x << "," << patch.corners[1].y << "," << patch.corners[1].z << ")" << std::endl;
+            std::cerr << "          [2](" << patch.corners[2].x << "," << patch.corners[2].y << "," << patch.corners[2].z << ")" << std::endl;
+            std::cerr << "          [3](" << patch.corners[3].x << "," << patch.corners[3].y << "," << patch.corners[3].z << ")" << std::endl;
+            transformValid = false;
+            degeneratePatches++;
+        }
+        // Removed check for negative determinant - it's not an error!
+        
+        if (!transformValid) {
+            instanceArray[i].patchTransform = glm::dmat4(1.0); // Identity matrix as fallback
+            std::cerr << "[WARNING] Using identity transform for patch " << i << std::endl;
+        } else {
+            instanceArray[i].patchTransform = transform;
+            validPatches++;
+        }
+        
+        // Set morph parameters with neighbor LOD levels for T-junction fixing
+        // Top, Right, Bottom, Left edges
         instanceArray[i].morphParams = glm::vec4(patch.morphFactor, 
-                                                 patch.neighborLevels[0],
-                                                 patch.neighborLevels[1], 
-                                                 patch.neighborLevels[2]);
+                                                 static_cast<float>(patch.neighborLevels[0]),
+                                                 static_cast<float>(patch.neighborLevels[1]), 
+                                                 static_cast<float>(patch.neighborLevels[2]));
         
-        // Set height texture coordinates (not used yet)
-        instanceArray[i].heightTexCoord = glm::vec4(0, 0, 1, 1);
+        // Use heightTexCoord to pass the 4th neighbor level and patch level
+        instanceArray[i].heightTexCoord = glm::vec4(static_cast<float>(patch.neighborLevels[3]), 
+                                                    static_cast<float>(patch.level), 
+                                                    0.0f, 0.0f);
         
-        // Set patch info
-        instanceArray[i].patchInfo = glm::vec4(patch.level, patch.size, 0.0f, 0.0f);
+        // Set patch info - include face ID
+        instanceArray[i].patchInfo = glm::vec4(patch.level, patch.size, static_cast<float>(patch.faceId), 0.0f);
+    }
+    
+    // Log summary if we found any problems
+    if (degeneratePatches > 0 || invertedPatches > 0 || invalidDataPatches > 0) {
+        std::cerr << "[PATCH VALIDATION SUMMARY] Total: " << patches.size() 
+                  << ", Valid: " << validPatches 
+                  << ", Invalid data: " << invalidDataPatches
+                  << ", Degenerate: " << degeneratePatches 
+                  << ", Inverted: " << invertedPatches << std::endl;
+    } else if (debugCounter % 100 == 0 || patches.size() > 1000) {
+        std::cout << "[PATCH VALIDATION] All " << validPatches << " patches valid!" << std::endl;
+    }
+    
+    // Debug: Count patches per face and level
+    if (debugCounter % 20 == 0 || debugCounter == 1) {
+        int faceCounts[6] = {0};
+        int levelCounts[10] = {0};
+        
+        // Also check for suspicious patches (potential holes)
+        int suspiciousPatches = 0;
+        
+        for (const auto& patch : patches) {
+            if (patch.faceId < 6) faceCounts[patch.faceId]++;
+            if (patch.level < 10) levelCounts[patch.level]++;
+            
+            // Check for patches at face boundaries
+            bool atBoundary = false;
+            for (int c = 0; c < 4; c++) {
+                float x = std::abs(patch.corners[c].x);
+                float y = std::abs(patch.corners[c].y);
+                float z = std::abs(patch.corners[c].z);
+                
+                // Check if corner is at cube face edge (value close to 1)
+                if ((x > 0.98f && x < 1.02f) || 
+                    (y > 0.98f && y < 1.02f) || 
+                    (z > 0.98f && z < 1.02f)) {
+                    atBoundary = true;
+                }
+            }
+            
+            if (atBoundary) {
+                suspiciousPatches++;
+                if (debugCounter == 1 && suspiciousPatches <= 5) {
+                    std::cout << "[BOUNDARY PATCH] Face " << patch.faceId 
+                              << " Level " << patch.level
+                              << " Center: " << patch.center.x << "," 
+                              << patch.center.y << "," << patch.center.z << std::endl;
+                }
+            }
+        }
+        
+        std::cout << "[PATCH DISTRIBUTION] Faces: ";
+        for (int i = 0; i < 6; i++) std::cout << faceCounts[i] << " ";
+        std::cout << "| Levels: ";
+        for (int i = 0; i < 5; i++) if (levelCounts[i] > 0) 
+            std::cout << "L" << i << ":" << levelCounts[i] << " ";
+        std::cout << " | Boundary patches: " << suspiciousPatches;
+        std::cout << std::endl;
     }
     
     vkUnmapMemory(device, quadtreeData.instanceMemory);

@@ -57,6 +57,18 @@ void Camera::update(float deltaTime) {
             break;
     }
     
+    // Enforce minimum altitude to prevent going inside planet
+    const float PLANET_RADIUS = 6371000.0f;
+    const float MIN_ALTITUDE = 10000.0f; // 10km minimum altitude
+    float distanceFromCenter = glm::length(position);
+    if (distanceFromCenter < PLANET_RADIUS + MIN_ALTITUDE) {
+        // Push camera back to minimum altitude
+        position = glm::normalize(position) * (PLANET_RADIUS + MIN_ALTITUDE);
+        if (mode == CameraMode::Orbital) {
+            orbitDistance = PLANET_RADIUS + MIN_ALTITUDE;
+        }
+    }
+    
     // Update matrices
     updateVectors();
     updateViewMatrix();
@@ -82,9 +94,28 @@ void Camera::orbit(float deltaAzimuth, float deltaElevation) {
 
 void Camera::zoom(float delta) {
     if (mode == CameraMode::Orbital) {
-        // Exponential zoom for orbital mode
-        orbitDistance *= std::pow(zoomSpeed, -delta);
-        orbitDistance = clamp(orbitDistance, 1000.0f, 100000000.0f); // 1km to 100,000km
+        const float PLANET_RADIUS = 6371000.0f;
+        const float MIN_ALTITUDE = 10000.0f; // 10km minimum altitude above surface
+        
+        // Scale zoom speed based on altitude for better control
+        float altitude = orbitDistance - PLANET_RADIUS;
+        float speedScale = 1.0f;
+        
+        if (altitude < 100000.0f) {  // Below 100km
+            speedScale = 0.3f;  // Very slow zoom
+        } else if (altitude < 500000.0f) {  // Below 500km
+            speedScale = 0.5f;  // Slow zoom
+        } else if (altitude < 2000000.0f) {  // Below 2000km
+            speedScale = 0.7f;  // Moderate zoom
+        }
+        // Above 2000km: normal zoom speed
+        
+        // Apply scaled exponential zoom
+        float adjustedDelta = delta * speedScale;
+        orbitDistance *= std::pow(zoomSpeed, -adjustedDelta);
+        
+        // Prevent camera from going inside planet
+        orbitDistance = clamp(orbitDistance, PLANET_RADIUS + MIN_ALTITUDE, 100000000.0f);
     } else {
         // Adjust movement speed for other modes
         movementSpeed *= std::pow(zoomSpeed, delta);
@@ -337,21 +368,30 @@ void Camera::updateProjection() {
 }
 
 void Camera::autoAdjustClipPlanes(float altitude) {
+    // TEMPORARY: Fixed clipping planes for debugging
+    // Set near plane very close and far plane very far to see everything
+    nearPlane = 1.0f;  // 1 meter near plane
+    farPlane = 100000000.0f;  // 100M meters far plane
+    
+    std::cout << "[DEBUG] Clipping planes OVERRIDDEN for debugging: near=" 
+              << nearPlane << ", far=" << farPlane << std::endl;
+    
+    /* ORIGINAL CODE - DISABLED FOR DEBUGGING
     // Adjust near/far planes based on altitude
-    if (altitude < 1000.0f) {
-        // Very close to surface
-        nearPlane = 0.1f;
-        farPlane = 10000.0f;
+    if (altitude < 20000.0f) {
+        // Very close to surface (10-20km)
+        nearPlane = 1.0f;  // 1 meter near plane for close detail
+        farPlane = 100000.0f;  // 100km far plane
     } else if (altitude < 100000.0f) {
-        // Low altitude
+        // Low altitude (20-100km)
         nearPlane = 10.0f;
         farPlane = altitude * 100.0f;
     } else if (altitude < 1000000.0f) {
-        // Medium altitude
+        // Medium altitude (100km-1000km)
         nearPlane = 100.0f;
         farPlane = altitude * 50.0f;
     } else {
-        // High altitude / space
+        // High altitude / space (>1000km)
         // Keep near/far ratio under 10,000:1 to avoid precision issues
         nearPlane = altitude * 0.001f;   // Near at 0.1% of altitude
         farPlane = altitude * 2.0f;      // Far at 2x altitude
@@ -359,6 +399,7 @@ void Camera::autoAdjustClipPlanes(float altitude) {
         nearPlane = std::max(1000.0f, nearPlane);
         farPlane = std::min(50000000.0f, farPlane);  // Cap at 50M meters
     }
+    */
     
     // std::cout << "autoAdjustClipPlanes result: near=" << nearPlane << ", far=" << farPlane << std::endl;
     updateProjection();

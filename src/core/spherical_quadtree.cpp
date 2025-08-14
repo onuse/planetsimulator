@@ -1,5 +1,8 @@
 #include "core/spherical_quadtree.hpp"
 #include "core/camera.hpp"
+#include "core/global_patch_generator.hpp"
+#include "math/planet_math.hpp"
+#include "math/patch_alignment.hpp"
 #include <algorithm>
 #include <chrono>
 #include <iostream>
@@ -12,49 +15,90 @@ SphericalQuadtreeNode::SphericalQuadtreeNode(const glm::vec3& center, float size
                                              SphericalQuadtreeNode* parent)
     : parent(parent), level(level), face(face) {
     
-    patch.center = center;
+    // Use the new GlobalPatchGenerator for truly global coordinates from the start
+    // Calculate the bounds in cube space based on face
+    glm::vec3 minBounds, maxBounds;
+    float halfSize = size * 0.5f;
+    
+    // For face-aligned patches, only vary the non-face dimensions
+    switch (face) {
+    case FACE_POS_X:
+        minBounds = glm::vec3(1.0f, center.y - halfSize, center.z - halfSize);
+        maxBounds = glm::vec3(1.0f, center.y + halfSize, center.z + halfSize);
+        break;
+    case FACE_NEG_X:
+        minBounds = glm::vec3(-1.0f, center.y - halfSize, center.z - halfSize);
+        maxBounds = glm::vec3(-1.0f, center.y + halfSize, center.z + halfSize);
+        break;
+    case FACE_POS_Y:
+        minBounds = glm::vec3(center.x - halfSize, 1.0f, center.z - halfSize);
+        maxBounds = glm::vec3(center.x + halfSize, 1.0f, center.z + halfSize);
+        break;
+    case FACE_NEG_Y:
+        minBounds = glm::vec3(center.x - halfSize, -1.0f, center.z - halfSize);
+        maxBounds = glm::vec3(center.x + halfSize, -1.0f, center.z + halfSize);
+        break;
+    case FACE_POS_Z:
+        minBounds = glm::vec3(center.x - halfSize, center.y - halfSize, 1.0f);
+        maxBounds = glm::vec3(center.x + halfSize, center.y + halfSize, 1.0f);
+        break;
+    case FACE_NEG_Z:
+        minBounds = glm::vec3(center.x - halfSize, center.y - halfSize, -1.0f);
+        maxBounds = glm::vec3(center.x + halfSize, center.y + halfSize, -1.0f);
+        break;
+    }
+    
+    // Clamp varying dimensions to cube boundaries [-1, 1]
+    minBounds = glm::max(minBounds, glm::vec3(-1.0f));
+    maxBounds = glm::min(maxBounds, glm::vec3(1.0f));
+    
+    // CRITICAL FIX: Ensure face boundary vertices are EXACTLY at ±1
+    // This ensures patches from different faces share vertices at boundaries
+    const float EPSILON = 1e-5f;  // Tight tolerance to catch floating-point errors
+    const float BOUNDARY = 1.0f;
+    
+    // Snap coordinates that are very close to boundaries to exact boundary values
+    // This is critical for ensuring patches from different faces share vertices
+    for (int i = 0; i < 3; i++) {
+        // Check if close to +1 boundary
+        if (std::abs(minBounds[i] - BOUNDARY) < EPSILON) {
+            minBounds[i] = BOUNDARY;
+        }
+        if (std::abs(maxBounds[i] - BOUNDARY) < EPSILON) {
+            maxBounds[i] = BOUNDARY;
+        }
+        // Check if close to -1 boundary
+        if (std::abs(minBounds[i] + BOUNDARY) < EPSILON) {
+            minBounds[i] = -BOUNDARY;
+        }
+        if (std::abs(maxBounds[i] + BOUNDARY) < EPSILON) {
+            maxBounds[i] = -BOUNDARY;
+        }
+    }
+    
+    // Create patch using global coordinate system
+    GlobalPatchGenerator::GlobalPatch globalPatch;
+    globalPatch.minBounds = minBounds;
+    globalPatch.maxBounds = maxBounds;
+    globalPatch.center = (minBounds + maxBounds) * 0.5f;
+    globalPatch.level = level;
+    globalPatch.faceId = static_cast<int>(face);
+    
+    // Transfer data to our QuadtreePatch structure
+    patch.center = globalPatch.center;
     patch.size = size;
     patch.level = level;
+    patch.faceId = static_cast<uint32_t>(face);
     patch.morphFactor = 0.0f;
     patch.screenSpaceError = 0.0f;
     
-    // Calculate corner positions
-    float halfSize = size * 0.5f;
-    glm::vec3 up, right;
-    
-    // Determine local coordinate system based on face
-    switch (face) {
-        case FACE_POS_X:
-            up = glm::vec3(0, 1, 0);
-            right = glm::vec3(0, 0, 1);
-            break;
-        case FACE_NEG_X:
-            up = glm::vec3(0, 1, 0);
-            right = glm::vec3(0, 0, -1);
-            break;
-        case FACE_POS_Y:
-            up = glm::vec3(0, 0, 1);
-            right = glm::vec3(1, 0, 0);
-            break;
-        case FACE_NEG_Y:
-            up = glm::vec3(0, 0, -1);
-            right = glm::vec3(1, 0, 0);
-            break;
-        case FACE_POS_Z:
-            up = glm::vec3(0, 1, 0);
-            right = glm::vec3(-1, 0, 0);  // Reversed to match winding of other faces
-            break;
-        case FACE_NEG_Z:
-            up = glm::vec3(0, 1, 0);
-            right = glm::vec3(1, 0, 0);   // Reversed to match winding of other faces
-            break;
+    // Get corners in canonical global order
+    glm::vec3 corners[4];
+    globalPatch.getCorners(corners);
+    for (int i = 0; i < 4; i++) {
+        patch.corners[i] = corners[i];
+        patch.neighborLevels[i] = level;
     }
-    
-    // Set corner positions (in cube space, will be projected to sphere)
-    patch.corners[0] = center + (-right - up) * halfSize; // Bottom-left
-    patch.corners[1] = center + (right - up) * halfSize;  // Bottom-right
-    patch.corners[2] = center + (right + up) * halfSize;  // Top-right
-    patch.corners[3] = center + (-right + up) * halfSize; // Top-left
     
     // Clear neighbors
     for (int i = 0; i < 4; i++) {
@@ -63,26 +107,60 @@ SphericalQuadtreeNode::SphericalQuadtreeNode(const glm::vec3& center, float size
 }
 
 glm::vec3 SphericalQuadtreeNode::cubeToSphere(const glm::vec3& cubePos, float radius) const {
-    // Project cube position to sphere using gnomonic projection
-    glm::vec3 pos2 = cubePos * cubePos;
-    glm::vec3 spherePos = cubePos * glm::sqrt(1.0f - pos2.y * 0.5f - pos2.z * 0.5f + pos2.y * pos2.z / 3.0f);
-    spherePos.y *= glm::sqrt(1.0f - pos2.x * 0.5f - pos2.z * 0.5f + pos2.x * pos2.z / 3.0f);
-    spherePos.z *= glm::sqrt(1.0f - pos2.x * 0.5f - pos2.y * 0.5f + pos2.x * pos2.y / 3.0f);
-    
-    return glm::normalize(spherePos) * radius;
+    // Use the tested math function
+    glm::dvec3 spherePos = math::cubeToSphere(glm::dvec3(cubePos));
+    return glm::vec3(spherePos) * radius;
 }
 
 void SphericalQuadtreeNode::subdivide(const DensityField& densityField) {
     if (!isLeaf()) return;
     
+    // Create GlobalPatch from current patch
+    GlobalPatchGenerator::GlobalPatch globalPatch;
+    
+    // Calculate bounds from corners
+    glm::vec3 minBounds(1e9f), maxBounds(-1e9f);
+    for (int i = 0; i < 4; i++) {
+        minBounds = glm::min(minBounds, patch.corners[i]);
+        maxBounds = glm::max(maxBounds, patch.corners[i]);
+    }
+    
+    globalPatch.minBounds = minBounds;
+    globalPatch.maxBounds = maxBounds;
+    globalPatch.center = patch.center;
+    globalPatch.level = patch.level;
+    globalPatch.faceId = static_cast<int>(face);
+    
+    // Subdivide using global coordinates
+    std::vector<GlobalPatchGenerator::GlobalPatch> childPatches = 
+        GlobalPatchGenerator::subdivide(globalPatch);
+    
     float childSize = patch.size * 0.5f;
     
     for (int i = 0; i < 4; i++) {
-        glm::vec3 childCenter = getChildCenter(i);
         children[i] = std::make_unique<SphericalQuadtreeNode>(
-            childCenter, childSize, level + 1, face, this
+            childPatches[i].center, childSize, level + 1, face, this
         );
+        
+        // Sample heights for the child patch
+        // Use higher resolution for closer LODs
+        uint32_t resolution = 32; // Could vary by level
+        children[i]->sampleHeights(densityField, resolution);
     }
+    
+    // Set up internal neighbor connections between children
+    // Child layout:
+    // 3---2
+    // |   |
+    // 0---1
+    children[0]->setNeighbor(EDGE_RIGHT, children[1].get());
+    children[1]->setNeighbor(EDGE_LEFT, children[0].get());
+    children[1]->setNeighbor(EDGE_TOP, children[2].get());
+    children[2]->setNeighbor(EDGE_BOTTOM, children[1].get());
+    children[2]->setNeighbor(EDGE_LEFT, children[3].get());
+    children[3]->setNeighbor(EDGE_RIGHT, children[2].get());
+    children[3]->setNeighbor(EDGE_BOTTOM, children[0].get());
+    children[0]->setNeighbor(EDGE_TOP, children[3].get());
     
     updateNeighborReferences();
 }
@@ -98,21 +176,33 @@ glm::vec3 SphericalQuadtreeNode::getChildCenter(int childIndex) const {
         case 3: offset = glm::vec3(-quarterSize, quarterSize, 0); break;  // Top-left
     }
     
-    // Transform offset based on face orientation
-    glm::vec3 up, right;
+    // FIXED: Use consistent coordinate transformations matching the face orientations
+    glm::vec3 right, up;
     switch (face) {
         case FACE_POS_X:
-            return patch.center + glm::vec3(0, offset.y, offset.x);
+            right = glm::vec3(0, 0, 1);
+            up = glm::vec3(0, 1, 0);
+            return patch.center + right * offset.x + up * offset.y;
         case FACE_NEG_X:
-            return patch.center + glm::vec3(0, offset.y, -offset.x);
+            right = glm::vec3(0, 0, -1);
+            up = glm::vec3(0, 1, 0);
+            return patch.center + right * offset.x + up * offset.y;
         case FACE_POS_Y:
-            return patch.center + glm::vec3(offset.x, 0, offset.y);
+            right = glm::vec3(1, 0, 0);
+            up = glm::vec3(0, 0, 1);
+            return patch.center + right * offset.x + up * offset.y;
         case FACE_NEG_Y:
-            return patch.center + glm::vec3(offset.x, 0, -offset.y);
+            right = glm::vec3(1, 0, 0);
+            up = glm::vec3(0, 0, -1);
+            return patch.center + right * offset.x + up * offset.y;
         case FACE_POS_Z:
-            return patch.center + glm::vec3(-offset.x, offset.y, 0);
+            right = glm::vec3(-1, 0, 0);
+            up = glm::vec3(0, 1, 0);
+            return patch.center + right * offset.x + up * offset.y;
         case FACE_NEG_Z:
-            return patch.center + glm::vec3(offset.x, offset.y, 0);
+            right = glm::vec3(1, 0, 0);
+            up = glm::vec3(0, 1, 0);
+            return patch.center + right * offset.x + up * offset.y;
     }
     
     return patch.center;
@@ -130,48 +220,108 @@ void SphericalQuadtreeNode::merge() {
 
 float SphericalQuadtreeNode::calculateScreenSpaceError(const glm::vec3& viewPos, 
                                                        const glm::mat4& viewProj) const {
-    // Calculate distance to viewer
-    float distance = glm::length(viewPos - patch.center);
-    if (distance < 1.0f) distance = 1.0f;
+    // Use the tested math function with comprehensive logging
+    const float planetRadius = 6371000.0f;
+    glm::vec3 sphereCenter = cubeToSphere(patch.center, planetRadius);
     
-    // Geometric error (size of features at this LOD level)
-    float geometricError = patch.size * 0.1f; // Approximate feature size
+    // Convert to double precision for calculation
+    float error = math::calculateScreenSpaceError(
+        glm::dvec3(sphereCenter),
+        static_cast<double>(patch.size),
+        glm::dvec3(viewPos),
+        glm::dmat4(viewProj),
+        static_cast<double>(planetRadius),
+        720  // Screen height
+    );
     
-    // Project to screen space
-    glm::vec4 centerProj = viewProj * glm::vec4(patch.center, 1.0f);
-    if (centerProj.w <= 0.0f) return 0.0f;
+    // Log patch details for debugging
+    static int errorLogCount = 0;
+    if (errorLogCount++ % 500 == 0 || error > 1000.0f) {
+        std::cout << "[Node::ScreenError] Level:" << level 
+                  << " Center:" << math::toString(glm::dvec3(patch.center))
+                  << " Size:" << patch.size
+                  << " Error:" << error << std::endl;
+    }
     
-    glm::vec4 edgeProj = viewProj * glm::vec4(patch.center + glm::vec3(geometricError, 0, 0), 1.0f);
-    if (edgeProj.w <= 0.0f) return 0.0f;
-    
-    // Calculate pixel error
-    glm::vec2 centerScreen = glm::vec2(centerProj) / centerProj.w;
-    glm::vec2 edgeScreen = glm::vec2(edgeProj) / edgeProj.w;
-    
-    float screenError = glm::length(edgeScreen - centerScreen) * 720.0f; // Assuming 720p height
-    
-    return screenError;
+    return error;
 }
 
 void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4& viewProj,
                                       float errorThreshold, uint32_t maxLevel,
                                       std::vector<QuadtreePatch>& visiblePatches) {
     
-    // Frustum culling would go here
+    // CRITICAL FIX 1: Hard limit on recursion depth
+    const uint32_t ABSOLUTE_MAX_LEVEL = 15;  // Proven sufficient by our tests
+    if (level >= ABSOLUTE_MAX_LEVEL) {
+        if (isLeaf()) {
+            patch.isVisible = true;
+            visiblePatches.push_back(patch);
+        }
+        return;  // Stop recursion immediately
+    }
+    
+    // Safety check - prevent buffer overflow (increased limit for close-up views)
+    if (visiblePatches.size() >= 20000) {  // Higher limit to support detailed close views
+        // Too many patches, just render current level without subdividing
+        if (isLeaf()) {
+            patch.isVisible = true;
+            visiblePatches.push_back(patch);
+        }
+        std::cout << "[SelectLOD] WARNING: Hit patch limit at 20000 patches" << std::endl;
+        return;
+    }
+    
+    // Basic frustum culling - could be improved
     // For now, assume all nodes are potentially visible
     
     float error = calculateScreenSpaceError(viewPos, viewProj);
     patch.screenSpaceError = error;
     
-    bool shouldSubdivide = error > errorThreshold && level < maxLevel;
+    // CRITICAL FIX 2: Ensure maxLevel is reasonable
+    uint32_t safeMaxLevel = std::min(maxLevel, ABSOLUTE_MAX_LEVEL);
+    
+    // CRITICAL FIX 3: Minimum patch size check (1 meter at planet surface)
+    const float MIN_PATCH_SIZE = 1.0f / (1 << ABSOLUTE_MAX_LEVEL);  // Smallest meaningful patch
+    if (patch.size < MIN_PATCH_SIZE) {
+        if (isLeaf()) {
+            patch.isVisible = true;
+            visiblePatches.push_back(patch);
+        }
+        return;  // Patch too small to subdivide further
+    }
+    
+    bool shouldSubdivide = error > errorThreshold && level < safeMaxLevel;
+    
+    // Log subdivision decisions for key nodes (reduced frequency to prevent spam)
+    static int lodLogCount = 0;
+    if (lodLogCount++ % 10000 == 0 || (level < 3 && shouldSubdivide)) {
+        std::cout << "[SelectLOD] Level:" << level 
+                  << " Error:" << error 
+                  << " Threshold:" << errorThreshold
+                  << " ShouldSubdivide:" << shouldSubdivide
+                  << " IsLeaf:" << isLeaf() << std::endl;
+    }
     
     if (shouldSubdivide) {
         if (isLeaf()) {
-            // Need to subdivide but haven't yet - mark for subdivision
+            // This is a leaf that needs to subdivide
+            // We'll actually subdivide it now (requires access to density field)
+            // For now, just render at current level and mark for subdivision
             patch.needsUpdate = true;
+            patch.isVisible = true;
+            
+            // Update neighbor levels even for patches that need subdivision
+            for (int i = 0; i < 4; i++) {
+                if (neighbors[i]) {
+                    patch.neighborLevels[i] = neighbors[i]->level;
+                } else {
+                    patch.neighborLevels[i] = level;
+                }
+            }
+            
             visiblePatches.push_back(patch);
         } else {
-            // Recurse to children
+            // Already subdivided, recurse to children
             for (auto& child : children) {
                 if (child) {
                     child->selectLOD(viewPos, viewProj, errorThreshold, maxLevel, visiblePatches);
@@ -180,12 +330,41 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
         }
     } else {
         // This node is at appropriate detail level
-        patch.isVisible = true;
-        visiblePatches.push_back(patch);
-        
-        // If we have children but don't need them, could merge
-        if (!isLeaf() && error < errorThreshold * 0.5f) {
-            patch.needsUpdate = true; // Mark for potential merge
+        if (isLeaf()) {
+            // Render this leaf node
+            patch.isVisible = true;
+            
+            // Update neighbor levels for T-junction prevention
+            for (int i = 0; i < 4; i++) {
+                if (neighbors[i]) {
+                    patch.neighborLevels[i] = neighbors[i]->level;
+                } else {
+                    // No neighbor means we're at an edge - use same level
+                    patch.neighborLevels[i] = level;
+                }
+            }
+            
+            visiblePatches.push_back(patch);
+        } else {
+            // We have children but don't need that detail - could merge
+            // For now, just render this node
+            patch.isVisible = true;
+            
+            // Update neighbor levels
+            for (int i = 0; i < 4; i++) {
+                if (neighbors[i]) {
+                    patch.neighborLevels[i] = neighbors[i]->level;
+                } else {
+                    patch.neighborLevels[i] = level;
+                }
+            }
+            
+            visiblePatches.push_back(patch);
+            
+            // Mark for potential merge if error is very low
+            if (error < errorThreshold * 0.3f) {
+                patch.needsUpdate = true; // Mark for potential merge
+            }
         }
     }
 }
@@ -289,12 +468,42 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
     stats.subdivisions = 0;
     stats.merges = 0;
     
+    // Safety limit - prevent excessive patches
+    const size_t MAX_PATCHES = 50000;  // Increased limit for close-up detail
+    
     // Calculate error threshold based on view distance
     float errorThreshold = calculateErrorThreshold(viewPos);
     
+    // Dynamic adjustment - if we're getting too many patches, increase threshold
+    static int highPatchFrames = 0;
+    if (visiblePatches.size() > 5000) {
+        highPatchFrames++;
+        if (highPatchFrames > 10) {
+            // Sustained high patch count, increase threshold
+            errorThreshold *= 1.5f;
+            std::cout << "[SphericalQuadtree] Adjusting error threshold to " << errorThreshold 
+                      << " due to high patch count (" << visiblePatches.size() << ")" << std::endl;
+        }
+    } else {
+        highPatchFrames = 0;
+    }
+    
     // Select LOD for each root face - but only if the face is visible
+    static int frameCount = 0;
+    bool shouldLog = (frameCount++ % 120 == 0);  // Log every 2 seconds at 60fps
+    
+    if (shouldLog) {
+        std::cout << "[DEBUG] Processing cube faces. enableFaceCulling=" 
+                  << config.enableFaceCulling << std::endl;
+    }
+    
     for (int i = 0; i < 6; i++) {
         auto& root = roots[i];
+        
+        if (!root) {
+            if (shouldLog) std::cout << "[DEBUG] Face " << i << " - root is null!" << std::endl;
+            continue;
+        }
         
         // Check if this cube face is visible from the camera
         // Get the face normal based on the face index
@@ -308,14 +517,70 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
             case 5: faceNormal = glm::vec3(0, 0, -1); break;  // -Z
         }
         
-        // Check if face points toward camera
-        glm::vec3 toCamera = glm::normalize(viewPos);
-        float dot = glm::dot(faceNormal, toCamera);
+        // Use math function for culling decision with logging
+        bool shouldCull = config.enableFaceCulling ? 
+            math::shouldCullFace(i, viewPos, config.planetRadius) : false;
         
-        // If the face is pointing away from camera, skip it
-        // Use a small threshold to avoid popping at edges
-        if (dot < -0.1f) {
+        if (shouldCull) {
+            if (shouldLog) {
+                std::cout << "[DEBUG] Face " << i << " - CULLED" << std::endl;
+            }
             continue; // Face is on the far side of the planet
+        }
+        
+        if (shouldLog) {
+            std::cout << "[DEBUG] Face " << i << " - PROCESSING" << std::endl;
+        }
+        root->selectLOD(viewPos, viewProj, errorThreshold, config.maxLevel, visiblePatches);
+    }
+    
+    stats.visibleNodes = static_cast<uint32_t>(visiblePatches.size());
+    
+    // Perform actual subdivision/merge operations
+    // We need to do this in a second pass to avoid modifying the tree while traversing
+    // IMPORTANT: Give each face a fair share of subdivisions to prevent imbalance
+    // Negative faces need more aggressive subdivision to match positive faces
+    const int MAX_SUBDIVISIONS_PER_FACE = 200;  // Each face gets its own budget
+    
+    for (int i = 0; i < 6; i++) {
+        auto& root = roots[i];
+        
+        // For negative faces (odd indices), use lower error threshold to force more subdivision
+        float faceErrorThreshold = errorThreshold;
+        if (i % 2 == 1) {  // Negative faces: 1, 3, 5
+            faceErrorThreshold *= 0.5f;  // Half threshold = more aggressive subdivision
+            if (shouldLog) {
+                std::cout << "[DEBUG] Face " << i << " using reduced threshold: " 
+                          << faceErrorThreshold << std::endl;
+            }
+        }
+        
+        // Reset subdivision counter for each face to ensure fairness
+        performSubdivisionsForFace(root.get(), viewPos, viewProj, faceErrorThreshold, 
+                                   config.maxLevel, MAX_SUBDIVISIONS_PER_FACE);
+    }
+    
+    // Clear and re-select after subdivisions
+    visiblePatches.clear();
+    for (int i = 0; i < 6; i++) {
+        auto& root = roots[i];
+        
+        // Check visibility again
+        glm::vec3 faceNormal;
+        switch (i) {
+            case 0: faceNormal = glm::vec3(1, 0, 0); break;
+            case 1: faceNormal = glm::vec3(-1, 0, 0); break;
+            case 2: faceNormal = glm::vec3(0, 1, 0); break;
+            case 3: faceNormal = glm::vec3(0, -1, 0); break;
+            case 4: faceNormal = glm::vec3(0, 0, 1); break;
+            case 5: faceNormal = glm::vec3(0, 0, -1); break;
+        }
+        
+        // Use same culling logic as first pass - CHECK CONFIG FLAG!
+        bool shouldCull = config.enableFaceCulling ? 
+            math::shouldCullFace(i, viewPos, config.planetRadius) : false;
+        if (shouldCull) {
+            continue;
         }
         
         root->selectLOD(viewPos, viewProj, errorThreshold, config.maxLevel, visiblePatches);
@@ -323,13 +588,11 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
     
     stats.visibleNodes = static_cast<uint32_t>(visiblePatches.size());
     
-    // Perform actual subdivision/merge operations
-    for (auto& patch : visiblePatches) {
-        if (patch.needsUpdate) {
-            // This would trigger actual subdivision/merge
-            // For now just counting
-            stats.subdivisions++;
-        }
+    // Warn if approaching patch limit
+    if (visiblePatches.size() > 8000) {
+        std::cout << "[WARNING] High patch count: " << visiblePatches.size() 
+                  << " patches at altitude " << (glm::length(viewPos) - config.planetRadius) 
+                  << "m" << std::endl;
     }
     
     auto lodTime = std::chrono::high_resolution_clock::now();
@@ -354,13 +617,90 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
 float SphericalQuadtree::calculateErrorThreshold(const glm::vec3& viewPos) const {
     float altitude = glm::length(viewPos) - config.planetRadius;
     
-    // Adaptive error threshold based on altitude
-    if (altitude > 100000.0f) {
-        return config.pixelError * 4.0f; // Less detail from space
-    } else if (altitude > 10000.0f) {
-        return config.pixelError * 2.0f; // Medium detail
-    } else {
-        return config.pixelError; // Full detail near surface
+    // Clamp altitude to prevent negative values during transitions
+    altitude = std::max(altitude, 100.0f);
+    
+    // Use the tested math function with logging
+    float threshold = math::calculateLODThreshold(
+        static_cast<double>(altitude),
+        static_cast<double>(config.planetRadius)
+    );
+    
+    // Additional logging for debugging
+    static float lastLoggedAltitude = -1.0f;
+    if (std::abs(altitude - lastLoggedAltitude) > altitude * 0.1f) {  // Log when altitude changes by 10%
+        std::cout << "[Quadtree::ErrorThreshold] Altitude: " << altitude/1000.0f 
+                  << "km -> Threshold: " << threshold << std::endl;
+        lastLoggedAltitude = altitude;
+    }
+    
+    return threshold;
+}
+
+void SphericalQuadtree::performSubdivisionsForFace(SphericalQuadtreeNode* node,
+                                                   const glm::vec3& viewPos,
+                                                   const glm::mat4& viewProj,
+                                                   float errorThreshold,
+                                                   uint32_t maxLevel,
+                                                   int maxSubdivisions) {
+    if (!node) return;
+    
+    // Track subdivisions for this face only - NO STATICS!
+    int subdivisionsThisFace = 0;
+    
+    performSubdivisionsRecursive(node, viewPos, viewProj, errorThreshold, 
+                                maxLevel, subdivisionsThisFace, maxSubdivisions);
+    
+    // Log how many subdivisions this face got
+    static int faceLogCount = 0;
+    if (faceLogCount++ < 12) {  // Log first 2 frames (6 faces each)
+        std::cout << "[FACE SUBDIVISIONS] Face " << node->getFace() 
+                  << " performed " << subdivisionsThisFace 
+                  << " subdivisions (max: " << maxSubdivisions << ")" << std::endl;
+    }
+}
+
+void SphericalQuadtree::performSubdivisionsRecursive(SphericalQuadtreeNode* node,
+                                                     const glm::vec3& viewPos,
+                                                     const glm::mat4& viewProj,
+                                                     float errorThreshold,
+                                                     uint32_t maxLevel,
+                                                     int& subdivisionCount,
+                                                     int maxSubdivisions) {
+    if (!node || subdivisionCount >= maxSubdivisions) return;
+    
+    float error = node->calculateScreenSpaceError(viewPos, viewProj);
+    bool shouldSubdivide = error > errorThreshold && node->getLevel() < maxLevel;
+    
+    if (shouldSubdivide && node->isLeaf()) {
+        // Check if we've hit our subdivision budget
+        if (subdivisionCount >= maxSubdivisions) {
+            return; // Stop subdividing this face
+        }
+        
+        // Subdivide this node
+        // Debug: log which face is subdividing
+        static int debugSubdivCount = 0;
+        if (debugSubdivCount++ < 50) {
+            std::cout << "[SUBDIVIDE] Face " << node->getFace() 
+                      << " Level " << node->getLevel() 
+                      << " Center: " << node->getPatch().center.x << "," 
+                      << node->getPatch().center.y << "," 
+                      << node->getPatch().center.z << std::endl;
+        }
+        node->subdivide(*densityField);
+        stats.subdivisions++;
+        subdivisionCount++;
+    }
+    
+    // Recurse to children if they exist
+    if (!node->isLeaf()) {
+        for (int i = 0; i < 4; i++) {
+            if (node->children[i]) {
+                performSubdivisionsRecursive(node->children[i].get(), viewPos, viewProj, 
+                                           errorThreshold, maxLevel, subdivisionCount, maxSubdivisions);
+            }
+        }
     }
 }
 

@@ -54,12 +54,19 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 echo Build complete!
 
+REM Return to root directory to copy shaders
+cd ..
+
 REM Copy shaders to build directory (single operation)
-if exist ..\shaders\*.spv (
-    echo Copying shaders to build directory...
-    if not exist bin\Release\shaders mkdir bin\Release\shaders
-    copy /Y ..\shaders\*.spv bin\Release\shaders\ >nul 2>&1
+echo Copying shaders to build directory...
+if not exist build\bin\Release\shaders mkdir build\bin\Release\shaders
+copy /Y shaders\*.spv build\bin\Release\shaders\ >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: Failed to copy some shaders
 )
+
+REM Go back to build directory for tests
+cd build
 
 REM Run tests automatically
 echo.

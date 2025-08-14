@@ -705,3 +705,31 @@ set_target_properties(test_transvoxel_debug PROPERTIES
 )
 add_test(NAME TransvoxelDebug COMMAND test_transvoxel_debug)
 
+# Math module unit tests (simple version without gtest)
+add_executable(test_planet_math
+    tests/test_planet_math_simple.cpp
+)
+target_include_directories(test_planet_math PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_planet_math PRIVATE glm::glm)
+set_target_properties(test_planet_math PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME PlanetMath COMMAND test_planet_math)
+
+# Test: Face boundary alignment
+add_executable(test_face_boundary_alignment
+    tests/test_face_boundary_alignment.cpp
+)
+target_include_directories(test_face_boundary_alignment PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_face_boundary_alignment PRIVATE glm::glm)
+set_target_properties(test_face_boundary_alignment PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME FaceBoundaryAlignment COMMAND test_face_boundary_alignment)
+

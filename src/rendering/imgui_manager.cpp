@@ -172,9 +172,9 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
     // Show camera window with actual camera data if available
     if (uiState.showCamera) {
         if (camera) {
-            renderCameraWindow(camera->getPosition(), camera->getForward());
+            renderCameraWindow(camera->getPosition(), camera->getForward(), camera);
         } else {
-            renderCameraWindow(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1));
+            renderCameraWindow(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), nullptr);
         }
     }
     
@@ -214,7 +214,7 @@ void ImGuiManager::renderStatsWindow(float fps, uint32_t chunkCount, uint32_t tr
     ImGui::End();
 }
 
-void ImGuiManager::renderCameraWindow(const glm::vec3& position, const glm::vec3& forward) {
+void ImGuiManager::renderCameraWindow(const glm::vec3& position, const glm::vec3& forward, const core::Camera* camera) {
     ImGui::SetNextWindowPos(ImVec2(10, 240), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(380, 320), ImGuiCond_FirstUseEver);
     
@@ -233,10 +233,15 @@ void ImGuiManager::renderCameraWindow(const glm::vec3& position, const glm::vec3
         
         ImGui::Separator();
         ImGui::Text("Clipping & FOV:");
-        // These are the values we're using in vulkan_renderer.cpp
-        ImGui::Text("  Near: %.3f", 0.1f);
-        ImGui::Text("  Far: %.1f", 50000.0f);
-        ImGui::Text("  FOV: %.1f degrees", 60.0f);
+        if (camera) {
+            ImGui::Text("  Near: %.3f", camera->getNearPlane());
+            ImGui::Text("  Far: %.1f", camera->getFarPlane());
+            ImGui::Text("  FOV: %.1f degrees", camera->getFieldOfView());
+        } else {
+            ImGui::Text("  Near: %.3f (no camera)", 0.1f);
+            ImGui::Text("  Far: %.1f (no camera)", 50000.0f);
+            ImGui::Text("  FOV: %.1f degrees (no camera)", 60.0f);
+        }
         
         ImGui::Separator();
         ImGui::Text("View Info:");

@@ -91,6 +91,17 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     // LOD SYSTEM RENDERING
     if (lodManager) {
         auto lodMode = lodManager->getCurrentMode();
+        auto stats = lodManager->getStats();
+        
+        // Debug output when at minimum altitude
+        if (stats.altitude <= 10000.0f) {
+            static int debugCount = 0;
+            if (debugCount++ % 60 == 0) {
+                std::cout << "[RENDER DEBUG] At minimum altitude: " 
+                          << stats.altitude << "m, Patches: " << stats.quadtreePatches 
+                          << ", Mode: " << lodMode << std::endl;
+            }
+        }
         
         if (lodMode == rendering::LODManager::QUADTREE_ONLY) {
             // Render LOD quadtree patches when at far distance
@@ -272,7 +283,29 @@ void VulkanRenderer::drawFrame(octree::OctreePlanet* /*planet*/, core::Camera* c
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
     
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+    VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]);
+    if (submitResult != VK_SUCCESS) {
+        // Dump debug information before crashing
+        std::cerr << "\n=== DRAW COMMAND SUBMISSION FAILURE ===" << std::endl;
+        std::cerr << "Vulkan Error Code: " << submitResult << std::endl;
+        std::cerr << "Current Frame: " << currentFrame << std::endl;
+        std::cerr << "Image Index: " << imageIndex << std::endl;
+        
+        // Get LOD manager stats if available
+        if (lodManager) {
+            auto stats = lodManager->getStats();
+            std::cerr << "Quadtree Patches: " << stats.quadtreePatches << std::endl;
+            std::cerr << "Octree Chunks: " << stats.octreeChunks << std::endl;
+            std::cerr << "Altitude: " << stats.altitude << "m" << std::endl;
+            std::cerr << "Current Mode: " << (stats.mode == rendering::LODManager::QUADTREE_ONLY ? "QUADTREE" : 
+                                              stats.mode == rendering::LODManager::OCTREE_TRANSVOXEL ? "OCTREE" : "TRANSITION") << std::endl;
+        }
+        
+        // Check device lost
+        if (submitResult == VK_ERROR_DEVICE_LOST) {
+            std::cerr << "DEVICE LOST - GPU has crashed or hung!" << std::endl;
+        }
+        
         throw std::runtime_error("failed to submit draw command buffer!");
     }
     

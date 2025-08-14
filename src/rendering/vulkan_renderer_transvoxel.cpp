@@ -337,7 +337,8 @@ void VulkanRenderer::updateChunks(octree::OctreePlanet* planet, core::Camera* ca
     
     // Create planet sphere patches once
     static bool spherePatchesCreated = false;
-    if (!spherePatchesCreated) {
+    // DISABLED: Old sphere patches - we're using LOD quadtree now
+    if (false && !spherePatchesCreated) {
         activeChunks.clear();
         
         std::cout << "Creating planet sphere patches...\n";

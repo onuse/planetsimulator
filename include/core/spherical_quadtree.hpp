@@ -21,6 +21,7 @@ struct QuadtreePatch {
     glm::vec3 corners[4];       // Corner positions
     float size;                 // Angular size (radians)
     uint32_t level;            // LOD level (0 = root)
+    uint32_t faceId;           // Which cube face (0-5)
     float morphFactor;         // For smooth LOD transitions (0-1)
     float screenSpaceError;    // Current screen space error
     
@@ -86,9 +87,14 @@ public:
     void sampleHeights(const DensityField& densityField, uint32_t resolution);
     const std::vector<float>& getHeights() const { return heights; }
     
+    // Friend class for tree traversal
+    friend class SphericalQuadtree;
+    
+    // Children access for traversal
+    std::array<std::unique_ptr<SphericalQuadtreeNode>, 4> children;
+    
 private:
     // Tree structure
-    std::array<std::unique_ptr<SphericalQuadtreeNode>, 4> children;
     SphericalQuadtreeNode* parent;
     std::array<SphericalQuadtreeNode*, 4> neighbors;
     
@@ -112,12 +118,15 @@ class SphericalQuadtree {
 public:
     struct Config {
         float planetRadius = 6371000.0f;
-        uint32_t maxLevel = 20;
+        uint32_t maxLevel = 10;  // Conservative limit to prevent excessive subdivision
         float pixelError = 2.0f;        // Maximum pixel error
         float morphRegion = 0.3f;        // Size of morph region (0-1)
         size_t maxNodes = 10000;         // Maximum active nodes
         bool enableMorphing = true;      // Enable vertex morphing
         bool enableCrackFixes = true;    // Enable T-junction prevention
+        bool enableFaceCulling = true;   // Toggle face culling for debugging
+        bool enableFrustumCulling = true; // Toggle view frustum culling
+        bool enableDistanceCulling = true; // Toggle distance-based culling
     };
     
     SphericalQuadtree(const Config& config, std::shared_ptr<DensityField> densityField);
@@ -164,13 +173,22 @@ private:
     std::atomic<uint32_t> totalNodeCount{6};
     
     // LOD selection helpers
-    float calculateErrorThreshold(const glm::vec3& viewPos) const;
-    void preventCracks(std::vector<QuadtreePatch>& patches);
-    void updateMorphFactors(std::vector<QuadtreePatch>& patches, float deltaTime);
-    
     // Initialization
     void initializeRoots();
     glm::mat4 getFaceTransform(SphericalQuadtreeNode::Face face) const;
+    
+    // LOD management
+    void performSubdivisions(SphericalQuadtreeNode* node, const glm::vec3& viewPos,
+                            const glm::mat4& viewProj, float errorThreshold, uint32_t maxLevel);
+    void performSubdivisionsForFace(SphericalQuadtreeNode* node, const glm::vec3& viewPos,
+                                    const glm::mat4& viewProj, float errorThreshold, 
+                                    uint32_t maxLevel, int maxSubdivisions);
+    void performSubdivisionsRecursive(SphericalQuadtreeNode* node, const glm::vec3& viewPos,
+                                      const glm::mat4& viewProj, float errorThreshold,
+                                      uint32_t maxLevel, int& subdivisionCount, int maxSubdivisions);
+    float calculateErrorThreshold(const glm::vec3& viewPos) const;
+    void preventCracks(std::vector<QuadtreePatch>& patches);
+    void updateMorphFactors(std::vector<QuadtreePatch>& patches, float deltaTime);
 };
 
 } // namespace core

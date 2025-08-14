@@ -144,8 +144,8 @@ private:
     uint32_t viewportHeight;
     
     // Matrices
-    glm::mat4 viewMatrix;
-    glm::mat4 projectionMatrix;
+    glm::mat4 viewMatrix = glm::mat4(1.0f);          // Initialize to identity
+    glm::mat4 projectionMatrix = glm::mat4(1.0f);    // Initialize to identity
     
     // Movement parameters
     float movementSpeed = 1000.0f;  // meters per second

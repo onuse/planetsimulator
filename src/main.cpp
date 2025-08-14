@@ -22,7 +22,10 @@ struct Config {
     float autoTerminate = 0;     // Auto-terminate after N seconds (0 = disabled)
     float screenshotInterval = 0; // Screenshot interval in seconds (0 = disabled)
     bool quiet = false;          // Suppress verbose output
-    bool vertexDump = false;      // Dump vertex data on exit for debugging
+    bool vertexDump = false;     // Dump vertex data on exit for debugging
+    bool autoZoom = false;       // Enable automatic zoom during screenshots
+    bool usePresetView = false;  // Use preset camera position
+    bool disableCulling = false; // Disable face culling for debugging
     // Hierarchical GPU octree is always enabled - no config option
 };
 
@@ -50,6 +53,12 @@ Config parseArgs(int argc, char** argv) {
             config.quiet = true;
         } else if (arg == "-vertex-dump") {
             config.vertexDump = true;
+        } else if (arg == "-auto-zoom") {
+            config.autoZoom = true;
+        } else if (arg == "-preset-view") {
+            config.usePresetView = true;
+        } else if (arg == "-no-culling") {
+            config.disableCulling = true;
         } else if (arg == "-gpu-octree" || arg == "-no-gpu-octree") {
             std::cout << "Warning: GPU octree flags are deprecated. Hierarchical GPU octree is always enabled.\n";
         } else if (arg == "-help" || arg == "-h") {
@@ -63,7 +72,9 @@ Config parseArgs(int argc, char** argv) {
                       << "  -auto-terminate <sec>   Exit after N seconds (default: 0 = disabled)\n"
                       << "  -screenshot-interval <sec> Screenshot interval (default: 0 = disabled)\n"
                       << "  -quiet                  Suppress verbose output\n"
-                      << "  -vertex-dump            Dump vertex data on exit for debugging\n";
+                      << "  -vertex-dump            Dump vertex data on exit for debugging\n"
+                      << "  -auto-zoom              Enable automatic zoom during screenshots\n"
+                      << "  -preset-view            Use preset camera position (nice continent view)\n";
             std::exit(0);
         }
     }
@@ -155,7 +166,7 @@ public:
             renderer.render(&planet, &camera);
             // std::cout << "=== RETURNED FROM renderer.render ===\n";
             
-            // Screenshots (only after first frame to ensure something is rendered)
+            // Screenshots with automatic zoom sequence
             if (config.screenshotInterval > 0 && frameCount > 0) {
                 float screenshotElapsed = std::chrono::duration<float>(currentTime - lastScreenshot).count();
                 // Debug output
@@ -168,6 +179,11 @@ public:
                     std::cout << "Taking screenshot at " << elapsed << "s..." << std::endl;
                     takeScreenshot(elapsed, simulationTime);
                     lastScreenshot = currentTime;
+                    
+                    // Automatic zoom sequence if enabled
+                    if (config.autoZoom) {
+                        performAutomaticZoom();
+                    }
                 }
             }
             
@@ -237,13 +253,22 @@ private:
             throw;
         }
         
-        // Set initial camera position - back away from planet to see whole sphere
-        // 1.6x radius gives a good close view of the planet globe
-        float initialDistance = config.radius * 1.6f;
-        std::cout << "=== ABOUT TO REPOSITION CAMERA ===\n";
-        std::cout << "Initial distance: " << initialDistance << "\n";
-        camera.setPosition(glm::vec3(initialDistance * 0.7f, initialDistance * 0.3f, initialDistance * 0.6f));
-        camera.lookAt(glm::vec3(0, 0, 0));
+        // Set initial camera position
+        if (config.usePresetView) {
+            // Set to the nice continent view from the screenshot
+            camera.setPosition(glm::vec3(7.188e6f, 4.266e6f, 9.374e6f));
+            camera.lookAt(glm::vec3(0, 0, 0));
+            camera.setFieldOfView(60.0f); // Match FOV from screenshot
+            std::cout << "Camera set to preset view (nice continent/beach view)\n";
+        } else {
+            // Default view - back away from planet to see ENTIRE globe
+            // Use 2.5x radius for better full planet view (about 10,000 km altitude)
+            float initialDistance = config.radius * 2.5f;
+            std::cout << "=== ABOUT TO REPOSITION CAMERA ===\n";
+            std::cout << "Initial distance: " << initialDistance << " (altitude: " << (initialDistance - config.radius) << ")\n";
+            camera.setPosition(glm::vec3(initialDistance * 0.7f, initialDistance * 0.3f, initialDistance * 0.6f));
+            camera.lookAt(glm::vec3(0, 0, 0));
+        }
         
         // Adjust near/far planes based on initial altitude
         float altitude = camera.getAltitude(glm::vec3(0, 0, 0), config.radius);
@@ -399,6 +424,23 @@ private:
             }
         }
         
+        // Toggle face culling with C key - DISABLED FOR NOW
+        // TODO: Add getLODManager() method to VulkanRenderer
+        /*
+        if (input.keys[GLFW_KEY_C] && !input.prevKeys[GLFW_KEY_C]) {
+            if (renderer.getLODManager()) {
+                auto* quadtree = renderer.getLODManager()->getQuadtree();
+                if (quadtree) {
+                    auto& config = quadtree->getConfig();
+                    config.enableFaceCulling = !config.enableFaceCulling;
+                    if (!config.quiet) {
+                        std::cout << "Face culling: " << (config.enableFaceCulling ? "ENABLED" : "DISABLED") << "\n";
+                    }
+                }
+            }
+        }
+        */
+        
         // Exit with ESC
         if (input.keys[GLFW_KEY_ESCAPE]) {
             glfwSetWindowShouldClose(renderer.getWindow(), GLFW_TRUE);
@@ -439,6 +481,45 @@ private:
             } else {
                 std::cout << "Screenshot FAILED: " << filename << "\n";
             }
+        }
+    }
+    
+    void performAutomaticZoom() {
+        // Get current camera position
+        glm::vec3 currentPos = camera.getPosition();
+        glm::vec3 planetCenter(0, 0, 0);
+        
+        // Calculate direction from camera to planet center
+        glm::vec3 dirToCenter = glm::normalize(planetCenter - currentPos);
+        
+        // Calculate current distance from planet center
+        float currentDistance = glm::length(currentPos);
+        
+        // Move 25% closer to the planet (zoom in)
+        float zoomFactor = 0.75f; // Keep 75% of distance = move 25% closer
+        float newDistance = currentDistance * zoomFactor;
+        
+        // Don't get too close to the surface (now using double precision to fix rendering bug)
+        float minDistance = config.radius + 10000.0f; // Stay at least 10km above surface
+        if (newDistance < minDistance) {
+            newDistance = minDistance;
+            std::cout << "Reached minimum zoom distance (10km above surface)\n";
+        }
+        
+        // Calculate new position
+        glm::vec3 newPos = -dirToCenter * newDistance; // Negative because we're moving from center outward
+        
+        // Apply the new position
+        camera.setPosition(newPos);
+        camera.lookAt(planetCenter);
+        
+        // Update clip planes for new altitude
+        float altitude = newDistance - config.radius;
+        camera.autoAdjustClipPlanes(altitude);
+        
+        if (!config.quiet) {
+            std::cout << "Auto-zoom: Distance " << currentDistance/1000.0f << "km -> " 
+                      << newDistance/1000.0f << "km (altitude: " << altitude/1000.0f << "km)\n";
         }
     }
     

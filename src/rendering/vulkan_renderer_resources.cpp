@@ -213,15 +213,22 @@ void VulkanRenderer::createUniformBuffers() {
 
 void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* camera) {
     UniformBufferObject ubo{};
-    ubo.view = camera->getViewMatrix();
-    ubo.proj = camera->getProjectionMatrix();
-    ubo.viewProj = camera->getViewProjectionMatrix();
-    ubo.viewPos = camera->getPosition();
+    // Convert single precision camera matrices to double precision
+    glm::mat4 viewF = camera->getViewMatrix();
+    glm::mat4 projF = camera->getProjectionMatrix();
+    glm::mat4 viewProjF = camera->getViewProjectionMatrix();
+    glm::vec3 viewPosF = camera->getPosition();
+    
+    // Convert to double precision for GPU
+    ubo.view = glm::dmat4(viewF);
+    ubo.proj = glm::dmat4(projF);
+    ubo.viewProj = glm::dmat4(viewProjF);
+    ubo.viewPos = glm::dvec3(viewPosF);
     
     // Validate matrices - crash if they're invalid
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            float val = ubo.viewProj[i][j];
+            double val = ubo.viewProj[i][j];
             if (std::isnan(val) || std::isinf(val)) {
                 std::cerr << "FATAL ERROR: Invalid viewProj matrix at [" << i << "][" << j << "] = " << val << std::endl;
                 std::abort();  // Force crash even in Release mode
@@ -230,8 +237,8 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     }
     
     // Check if matrix is degenerate (determinant near zero would mean no inverse exists)
-    float det = glm::determinant(ubo.viewProj);
-    if (std::abs(det) < 1e-10f) {
+    double det = glm::determinant(ubo.viewProj);
+    if (std::abs(det) < 1e-10) {
         std::cerr << "FATAL ERROR: Degenerate viewProj matrix, determinant = " << det << std::endl;
         std::cerr << "ViewProj matrix:\n";
         for (int i = 0; i < 4; i++) {
@@ -245,16 +252,16 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     static bool firstFrame = true;
     if (firstFrame) {
         firstFrame = false;
-        std::cout << "DEBUG: Camera matrices on first frame:\n";
+        std::cout << "DEBUG: Camera matrices on first frame (double precision):\n";
         std::cout << "  Camera position: (" << ubo.viewPos.x << ", " << ubo.viewPos.y << ", " << ubo.viewPos.z << ")\n";
         std::cout << "  ViewProj[0]: " << ubo.viewProj[0][0] << ", " << ubo.viewProj[0][1] << ", " << ubo.viewProj[0][2] << ", " << ubo.viewProj[0][3] << "\n";
         std::cout << "  ViewProj[1]: " << ubo.viewProj[1][0] << ", " << ubo.viewProj[1][1] << ", " << ubo.viewProj[1][2] << ", " << ubo.viewProj[1][3] << "\n";
         std::cout << "  ViewProj[2]: " << ubo.viewProj[2][0] << ", " << ubo.viewProj[2][1] << ", " << ubo.viewProj[2][2] << ", " << ubo.viewProj[2][3] << "\n";
         std::cout << "  ViewProj[3]: " << ubo.viewProj[3][0] << ", " << ubo.viewProj[3][1] << ", " << ubo.viewProj[3][2] << ", " << ubo.viewProj[3][3] << "\n";
         
-        // Test transform a sample vertex
-        glm::vec4 testVertex(4470575.0f, 4534870.0f, 14112.0f, 1.0f);
-        glm::vec4 transformed = ubo.viewProj * testVertex;
+        // Test transform a sample vertex with double precision
+        glm::dvec4 testVertex(4470575.0, 4534870.0, 14112.0, 1.0);
+        glm::dvec4 transformed = ubo.viewProj * testVertex;
         std::cout << "  Test vertex (" << testVertex.x << ", " << testVertex.y << ", " << testVertex.z << ") -> (" 
                   << transformed.x << ", " << transformed.y << ", " << transformed.z << ", w=" << transformed.w << ")\n";
         if (transformed.w != 0) {

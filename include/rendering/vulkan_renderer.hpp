@@ -50,10 +50,10 @@ struct SwapChainSupportDetails {
 };
 
 struct UniformBufferObject {
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
-    alignas(16) glm::mat4 viewProj;
-    alignas(16) glm::vec3 viewPos;
+    alignas(32) glm::dmat4 view;     // Double precision view matrix (32-byte aligned)
+    alignas(32) glm::dmat4 proj;     // Double precision projection matrix
+    alignas(32) glm::dmat4 viewProj;  // Double precision combined matrix
+    alignas(32) glm::dvec3 viewPos;  // Double precision view position
     float time;
     alignas(16) glm::vec3 lightDir;
     float padding;
