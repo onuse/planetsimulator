@@ -213,16 +213,32 @@ void VulkanRenderer::createUniformBuffers() {
 
 void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* camera) {
     UniformBufferObject ubo{};
-    // Convert single precision camera matrices to double precision
+    
+    // CAMERA-RELATIVE RENDERING (Industry Standard)
+    // Vertices are pre-transformed by -cameraPos on CPU for precision
+    // We must adjust the view matrix to account for this
+    
     glm::mat4 viewF = camera->getViewMatrix();
     glm::mat4 projF = camera->getProjectionMatrix();
-    glm::mat4 viewProjF = camera->getViewProjectionMatrix();
     glm::vec3 viewPosF = camera->getPosition();
     
-    // Convert to double precision for GPU
-    ubo.view = glm::dmat4(viewF);
+    // Extract the rotation part of the view matrix (columns 0-2)
+    // and zero out the translation (column 3, rows 0-2)
+    glm::mat4 viewRelative = viewF;
+    viewRelative[3][0] = 0.0f;  // Zero X translation
+    viewRelative[3][1] = 0.0f;  // Zero Y translation  
+    viewRelative[3][2] = 0.0f;  // Zero Z translation
+    // viewRelative[3][3] stays as 1.0
+    
+    // Build ViewProj with the translation-free view matrix
+    glm::mat4 viewProjF = projF * viewRelative;
+    
+    // Convert to double precision for shader (even though values are now small)
+    ubo.view = glm::dmat4(viewRelative);
     ubo.proj = glm::dmat4(projF);
     ubo.viewProj = glm::dmat4(viewProjF);
+    // Pass the actual world camera position for proper calculations in shader
+    // Even though vertices are camera-relative, shader needs world pos for altitude etc
     ubo.viewPos = glm::dvec3(viewPosF);
     
     // Validate matrices - crash if they're invalid
@@ -254,9 +270,27 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
         firstFrame = false;
         std::cout << "DEBUG: Camera matrices on first frame (double precision):\n";
         std::cout << "  Camera position: (" << ubo.viewPos.x << ", " << ubo.viewPos.y << ", " << ubo.viewPos.z << ")\n";
-        std::cout << "  ViewProj[0]: " << ubo.viewProj[0][0] << ", " << ubo.viewProj[0][1] << ", " << ubo.viewProj[0][2] << ", " << ubo.viewProj[0][3] << "\n";
-        std::cout << "  ViewProj[1]: " << ubo.viewProj[1][0] << ", " << ubo.viewProj[1][1] << ", " << ubo.viewProj[1][2] << ", " << ubo.viewProj[1][3] << "\n";
-        std::cout << "  ViewProj[2]: " << ubo.viewProj[2][0] << ", " << ubo.viewProj[2][1] << ", " << ubo.viewProj[2][2] << ", " << ubo.viewProj[2][3] << "\n";
+        
+        // Print view matrix
+        std::cout << "  View matrix:\n";
+        for (int i = 0; i < 4; i++) {
+            std::cout << "    [" << ubo.view[i][0] << ", " << ubo.view[i][1] 
+                      << ", " << ubo.view[i][2] << ", " << ubo.view[i][3] << "]\n";
+        }
+        
+        // Print projection matrix
+        std::cout << "  Projection matrix:\n";
+        for (int i = 0; i < 4; i++) {
+            std::cout << "    [" << ubo.proj[i][0] << ", " << ubo.proj[i][1] 
+                      << ", " << ubo.proj[i][2] << ", " << ubo.proj[i][3] << "]\n";
+        }
+        
+        // Print combined ViewProj
+        std::cout << "  ViewProj (Proj * View):\n";
+        std::cout << "    [0]: " << ubo.viewProj[0][0] << ", " << ubo.viewProj[0][1] << ", " << ubo.viewProj[0][2] << ", " << ubo.viewProj[0][3] << "\n";
+        std::cout << "    [1]: " << ubo.viewProj[1][0] << ", " << ubo.viewProj[1][1] << ", " << ubo.viewProj[1][2] << ", " << ubo.viewProj[1][3] << "\n";
+        std::cout << "    [2]: " << ubo.viewProj[2][0] << ", " << ubo.viewProj[2][1] << ", " << ubo.viewProj[2][2] << ", " << ubo.viewProj[2][3] << "\n";
+        std::cout << "    [3]: " << ubo.viewProj[3][0] << ", " << ubo.viewProj[3][1] << ", " << ubo.viewProj[3][2] << ", " << ubo.viewProj[3][3] << "\n";
         std::cout << "  ViewProj[3]: " << ubo.viewProj[3][0] << ", " << ubo.viewProj[3][1] << ", " << ubo.viewProj[3][2] << ", " << ubo.viewProj[3][3] << "\n";
         
         // Test transform a sample vertex with double precision

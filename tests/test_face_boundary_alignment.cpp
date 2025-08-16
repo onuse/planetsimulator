@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include "core/global_patch_generator.hpp"
 
 // ============================================================================
 // TEST: Face Boundary Alignment
@@ -33,53 +34,47 @@ glm::dvec3 cubeToSphere(const glm::dvec3& cubePos) {
     return glm::normalize(spherePos);
 }
 
-// Create transform matrix matching GlobalPatchGenerator implementation
+// Create transform using the actual GlobalPatchGenerator (with our fix!)
 glm::dmat4 createTransform(int face, const glm::dvec3& center, double size) {
-    glm::dmat4 transform(1.0);
+    // Create a GlobalPatch to use the FIXED transform generation
+    core::GlobalPatchGenerator::GlobalPatch patch;
     
     double halfSize = size * 0.5;
     
-    // Match the exact transform creation from GlobalPatchGenerator
+    // Set bounds based on face and center
     switch(face) {
-        case 0: // +X face: U->Z, V->Y
-            transform[0] = glm::dvec4(0.0, 0.0, size, 0.0);    // U -> Z
-            transform[1] = glm::dvec4(0.0, size, 0.0, 0.0);    // V -> Y
-            transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);
-            transform[3] = glm::dvec4(1.0, center.y - halfSize, center.z - halfSize, 1.0);
+        case 0: // +X face
+            patch.minBounds = glm::vec3(1.0, center.y - halfSize, center.z - halfSize);
+            patch.maxBounds = glm::vec3(1.0, center.y + halfSize, center.z + halfSize);
             break;
-        case 1: // -X face: U->-Z, V->Y
-            transform[0] = glm::dvec4(0.0, 0.0, -size, 0.0);   // U -> -Z
-            transform[1] = glm::dvec4(0.0, size, 0.0, 0.0);    // V -> Y
-            transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);
-            transform[3] = glm::dvec4(-1.0, center.y - halfSize, center.z + halfSize, 1.0);
+        case 1: // -X face
+            patch.minBounds = glm::vec3(-1.0, center.y - halfSize, center.z - halfSize);
+            patch.maxBounds = glm::vec3(-1.0, center.y + halfSize, center.z + halfSize);
             break;
-        case 2: // +Y face: U->X, V->Z
-            transform[0] = glm::dvec4(size, 0.0, 0.0, 0.0);    // U -> X
-            transform[1] = glm::dvec4(0.0, 0.0, size, 0.0);    // V -> Z
-            transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);
-            transform[3] = glm::dvec4(center.x - halfSize, 1.0, center.z - halfSize, 1.0);
+        case 2: // +Y face
+            patch.minBounds = glm::vec3(center.x - halfSize, 1.0, center.z - halfSize);
+            patch.maxBounds = glm::vec3(center.x + halfSize, 1.0, center.z + halfSize);
             break;
-        case 3: // -Y face: U->X, V->-Z
-            transform[0] = glm::dvec4(size, 0.0, 0.0, 0.0);    // U -> X
-            transform[1] = glm::dvec4(0.0, 0.0, -size, 0.0);   // V -> -Z
-            transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);
-            transform[3] = glm::dvec4(center.x - halfSize, -1.0, center.z + halfSize, 1.0);
+        case 3: // -Y face
+            patch.minBounds = glm::vec3(center.x - halfSize, -1.0, center.z - halfSize);
+            patch.maxBounds = glm::vec3(center.x + halfSize, -1.0, center.z + halfSize);
             break;
-        case 4: // +Z face: U->X, V->Y
-            transform[0] = glm::dvec4(size, 0.0, 0.0, 0.0);    // U -> X
-            transform[1] = glm::dvec4(0.0, size, 0.0, 0.0);    // V -> Y
-            transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);
-            transform[3] = glm::dvec4(center.x - halfSize, center.y - halfSize, 1.0, 1.0);
+        case 4: // +Z face
+            patch.minBounds = glm::vec3(center.x - halfSize, center.y - halfSize, 1.0);
+            patch.maxBounds = glm::vec3(center.x + halfSize, center.y + halfSize, 1.0);
             break;
-        case 5: // -Z face: U->-X, V->Y
-            transform[0] = glm::dvec4(-size, 0.0, 0.0, 0.0);   // U -> -X
-            transform[1] = glm::dvec4(0.0, size, 0.0, 0.0);    // V -> Y
-            transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);
-            transform[3] = glm::dvec4(center.x + halfSize, center.y - halfSize, -1.0, 1.0);
+        case 5: // -Z face
+            patch.minBounds = glm::vec3(center.x - halfSize, center.y - halfSize, -1.0);
+            patch.maxBounds = glm::vec3(center.x + halfSize, center.y + halfSize, -1.0);
             break;
     }
     
-    return transform;
+    patch.center = glm::vec3(center);
+    patch.level = 0;
+    patch.faceId = face;
+    
+    // Use the ACTUAL fixed transform generation!
+    return patch.createTransform();
 }
 
 // Transform UV to world position (emulating vertex shader)
@@ -126,18 +121,21 @@ TestResult testFaceBoundary(int face1, int face2,
         // Determine which edges should match based on face adjacency
         glm::dvec2 uv1, uv2;
         
-        // ACTUAL GEOMETRY: These edges are PERPENDICULAR in 3D space!
-        // +Z right edge: (1, y-varies, 1) 
-        // +X top edge: (1, 1, z-varies)
-        // They only meet at the corner (1, 1, 1)
+        // CORRECTED: Map to the SAME edge using proper parameterization
+        // The shared edge between faces needs consistent parameterization
         if (face1 == 4 && face2 == 0) {
-            uv1 = glm::dvec2(1.0, t);  // Right edge of +Z: x=1, y varies, z=1
-            uv2 = glm::dvec2(t, 1.0);   // Top edge of +X: x=1, y=1, z varies
-            // WARNING: These map to perpendicular lines in 3D!
+            // +Z/+X share edge at (1, y-varies, 1)
+            // +Z face: UV(1,t) maps correctly to this edge
+            // +X face: ALSO needs UV(1,t) because U->Z, V->Y
+            uv1 = glm::dvec2(1.0, t);  // Right edge of +Z
+            uv2 = glm::dvec2(1.0, t);  // Correct parameterization for +X!
         } else if (face1 == 2 && face2 == 4) {
-            // +Y/+Z boundary - similar issue
+            // +Y/+Z boundary
+            // They share edge at (x-varies, 1, 1)
+            // +Y face: U->X, V->Z, so UV(t,1) gives (x-varies, 1, 1)
+            // +Z face: U->X, V->Y, so UV(t,1) gives (x-varies, 1, 1)
             uv1 = glm::dvec2(t, 1.0);   // Top edge of +Y
-            uv2 = glm::dvec2(1.0, t);    // Different parameterization!
+            uv2 = glm::dvec2(t, 1.0);    // Top edge of +Z
         } else {
             // Same face adjacent patches
             uv1 = glm::dvec2(1.0, t);

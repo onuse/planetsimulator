@@ -9,6 +9,7 @@
 #include "core/spherical_quadtree.hpp"
 #include "core/octree.hpp"
 #include "transvoxel_renderer.hpp"
+#include "cpu_vertex_generator.hpp"
 
 namespace rendering {
 
@@ -92,6 +93,7 @@ private:
     std::unique_ptr<core::SphericalQuadtree> quadtree;
     std::unique_ptr<octree::OctreePlanet> octreePlanet;
     std::unique_ptr<TransvoxelRenderer> transvoxelRenderer;
+    std::unique_ptr<CPUVertexGenerator> vertexGenerator;
     
     // Current state
     RenderingMode currentMode;
@@ -119,7 +121,8 @@ private:
     
     // Helper functions
     RenderingMode selectRenderingMode(float altitude);
-    void updateQuadtreeBuffers(const std::vector<core::QuadtreePatch>& patches);
+    void updateQuadtreeBuffers_OLD(const std::vector<core::QuadtreePatch>& patches);
+    void updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>& patches, const glm::vec3& viewPosition);
     void updateOctreeChunks(const glm::vec3& viewPos);
     void prepareTransitionZone(const glm::vec3& viewPos);
     

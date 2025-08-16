@@ -55,23 +55,16 @@ extern "C" {
 // ============================================================================
 
 // Convert a point on a unit cube face to a point on a unit sphere
+// Uses simple normalization for consistency across CPU and GPU
 // TESTED: test_shader_math.cpp::testCubeToSphere
 static inline dvec3 cubeToSphere(dvec3 cubePos) {
-    dvec3 pos2;
-    pos2.x = cubePos.x * cubePos.x;
-    pos2.y = cubePos.y * cubePos.y;
-    pos2.z = cubePos.z * cubePos.z;
+    // Simple normalization approach - just normalize the cube position
+    double len = sqrt(cubePos.x * cubePos.x + cubePos.y * cubePos.y + cubePos.z * cubePos.z);
     
     dvec3 spherePos;
-    spherePos.x = cubePos.x * sqrt(1.0 - pos2.y * 0.5 - pos2.z * 0.5 + pos2.y * pos2.z / 3.0);
-    spherePos.y = cubePos.y * sqrt(1.0 - pos2.x * 0.5 - pos2.z * 0.5 + pos2.x * pos2.z / 3.0);
-    spherePos.z = cubePos.z * sqrt(1.0 - pos2.x * 0.5 - pos2.y * 0.5 + pos2.x * pos2.y / 3.0);
-    
-    // Normalize
-    double len = sqrt(spherePos.x * spherePos.x + spherePos.y * spherePos.y + spherePos.z * spherePos.z);
-    spherePos.x /= len;
-    spherePos.y /= len;
-    spherePos.z /= len;
+    spherePos.x = cubePos.x / len;
+    spherePos.y = cubePos.y / len;
+    spherePos.z = cubePos.z / len;
     
     return spherePos;
 }

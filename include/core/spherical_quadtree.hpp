@@ -17,8 +17,10 @@ class Camera;
 
 // Represents a single patch on the sphere surface
 struct QuadtreePatch {
-    glm::vec3 center;           // Center position on sphere
-    glm::vec3 corners[4];       // Corner positions
+    glm::dvec3 center;          // Center position on sphere (double precision)
+    glm::dvec3 corners[4];      // Corner positions (double precision)
+    glm::dvec3 minBounds;       // Exact min bounds in cube space (double precision)
+    glm::dvec3 maxBounds;       // Exact max bounds in cube space (double precision)
     float size;                 // Angular size (radians)
     uint32_t level;            // LOD level (0 = root)
     uint32_t faceId;           // Which cube face (0-5)
@@ -32,6 +34,19 @@ struct QuadtreePatch {
     // Rendering data
     bool isVisible = false;
     bool needsUpdate = true;
+    
+    // CPU-generated vertex data (for vertex buffer upload)
+    struct VertexBufferData {
+        bool isGenerated = false;
+        size_t vertexCount = 0;
+        size_t indexCount = 0;
+        size_t vertexBufferOffset = 0;  // Offset into global vertex buffer
+        size_t indexBufferOffset = 0;   // Offset into global index buffer
+        uint32_t meshGeneration = 0;    // Generation counter for cache invalidation
+    } vertexData;
+    
+    // Transform matrix for this patch
+    glm::dmat4 patchTransform;
 };
 
 // Node in the spherical quadtree
@@ -53,7 +68,7 @@ public:
         EDGE_LEFT = 3
     };
     
-    SphericalQuadtreeNode(const glm::vec3& center, float size, uint32_t level, 
+    SphericalQuadtreeNode(const glm::dvec3& center, double size, uint32_t level, 
                          Face face, SphericalQuadtreeNode* parent = nullptr);
     ~SphericalQuadtreeNode() = default;
     
@@ -108,8 +123,8 @@ private:
     uint32_t heightResolution = 0;
     
     // Helper functions
-    glm::vec3 cubeToSphere(const glm::vec3& cubePos, float radius) const;
-    glm::vec3 getChildCenter(int childIndex) const;
+    glm::dvec3 cubeToSphere(const glm::dvec3& cubePos, double radius) const;
+    glm::dvec3 getChildCenter(int childIndex) const;
     void fixTJunctions();
 };
 
@@ -124,7 +139,7 @@ public:
         size_t maxNodes = 10000;         // Maximum active nodes
         bool enableMorphing = true;      // Enable vertex morphing
         bool enableCrackFixes = true;    // Enable T-junction prevention
-        bool enableFaceCulling = true;   // Toggle face culling for debugging
+        bool enableFaceCulling = false;   // DISABLED for testing - was causing missing faces
         bool enableFrustumCulling = true; // Toggle view frustum culling
         bool enableDistanceCulling = true; // Toggle distance-based culling
     };

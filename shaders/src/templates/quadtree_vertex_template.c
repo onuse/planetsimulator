@@ -41,18 +41,13 @@ layout(location = 3) out vec2 fragTexCoord;
 layout(location = 4) out float fragMorphFactor;
 layout(location = 5) out float fragAltitude;
 layout(location = 6) out vec3 fragViewDir;
+layout(location = 7) flat out uint fragFaceId;
+
+// Include the unified cube-sphere mapping
+#include "../lib/cube_sphere_mapping.glsl"
 
 // Constants
 const double PLANET_RADIUS = 6371000.0lf;  // Double precision planet radius
-
-// Helper functions - using double precision
-dvec3 cubeToSphere(dvec3 cubePos) {
-    dvec3 pos2 = cubePos * cubePos;
-    dvec3 spherePos = cubePos * sqrt(1.0lf - pos2.y * 0.5lf - pos2.z * 0.5lf + pos2.y * pos2.z / 3.0lf);
-    spherePos.y *= sqrt(1.0lf - pos2.x * 0.5lf - pos2.z * 0.5lf + pos2.x * pos2.z / 3.0lf);
-    spherePos.z *= sqrt(1.0lf - pos2.x * 0.5lf - pos2.y * 0.5lf + pos2.x * pos2.y / 3.0lf);
-    return normalize(spherePos);
-}
 
 // Simple hash function for deterministic pseudo-random values
 float hash(vec3 p) {
@@ -148,7 +143,8 @@ dvec3 getParentPosition(vec2 uv, dmat4 transform) {
     vec2 parentUV = floor(uv * 2.0) / 2.0;
     dvec4 localPos = dvec4(double(parentUV.x), double(parentUV.y), 0.0lf, 1.0lf);
     dvec3 cubePos = (transform * localPos).xyz;
-    return cubeToSphere(cubePos) * PLANET_RADIUS;
+    dvec3 spherePos = cubeToSphereDouble(cubePos, 1.0lf);
+    return spherePos * PLANET_RADIUS;
 }
 
 // Fix T-junctions at patch edges by snapping to coarser neighbor's grid
@@ -276,8 +272,8 @@ void main() {
         cubePos.z = (cubePos.z > 0.0) ? BOUNDARY : -BOUNDARY;
     }
     
-    // Project to sphere with double precision
-    dvec3 spherePos = cubeToSphere(cubePos);
+    // Project to sphere with double precision using unified implementation
+    dvec3 spherePos = cubeToSphereDouble(cubePos, 1.0lf);  // Unit sphere first
     dvec3 sphereNormal = normalize(spherePos);
     
     // IMPORTANT: Use the normalized cube position for terrain sampling
@@ -328,6 +324,7 @@ void main() {
     fragMorphFactor = morphFactor;
     fragAltitude = height; // Pass terrain height to fragment shader
     fragViewDir = vec3(worldPos - ubo.viewPos);
+    fragFaceId = faceId; // Pass face ID for debug coloring
     
     // Transform to clip space - use standard viewProj for now
     // TODO: Implement proper camera-relative rendering

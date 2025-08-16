@@ -12,6 +12,7 @@ layout(location = 3) in vec2 fragTexCoord;
 layout(location = 4) in float fragMorphFactor;
 layout(location = 5) in float fragAltitude;
 layout(location = 6) in vec3 fragViewDir;
+layout(location = 7) flat in uint fragFaceId;
 
 // Output
 layout(location = 0) out vec4 outColor;
@@ -42,41 +43,69 @@ void main() {
     float rim = 1.0 - max(dot(viewDir, normal), 0.0);
     rim = pow(rim, 3.0) * 0.1; // Reduced from 0.5 to 0.1
     
-    // Color based on altitude
+    // DEBUG MODE: Color by face ID for debugging
+    // This will immediately show which face is missing
     vec3 color;
-    float altitude = fragAltitude;
+    bool debugFaceColors = true; // Toggle this for debug mode
     
-    if (altitude < -1000.0) {
-        // Deep ocean - rich blue
-        color = vec3(0.0, 0.2, 0.6);
-    } else if (altitude < -100.0) {
-        // Shallow ocean - lighter blue
-        color = vec3(0.1, 0.4, 0.7);
-    } else if (altitude < 0.0) {
-        // Very shallow water/coastline
-        color = vec3(0.2, 0.5, 0.7);
-    } else if (altitude < 50.0) {
-        // Beach/sand
-        color = vec3(0.8, 0.7, 0.5);
-    } else if (altitude < 200.0) {
-        // Lowland grass
-        color = vec3(0.3, 0.6, 0.2);
-    } else if (altitude < 500.0) {
-        // Forest/hills
-        color = vec3(0.2, 0.5, 0.1);
-    } else if (altitude < 1000.0) {
-        // Mountains
-        color = vec3(0.5, 0.4, 0.3);
-    } else if (altitude < 1500.0) {
-        // High mountains
-        color = vec3(0.6, 0.6, 0.6);
+    if (debugFaceColors) {
+        // Each face gets a distinct, bright color
+        switch(fragFaceId) {
+            case 0u: color = vec3(1.0, 0.0, 0.0); break; // +X = RED
+            case 1u: color = vec3(0.5, 0.0, 0.0); break; // -X = DARK RED
+            case 2u: color = vec3(0.0, 1.0, 0.0); break; // +Y = GREEN
+            case 3u: color = vec3(0.0, 0.5, 0.0); break; // -Y = DARK GREEN
+            case 4u: color = vec3(0.0, 0.0, 1.0); break; // +Z = BLUE
+            case 5u: color = vec3(0.0, 0.0, 0.5); break; // -Z = DARK BLUE
+            default: color = vec3(1.0, 1.0, 0.0); break; // YELLOW = ERROR
+        }
+        
+        // Add some shading to see the sphere shape
+        color = color * (0.5 + 0.5 * diffuse);
+        
+        // Add grid lines at patch boundaries for visibility
+        float gridLine = 0.0;
+        if (fragTexCoord.x < 0.02 || fragTexCoord.x > 0.98 ||
+            fragTexCoord.y < 0.02 || fragTexCoord.y > 0.98) {
+            gridLine = 0.3;
+        }
+        color = mix(color, vec3(1.0), gridLine);
     } else {
-        // Snow peaks
-        color = vec3(0.9, 0.9, 0.95);
+        // Original altitude-based coloring
+        float altitude = fragAltitude;
+        
+        if (altitude < -1000.0) {
+            // Deep ocean - rich blue
+            color = vec3(0.0, 0.2, 0.6);
+        } else if (altitude < -100.0) {
+            // Shallow ocean - lighter blue
+            color = vec3(0.1, 0.4, 0.7);
+        } else if (altitude < 0.0) {
+            // Very shallow water/coastline
+            color = vec3(0.2, 0.5, 0.7);
+        } else if (altitude < 50.0) {
+            // Beach/sand
+            color = vec3(0.8, 0.7, 0.5);
+        } else if (altitude < 200.0) {
+            // Lowland grass
+            color = vec3(0.3, 0.6, 0.2);
+        } else if (altitude < 500.0) {
+            // Forest/hills
+            color = vec3(0.2, 0.5, 0.1);
+        } else if (altitude < 1000.0) {
+            // Mountains
+            color = vec3(0.5, 0.4, 0.3);
+        } else if (altitude < 1500.0) {
+            // High mountains
+            color = vec3(0.6, 0.6, 0.6);
+        } else {
+            // Snow peaks
+            color = vec3(0.9, 0.9, 0.95);
+        }
+        
+        // Apply lighting
+        color = color * diffuse;
     }
-    
-    // Apply lighting
-    color = color * diffuse;
     
     // Add rim lighting (atmospheric glow)
     color += vec3(0.5, 0.6, 0.8) * rim;

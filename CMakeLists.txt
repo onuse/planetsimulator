@@ -720,6 +720,7 @@ set_target_properties(test_planet_math PROPERTIES
 add_test(NAME PlanetMath COMMAND test_planet_math)
 
 # Test: Face boundary alignment
+# FIXED: The test now uses correct UV parameterization for shared edges
 add_executable(test_face_boundary_alignment
     tests/test_face_boundary_alignment.cpp
 )
@@ -732,4 +733,37 @@ set_target_properties(test_face_boundary_alignment PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
 add_test(NAME FaceBoundaryAlignment COMMAND test_face_boundary_alignment)
+
+# Test: Same-face boundary alignment (CORRECT test for our fix)
+add_executable(test_same_face_boundaries
+    tests/test_same_face_boundaries.cpp
+)
+target_include_directories(test_same_face_boundaries PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_same_face_boundaries PRIVATE glm::glm)
+set_target_properties(test_same_face_boundaries PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME SameFaceBoundaries COMMAND test_same_face_boundaries)
+
+# Test: Vertex generation determinism
+add_executable(test_vertex_generation_determinism
+    tests/test_vertex_generation_determinism.cpp
+    src/rendering/cpu_vertex_generator.cpp
+    src/core/spherical_quadtree.cpp
+    src/core/octree.cpp
+    src/core/material_table.cpp
+    src/core/density_field.cpp
+)
+target_include_directories(test_vertex_generation_determinism PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_vertex_generation_determinism PRIVATE glm::glm)
+set_target_properties(test_vertex_generation_determinism PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME VertexGenerationDeterminism COMMAND test_vertex_generation_determinism)
 

@@ -15,7 +15,7 @@ int main() {
     GlobalPatchGenerator::GlobalPatch patch1;
     patch1.minBounds = glm::vec3(1.0f, -1.0f, -1.0f);
     patch1.maxBounds = glm::vec3(1.0f, 0.0f, 1.0f);
-    patch1.center = (patch1.minBounds + patch1.maxBounds) * 0.5f;
+    patch1.center = glm::vec3((patch1.minBounds + patch1.maxBounds) * 0.5f);
     patch1.level = 1;
     patch1.faceId = 0;
     
@@ -23,7 +23,7 @@ int main() {
     GlobalPatchGenerator::GlobalPatch patch2;
     patch2.minBounds = glm::vec3(1.0f, 0.0f, -1.0f);
     patch2.maxBounds = glm::vec3(1.0f, 1.0f, 1.0f);
-    patch2.center = (patch2.minBounds + patch2.maxBounds) * 0.5f;
+    patch2.center = glm::vec3((patch2.minBounds + patch2.maxBounds) * 0.5f);
     patch2.level = 1;
     patch2.faceId = 0;
     
@@ -80,7 +80,7 @@ int main() {
     GlobalPatchGenerator::GlobalPatch patchX;
     patchX.minBounds = glm::vec3(1.0f, 0.5f, -0.5f);
     patchX.maxBounds = glm::vec3(1.0f, 1.0f, 0.5f);
-    patchX.center = (patchX.minBounds + patchX.maxBounds) * 0.5f;
+    patchX.center = glm::vec3((patchX.minBounds + patchX.maxBounds) * 0.5f);
     patchX.level = 2;
     patchX.faceId = 0;
     
@@ -88,7 +88,7 @@ int main() {
     GlobalPatchGenerator::GlobalPatch patchY;
     patchY.minBounds = glm::vec3(0.5f, 1.0f, -0.5f);
     patchY.maxBounds = glm::vec3(1.0f, 1.0f, 0.5f);
-    patchY.center = (patchY.minBounds + patchY.maxBounds) * 0.5f;
+    patchY.center = glm::vec3((patchY.minBounds + patchY.maxBounds) * 0.5f);
     patchY.level = 2;
     patchY.faceId = 2;
     

@@ -266,7 +266,8 @@ private:
             float initialDistance = config.radius * 2.5f;
             std::cout << "=== ABOUT TO REPOSITION CAMERA ===\n";
             std::cout << "Initial distance: " << initialDistance << " (altitude: " << (initialDistance - config.radius) << ")\n";
-            camera.setPosition(glm::vec3(initialDistance * 0.7f, initialDistance * 0.3f, initialDistance * 0.6f));
+            // TEST: Start from opposite side to see if hole moves
+            camera.setPosition(glm::vec3(-initialDistance * 0.7f, initialDistance * 0.3f, -initialDistance * 0.6f));
             camera.lookAt(glm::vec3(0, 0, 0));
         }
         

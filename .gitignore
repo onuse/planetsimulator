@@ -48,6 +48,12 @@ test_*
 *nul
 *.log
 
+# Debug output directory
+debug_output/
+
+# ImGui settings
+imgui.ini
+
 # Build directories
 build*/
 cmake-build-*/

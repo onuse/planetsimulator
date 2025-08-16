@@ -21,7 +21,7 @@ int main() {
     core::GlobalPatchGenerator::GlobalPatch zPatch;
     zPatch.minBounds = glm::vec3(0.5f, -0.5f, 1.0f);  // Goes from x=0.5 to x=1
     zPatch.maxBounds = glm::vec3(1.0f, 0.5f, 1.0f);
-    zPatch.center = (zPatch.minBounds + zPatch.maxBounds) * 0.5f;
+    zPatch.center = glm::vec3((zPatch.minBounds + zPatch.maxBounds) * 0.5f);
     zPatch.level = 1;
     zPatch.faceId = 4; // +Z
     
@@ -36,7 +36,7 @@ int main() {
     core::GlobalPatchGenerator::GlobalPatch xPatch;
     xPatch.minBounds = glm::vec3(1.0f, -0.5f, 0.5f);  // Goes from z=0.5 to z=1
     xPatch.maxBounds = glm::vec3(1.0f, 0.5f, 1.0f);
-    xPatch.center = (xPatch.minBounds + xPatch.maxBounds) * 0.5f;
+    xPatch.center = glm::vec3((xPatch.minBounds + xPatch.maxBounds) * 0.5f);
     xPatch.level = 1;
     xPatch.faceId = 0; // +X
     

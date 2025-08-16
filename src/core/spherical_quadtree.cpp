@@ -10,83 +10,61 @@
 namespace core {
 
 // SphericalQuadtreeNode implementation
-SphericalQuadtreeNode::SphericalQuadtreeNode(const glm::vec3& center, float size, 
+SphericalQuadtreeNode::SphericalQuadtreeNode(const glm::dvec3& center, double size, 
                                              uint32_t level, Face face, 
                                              SphericalQuadtreeNode* parent)
     : parent(parent), level(level), face(face) {
     
     // Use the new GlobalPatchGenerator for truly global coordinates from the start
-    // Calculate the bounds in cube space based on face
-    glm::vec3 minBounds, maxBounds;
-    float halfSize = size * 0.5f;
+    // Calculate the bounds in cube space based on face (using double precision)
+    glm::dvec3 minBounds, maxBounds;
+    double halfSize = size * 0.5;
     
     // For face-aligned patches, only vary the non-face dimensions
     switch (face) {
     case FACE_POS_X:
-        minBounds = glm::vec3(1.0f, center.y - halfSize, center.z - halfSize);
-        maxBounds = glm::vec3(1.0f, center.y + halfSize, center.z + halfSize);
+        minBounds = glm::dvec3(1.0, center.y - halfSize, center.z - halfSize);
+        maxBounds = glm::dvec3(1.0, center.y + halfSize, center.z + halfSize);
         break;
     case FACE_NEG_X:
-        minBounds = glm::vec3(-1.0f, center.y - halfSize, center.z - halfSize);
-        maxBounds = glm::vec3(-1.0f, center.y + halfSize, center.z + halfSize);
+        minBounds = glm::dvec3(-1.0, center.y - halfSize, center.z - halfSize);
+        maxBounds = glm::dvec3(-1.0, center.y + halfSize, center.z + halfSize);
         break;
     case FACE_POS_Y:
-        minBounds = glm::vec3(center.x - halfSize, 1.0f, center.z - halfSize);
-        maxBounds = glm::vec3(center.x + halfSize, 1.0f, center.z + halfSize);
+        minBounds = glm::dvec3(center.x - halfSize, 1.0, center.z - halfSize);
+        maxBounds = glm::dvec3(center.x + halfSize, 1.0, center.z + halfSize);
         break;
     case FACE_NEG_Y:
-        minBounds = glm::vec3(center.x - halfSize, -1.0f, center.z - halfSize);
-        maxBounds = glm::vec3(center.x + halfSize, -1.0f, center.z + halfSize);
+        minBounds = glm::dvec3(center.x - halfSize, -1.0, center.z - halfSize);
+        maxBounds = glm::dvec3(center.x + halfSize, -1.0, center.z + halfSize);
         break;
     case FACE_POS_Z:
-        minBounds = glm::vec3(center.x - halfSize, center.y - halfSize, 1.0f);
-        maxBounds = glm::vec3(center.x + halfSize, center.y + halfSize, 1.0f);
+        minBounds = glm::dvec3(center.x - halfSize, center.y - halfSize, 1.0);
+        maxBounds = glm::dvec3(center.x + halfSize, center.y + halfSize, 1.0);
         break;
     case FACE_NEG_Z:
-        minBounds = glm::vec3(center.x - halfSize, center.y - halfSize, -1.0f);
-        maxBounds = glm::vec3(center.x + halfSize, center.y + halfSize, -1.0f);
+        minBounds = glm::dvec3(center.x - halfSize, center.y - halfSize, -1.0);
+        maxBounds = glm::dvec3(center.x + halfSize, center.y + halfSize, -1.0);
         break;
     }
     
-    // Clamp varying dimensions to cube boundaries [-1, 1]
-    minBounds = glm::max(minBounds, glm::vec3(-1.0f));
-    maxBounds = glm::min(maxBounds, glm::vec3(1.0f));
-    
-    // CRITICAL FIX: Ensure face boundary vertices are EXACTLY at ±1
-    // This ensures patches from different faces share vertices at boundaries
-    const float EPSILON = 1e-5f;  // Tight tolerance to catch floating-point errors
-    const float BOUNDARY = 1.0f;
-    
-    // Snap coordinates that are very close to boundaries to exact boundary values
-    // This is critical for ensuring patches from different faces share vertices
-    for (int i = 0; i < 3; i++) {
-        // Check if close to +1 boundary
-        if (std::abs(minBounds[i] - BOUNDARY) < EPSILON) {
-            minBounds[i] = BOUNDARY;
-        }
-        if (std::abs(maxBounds[i] - BOUNDARY) < EPSILON) {
-            maxBounds[i] = BOUNDARY;
-        }
-        // Check if close to -1 boundary
-        if (std::abs(minBounds[i] + BOUNDARY) < EPSILON) {
-            minBounds[i] = -BOUNDARY;
-        }
-        if (std::abs(maxBounds[i] + BOUNDARY) < EPSILON) {
-            maxBounds[i] = -BOUNDARY;
-        }
-    }
+    // Clamp to cube boundaries
+    minBounds = glm::max(minBounds, glm::dvec3(-1.0));
+    maxBounds = glm::min(maxBounds, glm::dvec3(1.0));
     
     // Create patch using global coordinate system
     GlobalPatchGenerator::GlobalPatch globalPatch;
-    globalPatch.minBounds = minBounds;
-    globalPatch.maxBounds = maxBounds;
-    globalPatch.center = (minBounds + maxBounds) * 0.5f;
+    globalPatch.minBounds = glm::vec3(minBounds);  // GlobalPatch still uses vec3
+    globalPatch.maxBounds = glm::vec3(maxBounds);
+    globalPatch.center = glm::vec3((minBounds + maxBounds) * 0.5);
     globalPatch.level = level;
     globalPatch.faceId = static_cast<int>(face);
     
-    // Transfer data to our QuadtreePatch structure
-    patch.center = globalPatch.center;
-    patch.size = size;
+    // Transfer data to our QuadtreePatch structure (keeping double precision)
+    patch.center = (minBounds + maxBounds) * 0.5;  // Use double precision directly
+    patch.minBounds = minBounds;
+    patch.maxBounds = maxBounds;
+    patch.size = static_cast<float>(size);  // Size can stay float for now
     patch.level = level;
     patch.faceId = static_cast<uint32_t>(face);
     patch.morphFactor = 0.0f;
@@ -96,9 +74,12 @@ SphericalQuadtreeNode::SphericalQuadtreeNode(const glm::vec3& center, float size
     glm::vec3 corners[4];
     globalPatch.getCorners(corners);
     for (int i = 0; i < 4; i++) {
-        patch.corners[i] = corners[i];
+        patch.corners[i] = glm::dvec3(corners[i]);  // Convert to double precision
         patch.neighborLevels[i] = level;
     }
+    
+    // Create the patch transform using GlobalPatch (convert result to double)
+    patch.patchTransform = glm::dmat4(globalPatch.createTransform());
     
     // Clear neighbors
     for (int i = 0; i < 4; i++) {
@@ -106,10 +87,10 @@ SphericalQuadtreeNode::SphericalQuadtreeNode(const glm::vec3& center, float size
     }
 }
 
-glm::vec3 SphericalQuadtreeNode::cubeToSphere(const glm::vec3& cubePos, float radius) const {
+glm::dvec3 SphericalQuadtreeNode::cubeToSphere(const glm::dvec3& cubePos, double radius) const {
     // Use the tested math function
-    glm::dvec3 spherePos = math::cubeToSphere(glm::dvec3(cubePos));
-    return glm::vec3(spherePos) * radius;
+    glm::dvec3 spherePos = math::cubeToSphere(cubePos);
+    return spherePos * radius;
 }
 
 void SphericalQuadtreeNode::subdivide(const DensityField& densityField) {
@@ -118,16 +99,16 @@ void SphericalQuadtreeNode::subdivide(const DensityField& densityField) {
     // Create GlobalPatch from current patch
     GlobalPatchGenerator::GlobalPatch globalPatch;
     
-    // Calculate bounds from corners
-    glm::vec3 minBounds(1e9f), maxBounds(-1e9f);
+    // Calculate bounds from corners (use double precision)
+    glm::dvec3 minBounds(1e9), maxBounds(-1e9);
     for (int i = 0; i < 4; i++) {
         minBounds = glm::min(minBounds, patch.corners[i]);
         maxBounds = glm::max(maxBounds, patch.corners[i]);
     }
     
-    globalPatch.minBounds = minBounds;
-    globalPatch.maxBounds = maxBounds;
-    globalPatch.center = patch.center;
+    globalPatch.minBounds = glm::vec3(minBounds);
+    globalPatch.maxBounds = glm::vec3(maxBounds);
+    globalPatch.center = glm::vec3(patch.center);
     globalPatch.level = patch.level;
     globalPatch.faceId = static_cast<int>(face);
     
@@ -135,11 +116,11 @@ void SphericalQuadtreeNode::subdivide(const DensityField& densityField) {
     std::vector<GlobalPatchGenerator::GlobalPatch> childPatches = 
         GlobalPatchGenerator::subdivide(globalPatch);
     
-    float childSize = patch.size * 0.5f;
+    double childSize = patch.size * 0.5;
     
     for (int i = 0; i < 4; i++) {
         children[i] = std::make_unique<SphericalQuadtreeNode>(
-            childPatches[i].center, childSize, level + 1, face, this
+            glm::dvec3(childPatches[i].center), childSize, level + 1, face, this
         );
         
         // Sample heights for the child patch
@@ -165,43 +146,43 @@ void SphericalQuadtreeNode::subdivide(const DensityField& densityField) {
     updateNeighborReferences();
 }
 
-glm::vec3 SphericalQuadtreeNode::getChildCenter(int childIndex) const {
-    float quarterSize = patch.size * 0.25f;
-    glm::vec3 offset;
+glm::dvec3 SphericalQuadtreeNode::getChildCenter(int childIndex) const {
+    double quarterSize = patch.size * 0.25;
+    glm::dvec3 offset;
     
     switch (childIndex) {
-        case 0: offset = glm::vec3(-quarterSize, -quarterSize, 0); break; // Bottom-left
-        case 1: offset = glm::vec3(quarterSize, -quarterSize, 0); break;  // Bottom-right
-        case 2: offset = glm::vec3(quarterSize, quarterSize, 0); break;   // Top-right
-        case 3: offset = glm::vec3(-quarterSize, quarterSize, 0); break;  // Top-left
+        case 0: offset = glm::dvec3(-quarterSize, -quarterSize, 0); break; // Bottom-left
+        case 1: offset = glm::dvec3(quarterSize, -quarterSize, 0); break;  // Bottom-right
+        case 2: offset = glm::dvec3(quarterSize, quarterSize, 0); break;   // Top-right
+        case 3: offset = glm::dvec3(-quarterSize, quarterSize, 0); break;  // Top-left
     }
     
     // FIXED: Use consistent coordinate transformations matching the face orientations
-    glm::vec3 right, up;
+    glm::dvec3 right, up;
     switch (face) {
         case FACE_POS_X:
-            right = glm::vec3(0, 0, 1);
-            up = glm::vec3(0, 1, 0);
+            right = glm::dvec3(0, 0, 1);
+            up = glm::dvec3(0, 1, 0);
             return patch.center + right * offset.x + up * offset.y;
         case FACE_NEG_X:
-            right = glm::vec3(0, 0, -1);
-            up = glm::vec3(0, 1, 0);
+            right = glm::dvec3(0, 0, -1);
+            up = glm::dvec3(0, 1, 0);
             return patch.center + right * offset.x + up * offset.y;
         case FACE_POS_Y:
-            right = glm::vec3(1, 0, 0);
-            up = glm::vec3(0, 0, 1);
+            right = glm::dvec3(1, 0, 0);
+            up = glm::dvec3(0, 0, 1);
             return patch.center + right * offset.x + up * offset.y;
         case FACE_NEG_Y:
-            right = glm::vec3(1, 0, 0);
-            up = glm::vec3(0, 0, -1);
+            right = glm::dvec3(1, 0, 0);
+            up = glm::dvec3(0, 0, -1);
             return patch.center + right * offset.x + up * offset.y;
         case FACE_POS_Z:
-            right = glm::vec3(-1, 0, 0);
-            up = glm::vec3(0, 1, 0);
+            right = glm::dvec3(-1, 0, 0);
+            up = glm::dvec3(0, 1, 0);
             return patch.center + right * offset.x + up * offset.y;
         case FACE_NEG_Z:
-            right = glm::vec3(1, 0, 0);
-            up = glm::vec3(0, 1, 0);
+            right = glm::dvec3(1, 0, 0);
+            up = glm::dvec3(0, 1, 0);
             return patch.center + right * offset.x + up * offset.y;
     }
     
@@ -221,8 +202,8 @@ void SphericalQuadtreeNode::merge() {
 float SphericalQuadtreeNode::calculateScreenSpaceError(const glm::vec3& viewPos, 
                                                        const glm::mat4& viewProj) const {
     // Use the tested math function with comprehensive logging
-    const float planetRadius = 6371000.0f;
-    glm::vec3 sphereCenter = cubeToSphere(patch.center, planetRadius);
+    const double planetRadius = 6371000.0;
+    glm::dvec3 sphereCenter = cubeToSphere(patch.center, planetRadius);
     
     // Convert to double precision for calculation
     float error = math::calculateScreenSpaceError(
@@ -293,14 +274,15 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
     bool shouldSubdivide = error > errorThreshold && level < safeMaxLevel;
     
     // Log subdivision decisions for key nodes (reduced frequency to prevent spam)
-    static int lodLogCount = 0;
-    if (lodLogCount++ % 10000 == 0 || (level < 3 && shouldSubdivide)) {
-        std::cout << "[SelectLOD] Level:" << level 
-                  << " Error:" << error 
-                  << " Threshold:" << errorThreshold
-                  << " ShouldSubdivide:" << shouldSubdivide
-                  << " IsLeaf:" << isLeaf() << std::endl;
-    }
+    // DISABLED: Too verbose, overwhelming the output
+    // static int lodLogCount = 0;
+    // if (lodLogCount++ % 10000 == 0 || (level < 3 && shouldSubdivide)) {
+    //     std::cout << "[SelectLOD] Level:" << level 
+    //               << " Error:" << error 
+    //               << " Threshold:" << errorThreshold
+    //               << " ShouldSubdivide:" << shouldSubdivide
+    //               << " IsLeaf:" << isLeaf() << std::endl;
+    // }
     
     if (shouldSubdivide) {
         if (isLeaf()) {
@@ -411,15 +393,15 @@ void SphericalQuadtreeNode::sampleHeights(const DensityField& densityField, uint
             float u = static_cast<float>(x) / (resolution - 1);
             float v = static_cast<float>(y) / (resolution - 1);
             
-            // Interpolate position on patch
-            glm::vec3 pos = patch.corners[0] * (1.0f - u) * (1.0f - v) +
-                           patch.corners[1] * u * (1.0f - v) +
-                           patch.corners[2] * u * v +
-                           patch.corners[3] * (1.0f - u) * v;
+            // Interpolate position on patch (use double precision)
+            glm::dvec3 pos = patch.corners[0] * (1.0 - u) * (1.0 - v) +
+                            patch.corners[1] * double(u) * (1.0 - v) +
+                            patch.corners[2] * double(u) * double(v) +
+                            patch.corners[3] * (1.0 - u) * double(v);
             
             // Project to sphere and get height
-            glm::vec3 spherePos = cubeToSphere(pos, densityField.getPlanetRadius());
-            float height = densityField.getTerrainHeight(glm::normalize(spherePos));
+            glm::dvec3 spherePos = cubeToSphere(pos, densityField.getPlanetRadius());
+            float height = densityField.getTerrainHeight(glm::vec3(glm::normalize(spherePos)));
             
             heights[y * resolution + x] = height;
         }
@@ -434,19 +416,19 @@ SphericalQuadtree::SphericalQuadtree(const Config& config, std::shared_ptr<Densi
 }
 
 void SphericalQuadtree::initializeRoots() {
-    // Create six root nodes for cube faces
+    // Create six root nodes for cube faces (use double precision)
     roots[0] = std::make_unique<SphericalQuadtreeNode>(
-        glm::vec3(1, 0, 0), 2.0f, 0, SphericalQuadtreeNode::FACE_POS_X);
+        glm::dvec3(1, 0, 0), 2.0, 0, SphericalQuadtreeNode::FACE_POS_X);
     roots[1] = std::make_unique<SphericalQuadtreeNode>(
-        glm::vec3(-1, 0, 0), 2.0f, 0, SphericalQuadtreeNode::FACE_NEG_X);
+        glm::dvec3(-1, 0, 0), 2.0, 0, SphericalQuadtreeNode::FACE_NEG_X);
     roots[2] = std::make_unique<SphericalQuadtreeNode>(
-        glm::vec3(0, 1, 0), 2.0f, 0, SphericalQuadtreeNode::FACE_POS_Y);
+        glm::dvec3(0, 1, 0), 2.0, 0, SphericalQuadtreeNode::FACE_POS_Y);
     roots[3] = std::make_unique<SphericalQuadtreeNode>(
-        glm::vec3(0, -1, 0), 2.0f, 0, SphericalQuadtreeNode::FACE_NEG_Y);
+        glm::dvec3(0, -1, 0), 2.0, 0, SphericalQuadtreeNode::FACE_NEG_Y);
     roots[4] = std::make_unique<SphericalQuadtreeNode>(
-        glm::vec3(0, 0, 1), 2.0f, 0, SphericalQuadtreeNode::FACE_POS_Z);
+        glm::dvec3(0, 0, 1), 2.0, 0, SphericalQuadtreeNode::FACE_POS_Z);
     roots[5] = std::make_unique<SphericalQuadtreeNode>(
-        glm::vec3(0, 0, -1), 2.0f, 0, SphericalQuadtreeNode::FACE_NEG_Z);
+        glm::dvec3(0, 0, -1), 2.0, 0, SphericalQuadtreeNode::FACE_NEG_Z);
     
     // Set up neighbor relationships between root faces
     // This is complex - each face has specific neighbors at edges

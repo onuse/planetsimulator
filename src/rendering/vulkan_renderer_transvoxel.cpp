@@ -465,12 +465,20 @@ void VulkanRenderer::createQuadtreePipeline() {
         throw std::runtime_error("Failed to create Quadtree pipeline layout!");
     }
     
-    // Load quadtree shaders
+    // Load quadtree shaders - use CPU vertex shader
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
     
     try {
-        vertShaderCode = readFile("shaders/quadtree_patch.vert.spv");
+        // Try to load CPU vertex shader first
+        try {
+            vertShaderCode = readFile("shaders/quadtree_patch_cpu.vert.spv");
+            std::cout << "Using CPU vertex shader for quadtree" << std::endl;
+        } catch (...) {
+            // Fall back to original if CPU version not compiled yet
+            std::cout << "CPU vertex shader not found, falling back to GPU vertex shader" << std::endl;
+            vertShaderCode = readFile("shaders/quadtree_patch.vert.spv");
+        }
         fragShaderCode = readFile("shaders/quadtree_patch.frag.spv");
         std::cout << "Loaded quadtree shaders: vert=" << vertShaderCode.size() << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
     } catch (const std::exception& e) {
@@ -494,24 +502,57 @@ void VulkanRenderer::createQuadtreePipeline() {
     
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     
-    // Vertex input state - just 2D UV coordinates for the patch
+    // Vertex input state - CPU-generated PatchVertex format
+    // struct PatchVertex {
+    //     glm::vec3 position;   // location 0
+    //     glm::vec3 normal;     // location 1
+    //     glm::vec2 texCoord;   // location 2
+    //     float height;         // location 3
+    //     uint32_t faceId;      // location 4
+    // };
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(glm::vec2);
+    bindingDescription.stride = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2) + sizeof(float) + sizeof(uint32_t); // PatchVertex size with faceId
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     
-    VkVertexInputAttributeDescription attributeDescription{};
-    attributeDescription.binding = 0;
-    attributeDescription.location = 0;
-    attributeDescription.format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescription.offset = 0;
+    std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
+    
+    // Position attribute - location 0
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[0].offset = 0;
+    
+    // Normal attribute - location 1
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[1].offset = sizeof(glm::vec3);
+    
+    // TexCoord attribute - location 2
+    attributeDescriptions[2].binding = 0;
+    attributeDescriptions[2].location = 2;
+    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[2].offset = sizeof(glm::vec3) + sizeof(glm::vec3);
+    
+    // Height attribute - location 3
+    attributeDescriptions[3].binding = 0;
+    attributeDescriptions[3].location = 3;
+    attributeDescriptions[3].format = VK_FORMAT_R32_SFLOAT;
+    attributeDescriptions[3].offset = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2);
+    
+    // FaceId attribute - location 4
+    attributeDescriptions[4].binding = 0;
+    attributeDescriptions[4].location = 4;
+    attributeDescriptions[4].format = VK_FORMAT_R32_UINT;
+    attributeDescriptions[4].offset = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2) + sizeof(float);
     
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.vertexAttributeDescriptionCount = 1;
-    vertexInputInfo.pVertexAttributeDescriptions = &attributeDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
     
     // Input assembly - triangles
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -546,7 +587,9 @@ void VulkanRenderer::createQuadtreePipeline() {
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    // CRITICAL FIX: Disable backface culling to fix missing X faces
+    // The X faces appear to have incorrect winding order
+    rasterizer.cullMode = VK_CULL_MODE_NONE;  // Was VK_CULL_MODE_BACK_BIT
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     

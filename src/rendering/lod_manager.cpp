@@ -1,8 +1,11 @@
 #include "rendering/lod_manager.hpp"
 #include "core/global_patch_generator.hpp"
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/common.hpp>
 #include <cstring>
 #include <stdexcept>
 #include <iostream>
+#include <algorithm>
 
 namespace rendering {
 
@@ -57,6 +60,16 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
     transvoxelRenderer = std::make_unique<TransvoxelRenderer>(
         device, physicalDevice, commandPool, graphicsQueue
     );
+    
+    // Initialize CPU vertex generator
+    CPUVertexGenerator::Config vertexGenConfig;
+    vertexGenConfig.gridResolution = 65;  // 65x65 vertices per patch
+    vertexGenConfig.planetRadius = planetRadius;
+    vertexGenConfig.enableSkirts = false;  // Disabled for debugging
+    vertexGenConfig.skirtDepth = 500.0f;
+    vertexGenConfig.enableVertexCaching = true;
+    vertexGenConfig.maxCacheSize = 100000;
+    vertexGenerator = std::make_unique<CPUVertexGenerator>(vertexGenConfig);
     
     // Create initial buffers for quadtree rendering
     // Base mesh is a subdivided quad with skirt vertices
@@ -258,6 +271,16 @@ void LODManager::update(const glm::vec3& cameraPos, const glm::mat4& viewProj, f
     const auto& quadPatches = quadtree->getVisiblePatches();
     stats.quadtreePatches = static_cast<uint32_t>(quadPatches.size());
     
+    // DEBUG: Count patches per face
+    int faceDebugCounts[6] = {0};
+    for (const auto& patch : quadPatches) {
+        if (patch.faceId < 6) faceDebugCounts[patch.faceId]++;
+    }
+    std::cout << "[LODManager] Got " << quadPatches.size() << " patches. Per face: "
+              << faceDebugCounts[0] << " " << faceDebugCounts[1] << " " 
+              << faceDebugCounts[2] << " " << faceDebugCounts[3] << " "
+              << faceDebugCounts[4] << " " << faceDebugCounts[5] << std::endl;
+    
     // Update transition blend factor
     if (currentAltitude > config.transitionStartAltitude) {
         transitionBlendFactor = 0.0f;
@@ -272,11 +295,11 @@ void LODManager::update(const glm::vec3& cameraPos, const glm::mat4& viewProj, f
     // Update rendering data based on mode
     switch (currentMode) {
         case QUADTREE_ONLY:
-            updateQuadtreeBuffers(quadPatches);
+            updateQuadtreeBuffersCPU(quadPatches, cameraPos);
             break;
             
         case TRANSITION_ZONE:
-            updateQuadtreeBuffers(quadPatches);
+            updateQuadtreeBuffersCPU(quadPatches, cameraPos);
             prepareTransitionZone(cameraPos);
             break;
             
@@ -348,6 +371,8 @@ void LODManager::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
                 }
                 
                 // Draw instanced
+                std::cout << "[DEBUG] Drawing with indexCount=" << quadtreeData.indexCount 
+                          << " instanceCount=" << quadtreeData.instanceCount << std::endl;
                 vkCmdDrawIndexed(commandBuffer, quadtreeData.indexCount, 
                                quadtreeData.instanceCount, 0, 0, 0);
             }
@@ -396,7 +421,7 @@ LODManager::RenderingMode LODManager::selectRenderingMode(float altitude) {
     }
 }
 
-void LODManager::updateQuadtreeBuffers(const std::vector<core::QuadtreePatch>& patches) {
+void LODManager::updateQuadtreeBuffers_OLD(const std::vector<core::QuadtreePatch>& patches) {
     // Update instance buffer with patch data
     quadtreeData.instanceCount = static_cast<uint32_t>(patches.size());
     
@@ -573,35 +598,39 @@ void LODManager::updateQuadtreeBuffers(const std::vector<core::QuadtreePatch>& p
         if (xRange < eps) {
             // X is fixed - patch is on +X or -X face
             // Corners are ordered: (x, minY, minZ), (x, minY, maxZ), (x, maxY, maxZ), (x, maxY, minZ)
-            float x = patch.corners[0].x;
-            minBounds = glm::vec3(x, 
-                                 std::min(patch.corners[0].y, patch.corners[2].y),
-                                 std::min(patch.corners[0].z, patch.corners[2].z));
-            maxBounds = glm::vec3(x,
-                                 std::max(patch.corners[0].y, patch.corners[2].y),
-                                 std::max(patch.corners[0].z, patch.corners[2].z));
+            double x = patch.corners[0].x;
+            minBounds = glm::dvec3(x, 
+                                  std::min(patch.corners[0].y, patch.corners[2].y),
+                                  std::min(patch.corners[0].z, patch.corners[2].z));
+            maxBounds = glm::dvec3(x,
+                                  std::max(patch.corners[0].y, patch.corners[2].y),
+                                  std::max(patch.corners[0].z, patch.corners[2].z));
         }
         else if (yRange < eps) {
             // Y is fixed - patch is on +Y or -Y face
             // Corners are ordered: (minX, y, minZ), (maxX, y, minZ), (maxX, y, maxZ), (minX, y, maxZ)
-            float y = patch.corners[0].y;
-            minBounds = glm::vec3(patch.corners[0].x, y, patch.corners[0].z);
-            maxBounds = glm::vec3(patch.corners[2].x, y, patch.corners[2].z);
+            double y = patch.corners[0].y;
+            minBounds = glm::dvec3(patch.corners[0].x, y, patch.corners[0].z);
+            maxBounds = glm::dvec3(patch.corners[2].x, y, patch.corners[2].z);
         }
         else if (zRange < eps) {
             // Z is fixed - patch is on +Z or -Z face
             // Corners are ordered: (minX, minY, z), (maxX, minY, z), (maxX, maxY, z), (minX, maxY, z)
-            float z = patch.corners[0].z;
-            minBounds = glm::vec3(patch.corners[0].x, patch.corners[0].y, z);
-            maxBounds = glm::vec3(patch.corners[2].x, patch.corners[2].y, z);
+            double z = patch.corners[0].z;
+            minBounds = glm::dvec3(patch.corners[0].x, patch.corners[0].y, z);
+            maxBounds = glm::dvec3(patch.corners[2].x, patch.corners[2].y, z);
         }
         else {
             // Not a face patch - fall back to calculating from all corners
-            minBounds = glm::vec3(1e9f);
-            maxBounds = glm::vec3(-1e9f);
+            minBounds = glm::dvec3(1e9);
+            maxBounds = glm::dvec3(-1e9);
             for (int j = 0; j < 4; j++) {
-                minBounds = glm::min(minBounds, patch.corners[j]);
-                maxBounds = glm::max(maxBounds, patch.corners[j]);
+                minBounds.x = glm::min<double>(minBounds.x, patch.corners[j].x);
+                minBounds.y = glm::min<double>(minBounds.y, patch.corners[j].y);
+                minBounds.z = glm::min<double>(minBounds.z, patch.corners[j].z);
+                maxBounds.x = glm::max<double>(maxBounds.x, patch.corners[j].x);
+                maxBounds.y = glm::max<double>(maxBounds.y, patch.corners[j].y);
+                maxBounds.z = glm::max<double>(maxBounds.z, patch.corners[j].z);
             }
         }
         
@@ -760,6 +789,248 @@ void LODManager::prepareTransitionZone(const glm::vec3& viewPos) {
     // In transition zone, prepare octree chunks while still showing quadtree
     // Start loading octree data in background
     updateOctreeChunks(viewPos);
+}
+
+void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>& patches, const glm::vec3& viewPosition) {
+    if (patches.empty()) {
+        quadtreeData.instanceCount = 0;
+        return;
+    }
+    
+    std::cout << "[LODManager] Generating CPU vertices for " << patches.size() << " patches" << std::endl;
+    
+    // Calculate total vertex and index requirements
+    size_t totalVertices = 0;
+    size_t totalIndices = 0;
+    std::vector<CPUVertexGenerator::PatchMesh> meshes;
+    meshes.reserve(patches.size());
+    
+    // Generate meshes for all patches
+    for (const auto& patch : patches) {
+        // Create transform matrix for patch
+        core::GlobalPatchGenerator::GlobalPatch globalPatch;
+        
+        // CRITICAL: Use the EXACT double-precision bounds stored in the patch
+        // These were computed once with full precision and must be preserved!
+        globalPatch.minBounds = patch.minBounds;
+        globalPatch.maxBounds = patch.maxBounds;
+        globalPatch.center = patch.center;
+        globalPatch.level = patch.level;
+        globalPatch.faceId = patch.faceId;
+        
+        glm::dmat4 transform = globalPatch.createTransform();
+        
+        // Generate mesh using CPU vertex generator
+        auto mesh = vertexGenerator->generatePatchMesh(patch, transform);
+        totalVertices += mesh.vertexCount;
+        totalIndices += mesh.indexCount;
+        meshes.push_back(std::move(mesh));
+    }
+    
+    std::cout << "[LODManager] Generated " << totalVertices << " vertices and " 
+              << totalIndices << " indices" << std::endl;
+    
+    // Debug: Print first vertex to verify data
+    if (!meshes.empty() && !meshes[0].vertices.empty()) {
+        const auto& v = meshes[0].vertices[0];
+        std::cout << "[DEBUG] First vertex: pos(" << v.position.x << "," << v.position.y << "," << v.position.z 
+                  << ") normal(" << v.normal.x << "," << v.normal.y << "," << v.normal.z 
+                  << ") height=" << v.height << std::endl;
+        
+        // Also print camera distance for debugging
+        glm::vec3 cameraPos(1.115e+07, 4.770e+06, 9.556e+06);  // From debug output
+        float dist = glm::length(v.position - cameraPos);
+        std::cout << "[DEBUG] Distance from camera to first vertex: " << dist << " meters" << std::endl;
+    }
+    
+    // Allocate or reallocate vertex buffer if needed
+    VkDeviceSize vertexBufferSize = totalVertices * sizeof(PatchVertex);
+    VkDeviceSize indexBufferSize = totalIndices * sizeof(uint32_t);
+    
+    static VkDeviceSize currentVertexBufferSize = 0;
+    static VkDeviceSize currentIndexBufferSize = 0;
+    
+    // Reallocate vertex buffer if needed
+    if (quadtreeData.vertexBuffer == VK_NULL_HANDLE || 
+        vertexBufferSize > currentVertexBufferSize) {
+        
+        VkBuffer oldBuffer = quadtreeData.vertexBuffer;
+        VkDeviceMemory oldMemory = quadtreeData.vertexMemory;
+        
+        // Allocate with extra space
+        VkDeviceSize allocSize = std::max(vertexBufferSize * 2, 
+                                         VkDeviceSize(sizeof(PatchVertex) * 100000));
+        
+        createBuffer(allocSize,
+                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    quadtreeData.vertexBuffer, quadtreeData.vertexMemory);
+        
+        currentVertexBufferSize = allocSize;
+        bufferUpdateRequired = true;
+        
+        if (oldBuffer != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(device);
+            destroyBuffer(oldBuffer, oldMemory);
+        }
+    }
+    
+    // Reallocate index buffer if needed
+    if (quadtreeData.indexBuffer == VK_NULL_HANDLE || 
+        indexBufferSize > currentIndexBufferSize) {
+        
+        VkBuffer oldBuffer = quadtreeData.indexBuffer;
+        VkDeviceMemory oldMemory = quadtreeData.indexMemory;
+        
+        VkDeviceSize allocSize = std::max(indexBufferSize * 2, 
+                                         VkDeviceSize(sizeof(uint32_t) * 500000));
+        
+        createBuffer(allocSize,
+                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    quadtreeData.indexBuffer, quadtreeData.indexMemory);
+        
+        currentIndexBufferSize = allocSize;
+        
+        if (oldBuffer != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(device);
+            destroyBuffer(oldBuffer, oldMemory);
+        }
+    }
+    
+    // Upload vertex data with camera-relative transform
+    // This is THE critical step for numerical precision at planet scale
+    void* vertexData;
+    if (vkMapMemory(device, quadtreeData.vertexMemory, 0, vertexBufferSize, 0, &vertexData) == VK_SUCCESS) {
+        // Use the camera position passed from update() for relative transform
+        glm::vec3 cameraPos = viewPosition;
+        
+        // Debug: Print camera position once
+        static int uploadCount = 0;
+        if (uploadCount++ == 0) {
+            std::cout << "[Camera-Relative] Transforming vertices relative to camera at: (" 
+                      << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z 
+                      << "), distance: " << glm::length(cameraPos) << " meters" << std::endl;
+        }
+        
+        size_t vertexOffset = 0;
+        for (size_t m = 0; m < meshes.size(); m++) {
+            const auto& mesh = meshes[m];
+            // Apply camera-relative transform to each vertex
+            PatchVertex* destVertices = reinterpret_cast<PatchVertex*>(
+                static_cast<char*>(vertexData) + vertexOffset);
+            
+            for (size_t v = 0; v < mesh.vertexCount; v++) {
+                PatchVertex vertex = mesh.vertices[v];
+                
+                // Check for escaping vertices BEFORE transform
+                float worldDist = glm::length(vertex.position);
+                if (worldDist > 6.371e6 * 1.5f) { // More than 1.5x planet radius
+                    static int escapeCount = 0;
+                    if (escapeCount++ < 10) {
+                        std::cout << "  ESCAPING VERTEX DETECTED: worldDist=" << worldDist 
+                                  << " at (" << vertex.position.x << ", " << vertex.position.y 
+                                  << ", " << vertex.position.z << ")" << std::endl;
+                    }
+                }
+                
+                // Apply camera-relative transform to avoid precision issues
+                vertex.position = vertex.position - cameraPos;
+                destVertices[v] = vertex;
+                
+                // Debug: Check for any extreme vertices after transform
+                if (uploadCount == 1 && m == 0 && v == 0) {
+                    float relDist = glm::length(vertex.position);
+                    std::cout << "  First vertex after transform: distance from camera = " 
+                              << relDist << " meters (should be ~planet radius)" << std::endl;
+                }
+            }
+            
+            vertexOffset += mesh.vertexCount * sizeof(PatchVertex);
+        }
+        vkUnmapMemory(device, quadtreeData.vertexMemory);
+    }
+    
+    // Upload index data  
+    void* indexData;
+    if (vkMapMemory(device, quadtreeData.indexMemory, 0, indexBufferSize, 0, &indexData) == VK_SUCCESS) {
+        size_t indexOffset = 0;
+        size_t vertexBase = 0;
+        
+        for (const auto& mesh : meshes) {
+            // Adjust indices to account for vertex offset
+            for (uint32_t idx : mesh.indices) {
+                uint32_t adjustedIdx = idx + static_cast<uint32_t>(vertexBase);
+                std::memcpy(static_cast<char*>(indexData) + indexOffset, 
+                           &adjustedIdx, sizeof(uint32_t));
+                indexOffset += sizeof(uint32_t);
+            }
+            vertexBase += mesh.vertexCount;
+        }
+        vkUnmapMemory(device, quadtreeData.indexMemory);
+    }
+    
+    // Update instance buffer with simplified data for CPU vertices
+    struct InstanceData {
+        glm::mat4 mvpMatrix;
+        glm::vec4 morphParams;
+        glm::vec4 patchInfo;
+    };
+    
+    VkDeviceSize instanceBufferSize = sizeof(InstanceData) * patches.size();
+    static VkDeviceSize currentInstanceBufferSize = 0;
+    
+    if (quadtreeData.instanceBuffer == VK_NULL_HANDLE || 
+        instanceBufferSize > currentInstanceBufferSize) {
+        
+        VkBuffer oldBuffer = quadtreeData.instanceBuffer;
+        VkDeviceMemory oldMemory = quadtreeData.instanceMemory;
+        
+        VkDeviceSize allocSize = std::max(instanceBufferSize * 2, 
+                                         VkDeviceSize(sizeof(InstanceData) * 1000));
+        
+        createBuffer(allocSize,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    quadtreeData.instanceBuffer, quadtreeData.instanceMemory);
+        
+        currentInstanceBufferSize = allocSize;
+        bufferUpdateRequired = true;
+        
+        if (oldBuffer != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(device);
+            destroyBuffer(oldBuffer, oldMemory);
+        }
+    }
+    
+    // Fill instance data
+    void* instanceData;
+    if (vkMapMemory(device, quadtreeData.instanceMemory, 0, instanceBufferSize, 0, &instanceData) == VK_SUCCESS) {
+        InstanceData* instances = static_cast<InstanceData*>(instanceData);
+        
+        for (size_t i = 0; i < patches.size(); i++) {
+            const auto& patch = patches[i];
+            
+            // For now, just use identity MVP (will be multiplied by view-proj in shader)
+            instances[i].mvpMatrix = glm::mat4(1.0f);
+            instances[i].morphParams = glm::vec4(patch.morphFactor, 
+                                                patch.neighborLevels[0],
+                                                patch.neighborLevels[1], 
+                                                patch.neighborLevels[2]);
+            instances[i].patchInfo = glm::vec4(patch.level, patch.size, patch.faceId, 0.0f);
+        }
+        
+        vkUnmapMemory(device, quadtreeData.instanceMemory);
+    }
+    
+    quadtreeData.indexCount = static_cast<uint32_t>(totalIndices);
+    quadtreeData.instanceCount = 1;  // Not using instancing - all vertices in one draw call
+    
+    // Print stats
+    auto stats = vertexGenerator->getStats();
+    std::cout << "[LODManager] Vertex cache stats - Hits: " << stats.cacheHits 
+              << ", Misses: " << stats.cacheMisses 
+              << ", Cache size: " << stats.currentCacheSize << std::endl;
 }
 
 void LODManager::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,

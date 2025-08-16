@@ -86,51 +86,67 @@ public:
             range.y = std::abs(rawRange.y);
             range.z = std::abs(rawRange.z);
             
-            const double eps = 1e-6;  // Much smaller epsilon for better precision
+            // FIXED: Only apply MIN_RANGE to non-fixed dimensions!
+            // For face patches, one dimension is fixed (range ~0) and should stay that way
+            // The other two dimensions should use their actual range, not MIN_RANGE
+            const double eps = 1e-6;  // Threshold for "is this dimension fixed?"
+            const double MIN_RANGE = 1e-5;  // Minimum range for degenerate cases
             
             glm::dmat4 transform(1.0);
             
             if (range.x < eps) {
                 // X is fixed - patch is on +X or -X face
-                // CRITICAL: Use exact boundary value if patch is at face boundary
-                double x = minBounds.x;  // Use exact value, not average
-                if (std::abs(std::abs(x) - 1.0) < 1e-5) {
-                    x = (x > 0) ? 1.0 : -1.0;  // Snap to exact boundary
-                }
+                double x = (minBounds.x + maxBounds.x) * 0.5;  // Use center for fixed dimension
+                
+                // CRITICAL FIX: Do NOT apply MIN_RANGE to y and z here!
+                // These should be the actual patch size (e.g., 2.0 for root faces)
+                // Use the actual range directly - it's already been abs()'d
+                double actualRangeY = range.y;
+                double actualRangeZ = range.z;
+                
+                // Only apply MIN_RANGE if the range is truly degenerate (shouldn't happen)
+                if (actualRangeY < eps) actualRangeY = MIN_RANGE;  // Only for truly degenerate cases
+                if (actualRangeZ < eps) actualRangeZ = MIN_RANGE;
                 
                 // FIX: U maps to Z (horizontal in child layout), V maps to Y (vertical in child layout)
                 // This ensures children 0,1 (which share a vertical edge) have matching positions
-                transform[0] = glm::dvec4(0.0, 0.0, range.z, 0.0);    // U -> Z
-                transform[1] = glm::dvec4(0.0, range.y, 0.0, 0.0);    // V -> Y
-                transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);        // Dummy for 4x4
+                transform[0] = glm::dvec4(0.0, 0.0, actualRangeZ, 0.0);    // U -> Z
+                transform[1] = glm::dvec4(0.0, actualRangeY, 0.0, 0.0);    // V -> Y
+                transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);            // Dummy for 4x4
                 transform[3] = glm::dvec4(x, minBounds.y, minBounds.z, 1.0);
             }
             else if (range.y < eps) {
                 // Y is fixed - patch is on +Y or -Y face
-                // CRITICAL: Use exact boundary value if patch is at face boundary
-                double y = minBounds.y;  // Use exact value, not average
-                if (std::abs(std::abs(y) - 1.0) < 1e-5) {
-                    y = (y > 0) ? 1.0 : -1.0;  // Snap to exact boundary
-                }
+                double y = (minBounds.y + maxBounds.y) * 0.5;  // Use center for fixed dimension
+                
+                // CRITICAL FIX: Do NOT apply MIN_RANGE to x and z here!
+                double actualRangeX = range.x;
+                double actualRangeZ = range.z;
+                
+                if (actualRangeX < eps) actualRangeX = MIN_RANGE;
+                if (actualRangeZ < eps) actualRangeZ = MIN_RANGE;
                 
                 // U maps to X, V maps to Z 
-                transform[0] = glm::dvec4(range.x, 0.0, 0.0, 0.0);    // U -> X
-                transform[1] = glm::dvec4(0.0, 0.0, range.z, 0.0);    // V -> Z
-                transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);        // Dummy for 4x4
+                transform[0] = glm::dvec4(actualRangeX, 0.0, 0.0, 0.0);    // U -> X
+                transform[1] = glm::dvec4(0.0, 0.0, actualRangeZ, 0.0);    // V -> Z
+                transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);            // Dummy for 4x4
                 transform[3] = glm::dvec4(minBounds.x, y, minBounds.z, 1.0);
             }
             else if (range.z < eps) {
                 // Z is fixed - patch is on +Z or -Z face
-                // CRITICAL: Use exact boundary value if patch is at face boundary
-                double z = minBounds.z;  // Use exact value, not average
-                if (std::abs(std::abs(z) - 1.0) < 1e-5) {
-                    z = (z > 0) ? 1.0 : -1.0;  // Snap to exact boundary
-                }
+                double z = (minBounds.z + maxBounds.z) * 0.5;  // Use center for fixed dimension
+                
+                // CRITICAL FIX: Do NOT apply MIN_RANGE to x and y here!
+                double actualRangeX = range.x;
+                double actualRangeY = range.y;
+                
+                if (actualRangeX < eps) actualRangeX = MIN_RANGE;
+                if (actualRangeY < eps) actualRangeY = MIN_RANGE;
                 
                 // U maps to X, V maps to Y
-                transform[0] = glm::dvec4(range.x, 0.0, 0.0, 0.0);    // U -> X
-                transform[1] = glm::dvec4(0.0, range.y, 0.0, 0.0);    // V -> Y
-                transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);        // Dummy for 4x4
+                transform[0] = glm::dvec4(actualRangeX, 0.0, 0.0, 0.0);    // U -> X
+                transform[1] = glm::dvec4(0.0, actualRangeY, 0.0, 0.0);    // V -> Y
+                transform[2] = glm::dvec4(0.0, 0.0, 0.0, 1.0);            // Dummy for 4x4
                 transform[3] = glm::dvec4(minBounds.x, minBounds.y, z, 1.0);
             }
             
@@ -272,24 +288,8 @@ private:
         patch.minBounds = minBounds;
         patch.maxBounds = maxBounds;
         
-        // CRITICAL FIX: Ensure face boundaries are EXACTLY at ±1
-        // This prevents gaps between patches from different faces
-        const float BOUNDARY = 1.0f;
-        const float SNAP_EPSILON = 1e-5f;  // Snap if within this distance of boundary
-        
-        // Snap min bounds to exact boundaries if close
-        for (int i = 0; i < 3; i++) {
-            if (std::abs(std::abs(patch.minBounds[i]) - BOUNDARY) < SNAP_EPSILON) {
-                patch.minBounds[i] = (patch.minBounds[i] > 0) ? BOUNDARY : -BOUNDARY;
-            }
-        }
-        
-        // Snap max bounds to exact boundaries if close
-        for (int i = 0; i < 3; i++) {
-            if (std::abs(std::abs(patch.maxBounds[i]) - BOUNDARY) < SNAP_EPSILON) {
-                patch.maxBounds[i] = (patch.maxBounds[i] > 0) ? BOUNDARY : -BOUNDARY;
-            }
-        }
+        // DO NOT snap to exact boundaries - we want to preserve the INSET
+        // to prevent z-fighting between adjacent cube faces
         
         patch.center = (patch.minBounds + patch.maxBounds) * 0.5f;
         patch.level = level;

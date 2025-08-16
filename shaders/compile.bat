@@ -86,6 +86,15 @@ if exist %SRC_VERTEX%\quadtree_patch.vert (
     )
 )
 
+REM Compile CPU vertex shader for quadtree
+if exist %SRC_VERTEX%\quadtree_patch_cpu.vert (
+    echo Compiling quadtree_patch_cpu.vert...
+    "%GLSLC%" %SRC_VERTEX%\quadtree_patch_cpu.vert -o quadtree_patch_cpu.vert.spv
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to compile quadtree_patch_cpu.vert
+    )
+)
+
 if exist %SRC_FRAGMENT%\quadtree_patch.frag (
     echo Compiling quadtree_patch.frag...
     "%GLSLC%" %SRC_FRAGMENT%\quadtree_patch.frag -o quadtree_patch.frag.spv
