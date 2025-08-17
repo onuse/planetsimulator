@@ -224,11 +224,12 @@ float SphericalQuadtreeNode::calculateScreenSpaceError(const glm::vec3& viewPos,
     if ((errorLogCount++ < 20) || (frameCounter % 600 == 0 && errorLogCount % 50 == 0)) {
         double distanceFromViewer = glm::length(sphereCenter - glm::dvec3(viewPos));
         double patchWorldSize = patch.size * planetRadius; // Convert from cube space to world space
-        std::cout << "[ScreenError] Face:" << static_cast<int>(face) 
-                  << " Level:" << level 
-                  << " Error:" << error
-                  << " WorldSize:" << (patchWorldSize/1000.0) << "km"
-                  << " Distance:" << (distanceFromViewer/1000.0) << "km" << std::endl;
+        // MUTED: Too spammy
+        // std::cout << "[ScreenError] Face:" << static_cast<int>(face) 
+        //           << " Level:" << level 
+        //           << " Error:" << error
+        //           << " WorldSize:" << (patchWorldSize/1000.0) << "km"
+        //           << " Distance:" << (distanceFromViewer/1000.0) << "km" << std::endl;
     }
     
     return error;
@@ -250,21 +251,112 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
         return;  // Stop recursion immediately
     }
     
-    // PERFORMANCE FIX: DRASTICALLY reduced patch limit
-    // 500 patches * 1089 vertices per patch = ~500k vertices (manageable)
-    if (visiblePatches.size() >= 500) {  // Reduced from 5000!
-        // Too many patches, just render current level without subdividing
+    // PERFORMANCE: Dynamic patch budget based on altitude and view
+    // Calculate appropriate patch budget for current viewing conditions
+    float altitude = glm::length(viewPos) - 6371000.0f;  // Camera altitude in meters
+    
+    // STRESS TEST: Much more restrictive budgets to force culling issues
+    size_t patchBudget;
+    if (altitude > 10000000.0f) {        // > 10,000 km - see whole planet
+        patchBudget = 100;   // Was 500
+    } else if (altitude > 5000000.0f) {  // > 1,000 km - see large area
+        patchBudget = 200;   // Was 1000
+    } else if (altitude > 1000000.0f) {  // > 1,000 km - see large area
+        patchBudget = 400;   // Was 1000
+    } else if (altitude > 500000.0f) {   // > 100 km - standard view
+        patchBudget = 500;   // Was 2000
+    } else if (altitude > 100000.0f) {   // > 100 km - standard view
+        patchBudget = 500;   // Was 2000
+    } else if (altitude > 50000.0f) {   // > 100 km - standard view
+        patchBudget = 600;   // Was 2000
+    } else if (altitude > 10000.0f) {    // > 10 km - close view
+        patchBudget = 700;   // Was 3000
+    } else {                              // < 10 km - surface level
+        patchBudget = 800;   // Was 4000
+    }
+    
+    // Log budget changes
+    static size_t lastBudget = 0;
+    if (patchBudget != lastBudget) {
+        std::cout << "[PATCH BUDGET] Altitude: " << altitude/1000.0f << "km -> Budget: " 
+                  << patchBudget << " patches" << std::endl;
+        lastBudget = patchBudget;
+    }
+    
+    // GLOBAL BUDGET: Check against total patches across ALL faces
+    // This will stress the culling system as intended
+    size_t totalPatches = visiblePatches.size();
+    
+    // Check if we've hit the global budget
+    if (totalPatches >= patchBudget) {
+        // Hit global limit - just render current level without subdividing
         if (isLeaf()) {
             patch.isVisible = true;
             visiblePatches.push_back(patch);
         }
-        // PERFORMANCE: Disabled warning (happens frequently during normal operation)
-        // std::cout << "[SelectLOD] WARNING: Hit patch limit at 5000 patches" << std::endl;
+        // Log when we hit the limit (only occasionally to avoid spam)
+        static int limitLogCount = 0;
+        if (limitLogCount++ % 100 == 0) {
+            std::cout << "[GLOBAL PATCH BUDGET] Alt: " << altitude/1000.0f << "km"
+                      << ", Budget: " << patchBudget
+                      << ", Used: " << totalPatches
+                      << ", Face " << face << " (stopping subdivisions)" << std::endl;
+        }
         return;
     }
     
-    // Basic frustum culling - could be improved
-    // For now, assume all nodes are potentially visible
+    // BACKFACE CULLING: Check if this patch faces away from the camera
+    // First convert cube position to sphere position
+    glm::dvec3 spherePos = cubeToSphere(patch.center, 6371000.0);
+    glm::dvec3 patchNormal = glm::normalize(spherePos);
+    glm::dvec3 toCamera = glm::normalize(glm::dvec3(viewPos) - spherePos);
+    
+    // Dot product tells us if patch faces camera
+    double dotProduct = glm::dot(patchNormal, toCamera);
+    
+    // Cull patches facing away (with some tolerance for edge cases)
+    // Tolerance depends on patch size and level
+    // At the horizon, dot product is 0, so we need to be careful
+    // Positive dot = facing camera, negative = facing away
+    double cullThreshold = 0.0; // Cull if dot < 0 (facing away)
+    
+    // Add some tolerance based on patch level to account for curvature
+    // Higher level patches are smaller and need less tolerance
+    // Level 1 patches are our base 24 patches, they need special handling
+    if (level == 0) {
+        // Never cull level 0 (the 6 root faces) - they're not leaves anyway
+        cullThreshold = -1.0;
+    } else if (level == 1) {
+        // Level 1 are our 24 base patches - be lenient to see horizon
+        cullThreshold = -0.4; // Allow patches up to 40% facing away
+    } else if (level <= 3) {
+        cullThreshold = -0.1; // Some tolerance for mid-level patches
+    } else {
+        cullThreshold = 0.0; // Strict for deeply subdivided patches
+    }
+    
+    // Track culling statistics for leaf nodes
+    static int cullCount = 0;
+    static int totalLeafChecks = 0;
+    if (isLeaf()) {
+        totalLeafChecks++;
+    }
+    
+    if (dotProduct < cullThreshold) {
+        // Patch faces away from camera - cull it
+        // But if it's not a leaf, we still need to check children
+        // as they might be visible due to sphere curvature
+        if (isLeaf()) {
+            cullCount++;
+            if (totalLeafChecks % 1000 == 0) {
+                std::cout << "[BACKFACE CULLING] Culled " << cullCount << " of " << totalLeafChecks 
+                          << " leaf patches (" << (100.0f * cullCount / totalLeafChecks) << "%)" << std::endl;
+            }
+            return; // Skip this patch entirely
+        }
+        // For non-leaves, still recurse but with tighter culling
+        cullThreshold = 0.1; // More aggressive for children
+    }
     
     float error = calculateScreenSpaceError(viewPos, viewProj);
     patch.screenSpaceError = error;
@@ -309,15 +401,15 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
     // DEBUG: Log LOD selection decisions for root level patches
     static int lodLogCount = 0;
     if (level <= 1 && (lodLogCount++ % 20 == 0)) {
-        glm::dvec3 sphereCenter = cubeToSphere(patch.center, 6371000.0);
-        double distanceFromViewer = glm::length(sphereCenter - glm::dvec3(viewPos));
-        std::cout << "[LOD] Face:" << static_cast<int>(face) 
-                  << " Level:" << level 
-                  << " Error:" << error 
-                  << " Threshold:" << errorThreshold
-                  << " Distance:" << (distanceFromViewer/1000.0) << "km"
-                  << " ShouldSubdivide:" << shouldSubdivide
-                  << " IsLeaf:" << isLeaf() << std::endl;
+    //    glm::dvec3 sphereCenter = cubeToSphere(patch.center, 6371000.0);
+    //    double distanceFromViewer = glm::length(sphereCenter - glm::dvec3(viewPos));
+    //    std::cout << "[LOD] Face:" << static_cast<int>(face) 
+    //              << " Level:" << level 
+    //              << " Error:" << error 
+    //              << " Threshold:" << errorThreshold
+    //              << " Distance:" << (distanceFromViewer/1000.0) << "km"
+    //              << " ShouldSubdivide:" << shouldSubdivide
+    //              << " IsLeaf:" << isLeaf() << std::endl;
     }
 
     if (shouldSubdivide) {
@@ -467,6 +559,19 @@ void SphericalQuadtree::initializeRoots() {
     roots[5] = std::make_unique<SphericalQuadtreeNode>(
         glm::dvec3(0, 0, -1), 2.0, 0, SphericalQuadtreeNode::FACE_NEG_Z);
     
+    // MANDATORY: Subdivide all root faces once to create 24 base patches
+    // This provides better culling granularity and prevents "bald planet" issues
+    std::cout << "[SphericalQuadtree] Creating 24 base patches (mandatory level-1 subdivision)" << std::endl;
+    for (int i = 0; i < 6; i++) {
+        if (roots[i] && roots[i]->isLeaf()) {
+            roots[i]->subdivide(*densityField);
+        }
+    }
+    std::cout << "[SphericalQuadtree] Initialization complete with 24 base patches" << std::endl;
+    
+    // Update node count to reflect the mandatory subdivisions
+    totalNodeCount = 30;  // 6 root nodes + 24 children (4 per root)
+    
     // Set up neighbor relationships between root faces
     // This is complex - each face has specific neighbors at edges
     // Simplified for now
@@ -475,10 +580,51 @@ void SphericalQuadtree::initializeRoots() {
 void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewProj, float deltaTime) {
     auto startTime = std::chrono::high_resolution_clock::now();
     
-    // DEBUG: Add frame counter for logging
+    // Track camera movement to determine if we need to update LOD
+    static glm::vec3 lastViewPos = viewPos;
+    static float lastErrorThreshold = -1.0f;
+    
+    float viewMovement = glm::length(viewPos - lastViewPos);
+    float currentCamDistance = glm::length(viewPos);
+    float altitude = currentCamDistance - config.planetRadius;
+    
+    // Only update LOD if camera moved significantly or it's the first frame
+    bool cameraMovedSignificantly = viewMovement > (altitude * 0.01f); // 1% of altitude
+    static bool isFirstFrame = true;  // Track actual first frame properly
+    
+    // Also check for zoom changes (altitude changes)
+    static float lastAltitude = altitude;
+    bool altitudeChanged = std::abs(altitude - lastAltitude) > (altitude * 0.01f); // 1% altitude change
+    
+    bool shouldUpdateLOD = cameraMovedSignificantly || altitudeChanged || isFirstFrame;
+    
+    // DEBUG: Add frame counter and zoom detection for logging
     static int frameCount = 0;
+    static float lastCamDistance = -1.0f;
     frameCount++;
-    bool shouldLogFrame = (frameCount % 60 == 0); // Log every 60 frames
+    
+    float distanceChange = (lastCamDistance > 0) ? std::abs(currentCamDistance - lastCamDistance) : 0;
+    bool isZooming = distanceChange > 50000.0f; // Significant movement (50km)
+    bool shouldLogFrame = (frameCount % 20 == 0) || isZooming; // Log every 20 frames OR when zooming
+    
+    if (shouldUpdateLOD) {
+        if (cameraMovedSignificantly || altitudeChanged || isFirstFrame) {
+            std::cout << "[LOD UPDATE] " << (isFirstFrame ? "First frame" : 
+                         altitudeChanged ? "Altitude changed" : "Camera moved") 
+                      << " " << viewMovement << "m, alt change: " << std::abs(altitude - lastAltitude) 
+                      << "m, updating subdivisions" << std::endl;
+        }
+        lastViewPos = viewPos;
+        lastAltitude = altitude;
+        isFirstFrame = false;  // Clear first frame flag after first update
+    }
+    
+    if (isZooming && lastCamDistance > 0) {
+        std::cout << "\n[ZOOM DETECTED] Distance changed by " << distanceChange/1000.0f 
+                  << "km (from " << lastCamDistance/1000.0f << "km to " 
+                  << currentCamDistance/1000.0f << "km)" << std::endl;
+    }
+    lastCamDistance = currentCamDistance;
     
     if (shouldLogFrame) {
         std::cout << "\n=== QUADTREE DEBUG FRAME " << frameCount << " ===\n";
@@ -528,7 +674,12 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
     std::vector<size_t> patchesBeforeFace(6, 0);
     std::vector<size_t> patchesAfterFace(6, 0);
     
-    for (int i = 0; i < 6; i++) {
+    // Rotate starting face each frame to ensure fairness
+    static int startFace = 0;
+    startFace = (startFace + 1) % 6;
+    
+    for (int j = 0; j < 6; j++) {
+        int i = (startFace + j) % 6;  // Process faces in rotating order
         auto& root = roots[i];
         
         if (!root) {
@@ -562,7 +713,9 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
         }
         
         if (shouldLogFrame) {
-            std::cout << "[DEBUG] Face " << i << " - PROCESSING..." << std::endl;
+            std::cout << "[DEBUG] Face " << i << " - PROCESSING..." 
+                      << " (isLeaf: " << root->isLeaf() 
+                      << ", children: " << (root->children[0] ? "Y" : "N") << ")" << std::endl;
         }
         root->selectLOD(viewPos, viewProj, errorThreshold, config.maxLevel, visiblePatches);
         
@@ -578,37 +731,52 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
     if (shouldLogFrame) {
         std::cout << "[DEBUG] Total patches: " << visiblePatches.size() << std::endl;
         std::cout << "[DEBUG] Per face breakdown:" << std::endl;
+        int totalVisible = 0;
         for (int i = 0; i < 6; i++) {
             size_t count = patchesAfterFace[i] - patchesBeforeFace[i];
-            std::cout << "  Face " << i << ": " << count << " patches" << std::endl;
+            std::cout << "  Face " << i << ": " << count << " patches";
+            if (count == 0) {
+                std::cout << " [WARNING: No patches!]";
+            }
+            std::cout << std::endl;
+            totalVisible += (count > 0) ? 1 : 0;
+        }
+        if (totalVisible < 3) {
+            std::cout << "[WARNING] Only " << totalVisible << " faces have patches! This might cause missing sectors!" << std::endl;
         }
     }
     
     stats.visibleNodes = static_cast<uint32_t>(visiblePatches.size());
     
     // Perform actual subdivision/merge operations
-    // We need to do this in a second pass to avoid modifying the tree while traversing
-    // IMPORTANT: Give each face a fair share of subdivisions to prevent imbalance
-    // Negative faces need more aggressive subdivision to match positive faces
-    // PERFORMANCE FIX: DRASTICALLY reduced subdivisions per face
-    const int MAX_SUBDIVISIONS_PER_FACE = 10;  // Was 50, originally 200!
-    
-    for (int i = 0; i < 6; i++) {
-        auto& root = roots[i];
+    // ONLY do this when camera has moved or on first frame!
+    if (shouldUpdateLOD) {
+        // We need to do this in a second pass to avoid modifying the tree while traversing
+        // IMPORTANT: Give each face a fair share of subdivisions to prevent imbalance
+        // Negative faces need more aggressive subdivision to match positive faces
+        // PERFORMANCE FIX: DRASTICALLY reduced subdivisions per face
+        const int MAX_SUBDIVISIONS_PER_FACE = 10;  // Was 50, originally 200!
         
-        // For negative faces (odd indices), use lower error threshold to force more subdivision
-        float faceErrorThreshold = errorThreshold;
-        if (i % 2 == 1) {  // Negative faces: 1, 3, 5
-            faceErrorThreshold *= 0.5f;  // Half threshold = more aggressive subdivision
-            if (shouldLog) {
-                std::cout << "[DEBUG] Face " << i << " using reduced threshold: " 
-                          << faceErrorThreshold << std::endl;
+        for (int i = 0; i < 6; i++) {
+            auto& root = roots[i];
+            
+            // For negative faces (odd indices), use lower error threshold to force more subdivision
+            float faceErrorThreshold = errorThreshold;
+            if (i % 2 == 1) {  // Negative faces: 1, 3, 5
+                faceErrorThreshold *= 0.5f;  // Half threshold = more aggressive subdivision
+                if (shouldLog) {
+                    std::cout << "[DEBUG] Face " << i << " using reduced threshold: " 
+                              << faceErrorThreshold << std::endl;
+                }
             }
+            
+            // Reset subdivision counter for each face to ensure fairness
+            performSubdivisionsForFace(root.get(), viewPos, viewProj, faceErrorThreshold, 
+                                       config.maxLevel, MAX_SUBDIVISIONS_PER_FACE);
         }
         
-        // Reset subdivision counter for each face to ensure fairness
-        performSubdivisionsForFace(root.get(), viewPos, viewProj, faceErrorThreshold, 
-                                   config.maxLevel, MAX_SUBDIVISIONS_PER_FACE);
+        // Also perform merges when camera moves away
+        performMerges(viewPos, viewProj, errorThreshold);
     }
     
     // Clear and re-select after subdivisions
@@ -769,6 +937,69 @@ void SphericalQuadtree::preventCracks(std::vector<QuadtreePatch>& patches) {
             if (patch.neighbors[edge] && patch.neighborLevels[edge] < patch.level) {
                 // This edge needs special handling to prevent cracks
                 // Mark for edge morphing in shader
+            }
+        }
+    }
+}
+
+void SphericalQuadtree::performMerges(const glm::vec3& viewPos, const glm::mat4& viewProj, float errorThreshold) {
+    // Merge nodes that no longer need subdivision
+    // Use 90% of subdivision threshold for merging to minimize hysteresis
+    // (subdivide at error > threshold, merge at error < 0.9 * threshold)
+    float mergeThreshold = errorThreshold * 0.9f;
+    
+    static int mergeCount = 0;
+    if (mergeCount++ % 100 == 0) {
+        std::cout << "[MERGE] Checking merges with threshold: " << mergeThreshold << std::endl;
+    }
+    
+    for (int i = 0; i < 6; i++) {
+        if (roots[i]) {
+            performMergesRecursive(roots[i].get(), viewPos, viewProj, mergeThreshold);
+        }
+    }
+}
+
+void SphericalQuadtree::performMergesRecursive(SphericalQuadtreeNode* node, 
+                                                const glm::vec3& viewPos,
+                                                const glm::mat4& viewProj,
+                                                float mergeThreshold) {
+    if (!node || node->isLeaf()) return;
+    
+    // NEVER merge below level 1 - we maintain 24 base patches minimum
+    if (node->getLevel() == 0) {
+        // Still recurse to children to check their merges
+        for (int i = 0; i < 4; i++) {
+            if (node->children[i]) {
+                performMergesRecursive(node->children[i].get(), viewPos, viewProj, mergeThreshold);
+            }
+        }
+        return;
+    }
+    
+    // Check if all children are leaves and have low error
+    bool canMerge = true;
+    for (int i = 0; i < 4; i++) {
+        if (!node->children[i] || !node->children[i]->isLeaf()) {
+            canMerge = false;
+            break;
+        }
+        
+        float childError = node->children[i]->calculateScreenSpaceError(viewPos, viewProj);
+        if (childError > mergeThreshold) {
+            canMerge = false;
+            break;
+        }
+    }
+    
+    if (canMerge) {
+        node->merge();
+        stats.merges++;
+    } else {
+        // Recurse to children
+        for (int i = 0; i < 4; i++) {
+            if (node->children[i]) {
+                performMergesRecursive(node->children[i].get(), viewPos, viewProj, mergeThreshold);
             }
         }
     }

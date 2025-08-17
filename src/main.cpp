@@ -263,13 +263,19 @@ private:
             camera.setFieldOfView(60.0f); // Match FOV from screenshot
             std::cout << "Camera set to preset view (nice continent/beach view)\n";
         } else {
-            // Default view - back away from planet to see ENTIRE globe
-            // Use 2.5x radius for better full planet view (about 10,000 km altitude)
-            float initialDistance = config.radius * 2.5f;
-            std::cout << "=== ABOUT TO REPOSITION CAMERA ===\n";
+            // Default view - far enough to see the planet properly
+            // Use 1.5x radius for better overview (about 3185 km altitude)
+            float initialDistance = config.radius * 1.5f;
+            std::cout << "=== SETTING CAMERA POSITION ===\n";
             std::cout << "Initial distance: " << initialDistance << " (altitude: " << (initialDistance - config.radius) << ")\n";
-            // TEST: Start from opposite side to see if hole moves
-            camera.setPosition(glm::vec3(-initialDistance * 0.7f, initialDistance * 0.3f, -initialDistance * 0.6f));
+            // Position camera to look at land/coast instead of open ocean
+            // Rotate to see interesting terrain features
+            float angle = glm::radians(45.0f);  // Different angle to find land
+            camera.setPosition(glm::vec3(
+                initialDistance * sin(angle) * 0.9f,
+                initialDistance * 0.3f,
+                initialDistance * cos(angle) * 0.9f
+            ));
             camera.lookAt(glm::vec3(0, 0, 0));
         }
         

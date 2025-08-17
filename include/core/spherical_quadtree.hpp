@@ -201,6 +201,9 @@ private:
     void performSubdivisionsRecursive(SphericalQuadtreeNode* node, const glm::vec3& viewPos,
                                       const glm::mat4& viewProj, float errorThreshold,
                                       uint32_t maxLevel, int& subdivisionCount, int maxSubdivisions);
+    void performMerges(const glm::vec3& viewPos, const glm::mat4& viewProj, float errorThreshold);
+    void performMergesRecursive(SphericalQuadtreeNode* node, const glm::vec3& viewPos,
+                                const glm::mat4& viewProj, float mergeThreshold);
     float calculateErrorThreshold(const glm::vec3& viewPos) const;
     void preventCracks(std::vector<QuadtreePatch>& patches);
     void updateMorphFactors(std::vector<QuadtreePatch>& patches, float deltaTime);

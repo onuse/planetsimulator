@@ -97,6 +97,8 @@ void Camera::zoom(float delta) {
         const float PLANET_RADIUS = 6371000.0f;
         const float MIN_ALTITUDE = 10000.0f; // 10km minimum altitude above surface
         
+        float oldDistance = orbitDistance;
+        
         // Scale zoom speed based on altitude for better control
         float altitude = orbitDistance - PLANET_RADIUS;
         float speedScale = 1.0f;
@@ -116,6 +118,14 @@ void Camera::zoom(float delta) {
         
         // Prevent camera from going inside planet
         orbitDistance = clamp(orbitDistance, PLANET_RADIUS + MIN_ALTITUDE, 100000000.0f);
+        
+        // Log significant zoom changes
+        float newAltitude = orbitDistance - PLANET_RADIUS;
+        if (std::abs(oldDistance - orbitDistance) > 1000.0f) {  // More than 1km change
+            std::cout << "[CAMERA ZOOM] Alt: " << altitude/1000.0f << "km -> " 
+                      << newAltitude/1000.0f << "km (delta: " << delta 
+                      << ", scale: " << speedScale << ")" << std::endl;
+        }
     } else {
         // Adjust movement speed for other modes
         movementSpeed *= std::pow(zoomSpeed, delta);
@@ -376,11 +386,11 @@ void Camera::autoAdjustClipPlanes(float altitude) {
     
     if (altitude < 1000.0f) {
         // Very close to surface (< 1km) - for walking around
-        nearPlane = 0.1f;  // 10cm
-        farPlane = 10000.0f;  // 10km view distance
+        nearPlane = 0.1f;  // 10cm near plane for detail
+        farPlane = 100000.0f;  // 100km view distance to see more
     } else if (altitude < 100000.0f) {
         // Low altitude (1km - 100km) - for flying
-        nearPlane = altitude * 0.01f;  // 1% of altitude
+        nearPlane = std::min(10.0f, altitude * 0.001f);  // Much smaller near plane (0.1% of altitude, max 10m)
         farPlane = altitude * 20.0f + planetRadius;  // See to horizon
     } else if (altitude < 1000000.0f) {
         // Medium altitude (100km - 1000km) - see significant portion of planet

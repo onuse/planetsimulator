@@ -196,10 +196,13 @@ inline bool shouldCullFace(uint32_t faceId, const glm::dvec3& viewPos, double pl
     
     // Dynamic culling threshold based on altitude
     double cullThreshold;
-    if (altitudeRatio < 0.01) {
-        cullThreshold = -0.3; // Very close - be conservative
+    if (altitudeRatio < 0.001) {
+        // EXTREMELY close (< 6km) - disable culling entirely
+        cullThreshold = -1.0;  // Never cull
+    } else if (altitudeRatio < 0.01) {
+        cullThreshold = -0.5; // Very close - be VERY conservative
     } else if (altitudeRatio < 0.1) {
-        cullThreshold = -0.2;
+        cullThreshold = -0.3; // Close - still conservative
     } else {
         cullThreshold = -0.1; // Far away - can be more aggressive
     }

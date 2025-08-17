@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <algorithm>
+#include <chrono>
 
 namespace rendering {
 
@@ -812,8 +813,12 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
         return;
     }
     
-    // PERFORMANCE: Disabled verbose logging
-    // std::cout << "[LODManager] Generating CPU vertices for " << patches.size() << " patches" << std::endl;
+    // PERFORMANCE PROFILING: Add timing to understand bottleneck
+    static int profileFrameCount = 0;
+    bool shouldProfile = (profileFrameCount++ % 300 == 0);  // Profile every 300 frames
+    
+    auto totalStart = std::chrono::high_resolution_clock::now();
+    auto stageStart = totalStart;
     
     // Calculate total vertex and index requirements
     size_t totalVertices = 0;
@@ -826,7 +831,9 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
     size_t cacheHits = 0;
     size_t cacheMisses = 0;
     
-    // Generate meshes for all patches
+    // STAGE 1: Generate meshes for all patches
+    if (shouldProfile) stageStart = std::chrono::high_resolution_clock::now();
+    
     for (const auto& patch : patches) {
         // Create a unique key for this patch based on its properties
         uint64_t patchKey = 0;
@@ -879,6 +886,15 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
             meshes.push_back(std::move(mesh));
             cacheMisses++;
         }
+    }
+    
+    // STAGE 1 COMPLETE: Mesh generation
+    if (shouldProfile) {
+        auto stage1End = std::chrono::high_resolution_clock::now();
+        auto stage1Time = std::chrono::duration<float, std::milli>(stage1End - stageStart).count();
+        std::cout << "[PROFILE] Mesh Generation: " << stage1Time << "ms for " << patches.size() 
+                  << " patches (cache hits: " << cacheHits << ", misses: " << cacheMisses << ")" << std::endl;
+        stageStart = stage1End;
     }
     
     // Clean up old cache entries periodically
@@ -936,6 +952,9 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
     
     static VkDeviceSize currentVertexBufferSize = 0;
     static VkDeviceSize currentIndexBufferSize = 0;
+    
+    // STAGE 2: Buffer reallocation and data upload
+    if (shouldProfile) stageStart = std::chrono::high_resolution_clock::now();
     
     // Reallocate vertex buffer if needed
     if (quadtreeData.vertexBuffer == VK_NULL_HANDLE || 
@@ -1072,6 +1091,15 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
         vkUnmapMemory(device, quadtreeData.indexMemory);
     }
     
+    // STAGE 2 COMPLETE: Buffer operations
+    if (shouldProfile) {
+        auto stage2End = std::chrono::high_resolution_clock::now();
+        auto stage2Time = std::chrono::duration<float, std::milli>(stage2End - stageStart).count();
+        std::cout << "[PROFILE] Buffer Upload: " << stage2Time << "ms (" 
+                  << totalVertices << " vertices, " << totalIndices << " indices)" << std::endl;
+        stageStart = stage2End;
+    }
+    
     // Update instance buffer with simplified data for CPU vertices
     struct InstanceData {
         glm::mat4 mvpMatrix;
@@ -1130,18 +1158,34 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
     quadtreeData.indexCount = static_cast<uint32_t>(totalIndices);
     quadtreeData.instanceCount = 1;  // Single draw call with all patches
     
-    // DEBUG: Log patch distribution
+    // PROFILING COMPLETE: Total time for updateQuadtreeBuffersCPU
+    if (shouldProfile) {
+        auto totalEnd = std::chrono::high_resolution_clock::now();
+        float totalTime = std::chrono::duration<float, std::milli>(totalEnd - totalStart).count();
+        std::cout << "[PROFILE] TOTAL updateQuadtreeBuffersCPU: " << totalTime << "ms" << std::endl;
+        std::cout << "[PROFILE] ============================" << std::endl;
+    }
+    
+    // DEBUG: Log patch distribution and camera info
     static int frameCount = 0;
     if (frameCount++ % 60 == 0) {  // Every 60 frames
         int faceCounts[6] = {0};
+        float minDist = FLT_MAX, maxDist = 0;
         for (const auto& patch : patches) {
             if (patch.faceId < 6) faceCounts[patch.faceId]++;
+            glm::vec3 diff = glm::vec3(patch.center) - viewPosition;
+            float dist = glm::length(diff);
+            minDist = std::min(minDist, dist);
+            maxDist = std::max(maxDist, dist);
         }
-        std::cout << "[LOD] Patches by face: ";
+        float camDist = glm::length(viewPosition);
+        float altitude = camDist - 6371000.0f;
+        std::cout << "[LOD] Alt: " << altitude/1000 << "km, Patches: " << patches.size() 
+                  << ", Faces: ";
         for (int i = 0; i < 6; i++) {
             std::cout << faceCounts[i] << " ";
         }
-        std::cout << "(total: " << patches.size() << ")" << std::endl;
+        std::cout << "| Patch dist: " << minDist/1000 << "-" << maxDist/1000 << "km" << std::endl;
     }
     
     // Print stats
