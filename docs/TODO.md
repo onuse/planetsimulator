@@ -6,9 +6,12 @@ A fully GPU-resident planet simulation where voxel data lives on the GPU and all
 ## Current State (December 2024)
 - ✅ **Quadtree LOD System**: Working with 24 base patches, global budget, backface culling
 - ✅ **Basic Rendering**: ~60 FPS at reasonable view distances
-- ❌ **Voxel Integration**: Octree exists but disconnected from rendering
-- ❌ **Mesh Generation**: CPU-based using procedural noise (5ms per patch)
-- ❌ **Dynamic Terrain**: Not possible - terrain is procedural, not data-driven
+- ✅ **GPU Octree**: Successfully uploaded (32 nodes, 256 voxels)
+- ✅ **Compute Pipeline**: Created and dispatching
+- ✅ **Vertex Generation**: Compute shader generates correct format
+- 🚧 **Index Generation**: Mismatch between GPU vertices and CPU indices
+- ❌ **Voxel Sampling**: Still using debug sine waves instead of octree data
+- ❌ **Dynamic Terrain**: Not possible until voxel sampling works
 
 ## Architecture Overview
 
@@ -29,27 +32,49 @@ GPU Compute Shaders → GPU Vertex Buffers → GPU Rendering
 ```
 
 ## Phase 1: Foundation (Current Focus)
-### Goal: Establish GPU-resident voxel storage
+### Goal: Complete GPU mesh generation pipeline
 
-1. **GPU Octree Upload** ✅ (Infrastructure exists)
-   - Verify GPUOctree class works
-   - Ensure octree is uploaded at startup
-   - Add debug visualization to confirm data is on GPU
+1. **GPU Octree Upload** ✅ COMPLETE
+   - ✅ GPUOctree class works
+   - ✅ Octree is uploaded at startup (32 nodes, 256 voxels)
+   - ✅ Confirmed uploading with debug output
 
-2. **Voxel Sampling Infrastructure**
-   - [ ] Create compute shader for octree traversal
-   - [ ] Test shader can read voxel data correctly
-   - [ ] Add debug output to verify sampling accuracy
+2. **Compute Pipeline Setup** ✅ COMPLETE
+   - ✅ Created compute shader (mesh_generator.comp)
+   - ✅ Descriptor sets bound correctly (octree nodes, voxels, vertex output)
+   - ✅ Push constants pass patch transform and camera position
+   - ✅ Compute shader dispatches successfully
 
-3. **Basic GPU Mesh Generation**
-   - [ ] Create compute shader that takes patch params
-   - [ ] Sample octree at grid points
-   - [ ] Output vertex buffer directly on GPU
-   - [ ] Start with simple height-only (no materials yet)
+3. **Vertex Generation** ✅ COMPLETE
+   - ✅ Correct vertex structure (matches PatchVertex)
+   - ✅ Proper coordinate transformation (world → camera-relative → scaled)
+   - ✅ Vertices generated in GPU buffer
+
+4. **Index Generation** 🚧 CRITICAL BLOCKER
+   - ❌ GPU vertices have different count/order than CPU
+   - ❌ CPU indices don't match GPU vertex layout
+   - [ ] Add index buffer output to compute shader
+   - [ ] Generate triangle indices in compute shader
+   - [ ] Handle T-junction resolution for LOD
+
+5. **Multi-Patch Support** ❌ NOT STARTED
+   - Currently only generating first patch's vertices
+   - [ ] Generate unique vertices per patch
+   - [ ] Handle patch transforms correctly
+   - [ ] Consider batching vs multiple dispatches
+
+6. **Voxel Sampling** ❌ NOT STARTED
+   - Currently using debug sine wave pattern
+   - [ ] Implement octree traversal in shader
+   - [ ] Sample actual voxel density values
+   - [ ] Interpolate between voxels for smooth terrain
 
 **Success Metrics**: 
-- Mesh generation < 1ms per patch
-- Identical visual output to current system
+- ✅ Compute shader runs successfully
+- ✅ Vertex format matches CPU
+- ❌ Vertices visible on screen (blocked by index mismatch)
+- ❌ Mesh generation < 1ms per patch (unmeasured)
+- ❌ Visual output matches CPU version
 
 ## Phase 2: Full Integration
 ### Goal: Replace CPU pipeline entirely
@@ -115,7 +140,18 @@ GPU Compute Shaders → GPU Vertex Buffers → GPU Rendering
 
 ## Technical Debt to Address
 
-### Immediate Issues
+### Critical Blockers (Preventing GPU Path)
+1. **Index Generation Mismatch**
+   - GPU and CPU generate different vertex counts
+   - Indices are tied to CPU vertex order
+   - Must generate indices on GPU to match
+
+2. **Single vs Multi-Patch Generation**
+   - Currently reusing first patch's vertices for all patches
+   - Need per-patch vertex generation
+   - Decision: One large buffer vs per-patch buffers?
+
+### Known Issues
 1. **Patch Budget Persistence** (#107)
    - Budget stuck at limit after zooming out
    - Need to trigger full recalculation on altitude change
@@ -176,12 +212,37 @@ GPU Compute Shaders → GPU Vertex Buffers → GPU Rendering
 - [ ] Memory usage < 4GB for Earth-scale planet
 - [ ] Clean, maintainable codebase
 
-## Next Steps
-1. Verify GPUOctree upload works
-2. Create basic compute shader for mesh generation
-3. Replace one patch with GPU generation as proof of concept
-4. Gradually migrate all patches to GPU generation
-5. Delete CPU generation code
+## Immediate Next Steps
+1. **Fix Index Generation** (CRITICAL)
+   - Add index buffer binding to compute shader
+   - Generate matching indices for GPU vertices
+   - Test with single patch first
+
+2. **Verify Single Patch Rendering**
+   - Ensure GPU-generated patch is visible
+   - Compare visual output with CPU version
+   - Measure performance improvement
+
+3. **Extend to Multiple Patches**
+   - Generate vertices for all visible patches
+   - Handle different patch transforms
+   - Optimize dispatch strategy
+
+4. **Sample Real Voxel Data**
+   - Replace sine wave test pattern
+   - Implement octree traversal
+   - Generate terrain from actual voxels
+
+5. **Delete CPU Path**
+   - Remove CPUVertexGenerator
+   - Remove procedural noise
+   - Clean break, no fallback
+
+## Key Insights from Implementation
+- **Coordinate Space**: Vertices must be world space → camera-relative → scaled by 1/1,000,000
+- **Vertex Format**: Must exactly match PatchVertex structure
+- **Index Problem**: This is the critical blocker - can't use CPU indices with GPU vertices
+- **Octree Ready**: The octree is successfully on GPU, just needs to be sampled
 
 ---
 *Last Updated: December 2024*

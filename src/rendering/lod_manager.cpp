@@ -7,6 +7,7 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 
 namespace rendering {
 
@@ -23,6 +24,9 @@ LODManager::~LODManager() {
         destroyBuffer(quadtreeData.vertexBuffer, quadtreeData.vertexMemory);
         destroyBuffer(quadtreeData.indexBuffer, quadtreeData.indexMemory);
         destroyBuffer(quadtreeData.instanceBuffer, quadtreeData.instanceMemory);
+        
+        // Clean up GPU mesh generation pipeline
+        destroyGPUMeshGenerationPipeline();
         
         // Clean up octree chunks
         if (transvoxelRenderer) {
@@ -59,6 +63,20 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
     // Initialize octree for volumetric rendering
     octreePlanet = std::make_unique<octree::OctreePlanet>(planetRadius, 10);
     octreePlanet->generate(seed);
+    
+    // Create GPU octree and upload voxel data
+    std::cout << "[LODManager] Creating GPU octree and uploading voxel data..." << std::endl;
+    gpuOctree = std::make_unique<GPUOctree>(device, physicalDevice);
+    
+    // Upload the octree to GPU (using dummy view for now, will be updated each frame)
+    glm::vec3 dummyViewPos(0, 0, planetRadius * 2.0f);
+    glm::mat4 dummyViewProj = glm::mat4(1.0f);
+    gpuOctree->uploadOctree(octreePlanet.get(), dummyViewPos, dummyViewProj, commandPool, graphicsQueue);
+    std::cout << "[LODManager] GPU octree uploaded with " << gpuOctree->getNodeCount() << " nodes" << std::endl;
+    
+    // Create GPU mesh generation pipeline
+    createGPUMeshGenerationPipeline();
+    std::cout << "[LODManager] GPU mesh generation pipeline created" << std::endl;
     
     // Initialize Transvoxel renderer
     transvoxelRenderer = std::make_unique<TransvoxelRenderer>(
@@ -255,6 +273,9 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
 }
 
 void LODManager::update(const glm::vec3& cameraPos, const glm::mat4& viewProj, float deltaTime) {
+    // Store camera position for GPU mesh generation
+    lastCameraPos = cameraPos;
+    
     // Calculate altitude
     currentAltitude = glm::length(cameraPos) - densityField->getPlanetRadius();
     stats.altitude = currentAltitude;
@@ -335,6 +356,70 @@ void LODManager::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
                   << ", Altitude: " << currentAltitude << "m" << std::endl;
     }
     
+    // GPU MESH GENERATION: Generate all patches but use same vertex data (for visibility testing)
+    if (gpuMeshGen.computePipeline != VK_NULL_HANDLE) {
+        const auto& patches = quadtree->getVisiblePatches();
+        if (!patches.empty()) {
+            static int frameCount = 0;
+            if (frameCount++ % 60 == 0) {
+                std::cout << "[GPU MESH] Pipeline active! Generating mesh for " << patches.size() << " patches" << std::endl;
+                std::cout << "[GPU MESH] GPU vertex buffer: " << gpuMeshGen.gpuVertexBuffer 
+                          << ", capacity: " << gpuMeshGen.gpuVertexCapacity << " vertices" << std::endl;
+            }
+            
+            // DEBUG: Generate a simple test grid
+            static bool generatedTestGrid = false;
+            if (!generatedTestGrid) {
+                std::cout << "[GPU MESH] Generating TEST GRID in camera space" << std::endl;
+                
+                // DEBUG: Print first patch info to see where CPU places it
+                if (!patches.empty()) {
+                    const auto& firstPatch = patches[0];
+                    std::cout << "[DEBUG] Camera at: (" << lastCameraPos.x << ", " 
+                              << lastCameraPos.y << ", " << lastCameraPos.z << ")" << std::endl;
+                    std::cout << "[DEBUG] First CPU patch info:" << std::endl;
+                    std::cout << "  Center: (" << firstPatch.center.x << ", " 
+                              << firstPatch.center.y << ", " << firstPatch.center.z << ")" << std::endl;
+                    std::cout << "  Level: " << firstPatch.level << ", Size: " << firstPatch.size << std::endl;
+                    std::cout << "  FaceId: " << firstPatch.faceId << std::endl;
+                    
+                    // Calculate where this patch would be in camera-relative space
+                    glm::dvec3 relativeCenter = firstPatch.center - glm::dvec3(lastCameraPos);
+                    relativeCenter *= (1.0 / 1000000.0);
+                    std::cout << "  Camera-relative center: (" << relativeCenter.x << ", "
+                              << relativeCenter.y << ", " << relativeCenter.z << ")" << std::endl;
+                }
+                
+                generateFullPlanetOnGPU(commandBuffer);
+                generatedTestGrid = true;
+                
+                // Calculate if our test position should be visible
+                glm::vec3 testPos(-6.08f, -2.87f, -6.08f);
+                float distance = glm::length(testPos);
+                std::cout << "[GPU MESH] Test vertex at distance: " << distance << " units (scaled)" << std::endl;
+                std::cout << "[GPU MESH] Real distance: " << distance * 1000000.0f << " meters" << std::endl;
+                std::cout << "[GPU MESH] Near plane: " << currentAltitude * 0.001f << " meters" << std::endl;
+                std::cout << "[GPU MESH] Far plane: " << currentAltitude * 2.0f << " meters" << std::endl;
+            }
+            
+            // CRITICAL: Override the index count to match what GPU actually generated
+            // GPU generates 48*48*2*3 = 13824 indices for a 49x49 grid
+            quadtreeData.indexCount = 13824;
+            quadtreeData.instanceCount = 1;
+            
+            if (frameCount % 60 == 0) {
+                std::cout << "[GPU MESH] Rendering TEST GRID with " 
+                          << quadtreeData.indexCount << " indices (GPU generated)" << std::endl;
+            }
+        }
+    } else {
+        static bool warned = false;
+        if (!warned) {
+            std::cout << "[GPU MESH] WARNING: Compute pipeline is NULL!" << std::endl;
+            warned = true;
+        }
+    }
+    
     switch (currentMode) {
         case QUADTREE_ONLY:
             // Render quadtree patches only
@@ -343,10 +428,22 @@ void LODManager::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
                 // The caller should bind the appropriate pipeline before calling this render function
                 
                 // Bind vertex and index buffers
-                VkBuffer vertexBuffers[] = {quadtreeData.vertexBuffer};
+                // Try GPU buffers again with vertices at known visible position
+                bool useGPUBuffers = (gpuMeshGen.gpuVertexBuffer != VK_NULL_HANDLE && 
+                                     gpuMeshGen.gpuIndexBuffer != VK_NULL_HANDLE);
+                
+                VkBuffer vertexBuffer = useGPUBuffers ? gpuMeshGen.gpuVertexBuffer : quadtreeData.vertexBuffer;
+                VkBuffer indexBuffer = useGPUBuffers ? gpuMeshGen.gpuIndexBuffer : quadtreeData.indexBuffer;
+                
+                static int bindCount = 0;
+                if (bindCount++ % 60 == 0) {
+                    std::cout << "[RENDER] Using " << (useGPUBuffers ? "GPU" : "CPU") << " buffers for rendering" << std::endl;
+                }
+                
+                VkBuffer vertexBuffers[] = {vertexBuffer};
                 VkDeviceSize offsets[] = {0};
                 vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-                vkCmdBindIndexBuffer(commandBuffer, quadtreeData.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+                vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
                 
                 // Note: Instance buffer should be bound as a storage buffer via descriptor set,
                 // not as a vertex buffer. This is handled by the descriptor set binding.
@@ -1302,6 +1399,322 @@ void LODManager::uploadBufferData(VkBuffer buffer, const void* data, VkDeviceSiz
     // Cleanup staging buffer
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+void LODManager::createGPUMeshGenerationPipeline() {
+    // Load compute shader
+    std::ifstream shaderFile("shaders/compiled/mesh_generator.comp.spv", std::ios::binary);
+    if (!shaderFile) {
+        std::cout << "[LODManager] Warning: Failed to open compute shader file - GPU mesh generation disabled" << std::endl;
+        return;  // Don't throw, just disable GPU mesh generation for now
+    }
+    
+    std::vector<char> shaderCode((std::istreambuf_iterator<char>(shaderFile)),
+                                  std::istreambuf_iterator<char>());
+    
+    VkShaderModuleCreateInfo shaderInfo{};
+    shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderInfo.codeSize = shaderCode.size();
+    shaderInfo.pCode = reinterpret_cast<const uint32_t*>(shaderCode.data());
+    
+    if (vkCreateShaderModule(device, &shaderInfo, nullptr, &gpuMeshGen.computeShader) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create compute shader module");
+    }
+    
+    // Create descriptor set layout
+    VkDescriptorSetLayoutBinding bindings[5] = {};
+    
+    // Binding 0: Octree nodes (storage buffer)
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[0].descriptorCount = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    
+    // Binding 1: Voxel data (storage buffer)
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[1].descriptorCount = 1;
+    bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    
+    // Binding 2: Output vertex buffer (storage buffer)
+    bindings[2].binding = 2;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[2].descriptorCount = 1;
+    bindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    
+    // Binding 3: Output index buffer (storage buffer)
+    bindings[3].binding = 3;
+    bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[3].descriptorCount = 1;
+    bindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    
+    // Binding 4: Output index count (storage buffer)
+    bindings[4].binding = 4;
+    bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[4].descriptorCount = 1;
+    bindings[4].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 5;
+    layoutInfo.pBindings = bindings;
+    
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &gpuMeshGen.descriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create descriptor set layout");
+    }
+    
+    // Create pipeline layout with push constants for patch parameters
+    VkPushConstantRange pushConstant{};
+    pushConstant.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    pushConstant.offset = 0;
+    pushConstant.size = sizeof(glm::mat4) + sizeof(glm::vec4) * 2;  // transform + 2 vec4s
+    
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &gpuMeshGen.descriptorSetLayout;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+    
+    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &gpuMeshGen.pipelineLayout) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create pipeline layout");
+    }
+    
+    // Create compute pipeline
+    VkComputePipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pipelineInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    pipelineInfo.stage.module = gpuMeshGen.computeShader;
+    pipelineInfo.stage.pName = "main";
+    pipelineInfo.layout = gpuMeshGen.pipelineLayout;
+    
+    if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &gpuMeshGen.computePipeline) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create compute pipeline");
+    }
+    
+    // Create descriptor pool
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSize.descriptorCount = 5;  // Now we have 5 bindings
+    
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = 1;
+    
+    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &gpuMeshGen.descriptorPool) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create descriptor pool");
+    }
+    
+    // Allocate descriptor set
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = gpuMeshGen.descriptorPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &gpuMeshGen.descriptorSetLayout;
+    
+    if (vkAllocateDescriptorSets(device, &allocInfo, &gpuMeshGen.descriptorSet) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate descriptor set");
+    }
+    
+    // Create GPU vertex buffer for output (49x49 grid = 2401 vertices per patch)
+    gpuMeshGen.gpuVertexCapacity = 49 * 49 * 100;  // Space for 100 patches
+    // PatchVertex size: vec3 pos + vec3 normal + vec2 uv + float height + uint faceId = 36 bytes
+    VkDeviceSize vertexBufferSize = gpuMeshGen.gpuVertexCapacity * 36;
+    
+    createBuffer(vertexBufferSize,
+                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                 gpuMeshGen.gpuVertexBuffer, gpuMeshGen.gpuVertexMemory);
+    
+    // Create GPU index buffer for output (48x48x2 triangles x 3 indices per triangle)
+    gpuMeshGen.gpuIndexCapacity = 48 * 48 * 2 * 3 * 100;  // Space for 100 patches
+    VkDeviceSize indexBufferSize = gpuMeshGen.gpuIndexCapacity * sizeof(uint32_t);
+    
+    createBuffer(indexBufferSize,
+                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                 gpuMeshGen.gpuIndexBuffer, gpuMeshGen.gpuIndexMemory);
+    
+    // Create index count buffer (just one uint32_t)
+    VkDeviceSize countBufferSize = sizeof(uint32_t);
+    
+    createBuffer(countBufferSize,
+                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                 gpuMeshGen.gpuIndexCountBuffer, gpuMeshGen.gpuIndexCountMemory);
+    
+    // Update descriptor set with buffers
+    VkDescriptorBufferInfo bufferInfos[5] = {};
+    
+    // Octree nodes buffer
+    bufferInfos[0].buffer = gpuOctree->getNodeBuffer();
+    bufferInfos[0].offset = 0;
+    bufferInfos[0].range = VK_WHOLE_SIZE;
+    
+    // Voxel data buffer
+    bufferInfos[1].buffer = gpuOctree->getVoxelBuffer();
+    bufferInfos[1].offset = 0;
+    bufferInfos[1].range = VK_WHOLE_SIZE;
+    
+    // Output vertex buffer
+    bufferInfos[2].buffer = gpuMeshGen.gpuVertexBuffer;
+    bufferInfos[2].offset = 0;
+    bufferInfos[2].range = VK_WHOLE_SIZE;
+    
+    // Output index buffer
+    bufferInfos[3].buffer = gpuMeshGen.gpuIndexBuffer;
+    bufferInfos[3].offset = 0;
+    bufferInfos[3].range = VK_WHOLE_SIZE;
+    
+    // Output index count buffer
+    bufferInfos[4].buffer = gpuMeshGen.gpuIndexCountBuffer;
+    bufferInfos[4].offset = 0;
+    bufferInfos[4].range = sizeof(uint32_t);
+    
+    VkWriteDescriptorSet descriptorWrites[5] = {};
+    for (int i = 0; i < 5; i++) {
+        descriptorWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[i].dstSet = gpuMeshGen.descriptorSet;
+        descriptorWrites[i].dstBinding = i;
+        descriptorWrites[i].dstArrayElement = 0;
+        descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[i].descriptorCount = 1;
+        descriptorWrites[i].pBufferInfo = &bufferInfos[i];
+    }
+    
+    vkUpdateDescriptorSets(device, 5, descriptorWrites, 0, nullptr);
+}
+
+void LODManager::destroyGPUMeshGenerationPipeline() {
+    if (device == VK_NULL_HANDLE) return;
+    
+    vkDeviceWaitIdle(device);
+    
+    if (gpuMeshGen.gpuVertexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, gpuMeshGen.gpuVertexBuffer, nullptr);
+        vkFreeMemory(device, gpuMeshGen.gpuVertexMemory, nullptr);
+    }
+    
+    if (gpuMeshGen.gpuIndexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, gpuMeshGen.gpuIndexBuffer, nullptr);
+        vkFreeMemory(device, gpuMeshGen.gpuIndexMemory, nullptr);
+    }
+    
+    if (gpuMeshGen.gpuIndexCountBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, gpuMeshGen.gpuIndexCountBuffer, nullptr);
+        vkFreeMemory(device, gpuMeshGen.gpuIndexCountMemory, nullptr);
+    }
+    
+    if (gpuMeshGen.descriptorPool != VK_NULL_HANDLE) {
+        vkDestroyDescriptorPool(device, gpuMeshGen.descriptorPool, nullptr);
+    }
+    
+    if (gpuMeshGen.computePipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, gpuMeshGen.computePipeline, nullptr);
+    }
+    
+    if (gpuMeshGen.pipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(device, gpuMeshGen.pipelineLayout, nullptr);
+    }
+    
+    if (gpuMeshGen.descriptorSetLayout != VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(device, gpuMeshGen.descriptorSetLayout, nullptr);
+    }
+    
+    if (gpuMeshGen.computeShader != VK_NULL_HANDLE) {
+        vkDestroyShaderModule(device, gpuMeshGen.computeShader, nullptr);
+    }
+}
+
+void LODManager::generateFullPlanetOnGPU(VkCommandBuffer commandBuffer) {
+    // Use the EXACT same transform as the first visible CPU patch
+    const auto& patches = quadtree->getVisiblePatches();
+    if (patches.empty()) return;
+    
+    const auto& firstPatch = patches[0];
+    
+    // Bind compute pipeline
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, gpuMeshGen.computePipeline);
+    
+    // Bind descriptor set
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                           gpuMeshGen.pipelineLayout, 0, 1, &gpuMeshGen.descriptorSet,
+                           0, nullptr);
+    
+    struct PushConstants {
+        glm::mat4 patchTransform;
+        glm::vec4 patchInfo;  // level, size, gridResolution, planetRadius
+        glm::vec4 viewPos;    // Camera position in world space
+    } pushData;
+    
+    // Use the EXACT transform from the CPU patch
+    pushData.patchTransform = glm::mat4(firstPatch.patchTransform);
+    pushData.patchInfo = glm::vec4(firstPatch.level, firstPatch.size, 49.0f, densityField->getPlanetRadius());
+    pushData.viewPos = glm::vec4(lastCameraPos, 0.0f);
+    
+    vkCmdPushConstants(commandBuffer, gpuMeshGen.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
+                       0, sizeof(pushData), &pushData);
+    
+    // Dispatch for a full sphere (we'll modify the shader to handle this)
+    // For now just dispatch once and modify shader to generate a visible sphere
+    vkCmdDispatch(commandBuffer, 7, 7, 1);
+    
+    // Memory barrier
+    VkMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    
+    vkCmdPipelineBarrier(commandBuffer,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                        0, 1, &barrier, 0, nullptr, 0, nullptr);
+}
+
+void LODManager::generateMeshOnGPU(const core::QuadtreePatch& patch, VkCommandBuffer commandBuffer) {
+    // Bind compute pipeline
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, gpuMeshGen.computePipeline);
+    
+    // Bind descriptor set
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                           gpuMeshGen.pipelineLayout, 0, 1, &gpuMeshGen.descriptorSet,
+                           0, nullptr);
+    
+    // Set push constants with patch parameters
+    struct PushConstants {
+        glm::mat4 patchTransform;
+        glm::vec4 patchInfo;  // level, size, gridResolution, planetRadius
+        glm::vec4 viewPos;    // Camera position in world space
+    } pushData;
+    
+    pushData.patchTransform = glm::mat4(patch.patchTransform);
+    pushData.patchInfo = glm::vec4(patch.level, patch.size, 49.0f, densityField->getPlanetRadius());  // 49x49 grid
+    pushData.viewPos = glm::vec4(lastCameraPos, 0.0f);  // Pass actual camera position
+    
+    vkCmdPushConstants(commandBuffer, gpuMeshGen.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
+                       0, sizeof(pushData), &pushData);
+    
+    // Dispatch compute shader (49x49 grid with 8x8 local workgroups)
+    uint32_t gridSize = 49;
+    uint32_t workgroupSize = 8;
+    uint32_t dispatchX = (gridSize + workgroupSize - 1) / workgroupSize;
+    uint32_t dispatchY = (gridSize + workgroupSize - 1) / workgroupSize;
+    
+    vkCmdDispatch(commandBuffer, dispatchX, dispatchY, 1);
+    
+    // Memory barrier to ensure compute shader writes are visible to vertex shader
+    VkMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    
+    vkCmdPipelineBarrier(commandBuffer,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                        0, 1, &barrier, 0, nullptr, 0, nullptr);
 }
 
 } // namespace rendering

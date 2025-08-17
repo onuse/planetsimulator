@@ -103,6 +103,16 @@ if exist %SRC_FRAGMENT%\quadtree_patch.frag (
     )
 )
 
+REM Compile compute shaders
+set SRC_COMPUTE=src\compute
+if exist %SRC_COMPUTE%\mesh_generator.comp (
+    echo Compiling mesh_generator.comp...
+    "%GLSLC%" %SRC_COMPUTE%\mesh_generator.comp -o compiled\mesh_generator.comp.spv
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to compile mesh_generator.comp
+    )
+)
+
 echo.
 echo Shaders compiled successfully!
 echo Output files:

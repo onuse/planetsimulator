@@ -10,6 +10,7 @@
 #include "core/octree.hpp"
 #include "transvoxel_renderer.hpp"
 #include "cpu_vertex_generator.hpp"
+#include "gpu_octree.hpp"
 
 namespace rendering {
 
@@ -92,6 +93,7 @@ private:
     std::shared_ptr<core::DensityField> densityField;
     std::unique_ptr<core::SphericalQuadtree> quadtree;
     std::unique_ptr<octree::OctreePlanet> octreePlanet;
+    std::unique_ptr<GPUOctree> gpuOctree;  // GPU-resident voxel data
     std::unique_ptr<TransvoxelRenderer> transvoxelRenderer;
     std::unique_ptr<CPUVertexGenerator> vertexGenerator;
     
@@ -99,6 +101,7 @@ private:
     RenderingMode currentMode;
     float transitionBlendFactor;
     float currentAltitude;
+    glm::vec3 lastCameraPos;  // Store camera position for GPU mesh generation
     
     // Quadtree rendering resources
     struct QuadtreeRenderData {
@@ -115,6 +118,29 @@ private:
     
     // Octree/Transvoxel rendering data
     std::vector<TransvoxelChunk> octreeChunks;
+    
+    // GPU Mesh Generation Pipeline
+    struct GPUMeshGeneration {
+        VkPipeline computePipeline = VK_NULL_HANDLE;
+        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+        VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+        VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+        VkShaderModule computeShader = VK_NULL_HANDLE;
+        
+        // GPU buffers for mesh generation output
+        VkBuffer gpuVertexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory gpuVertexMemory = VK_NULL_HANDLE;
+        uint32_t gpuVertexCapacity = 0;  // Max vertices we can generate
+        
+        VkBuffer gpuIndexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory gpuIndexMemory = VK_NULL_HANDLE;
+        uint32_t gpuIndexCapacity = 0;  // Max indices we can generate
+        
+        VkBuffer gpuIndexCountBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory gpuIndexCountMemory = VK_NULL_HANDLE;
+    };
+    GPUMeshGeneration gpuMeshGen;
     
     // Buffer update tracking
     bool bufferUpdateRequired = false;
@@ -134,6 +160,12 @@ private:
     void updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>& patches, const glm::vec3& viewPosition);
     void updateOctreeChunks(const glm::vec3& viewPos);
     void prepareTransitionZone(const glm::vec3& viewPos);
+    
+    // GPU mesh generation
+    void createGPUMeshGenerationPipeline();
+    void destroyGPUMeshGenerationPipeline();
+    void generateMeshOnGPU(const core::QuadtreePatch& patch, VkCommandBuffer commandBuffer);
+    void generateFullPlanetOnGPU(VkCommandBuffer commandBuffer);
     
     // Buffer management
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
