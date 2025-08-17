@@ -120,7 +120,8 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
                 vkDeviceWaitIdle(device);
                 updateQuadtreeInstanceBuffer(instanceBuf);
                 lastInstanceBuffer = instanceBuf;
-                std::cout << "[VulkanRenderer] Instance buffer updated, descriptor sets refreshed" << std::endl;
+                // PERFORMANCE: Disabled verbose buffer update logging
+                // std::cout << "[VulkanRenderer] Instance buffer updated, descriptor sets refreshed" << std::endl;
             }
         }
         

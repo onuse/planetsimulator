@@ -623,8 +623,9 @@ CPUVertexGenerator::PatchMesh CPUVertexGenerator::generatePatchMesh(
     // if (hasTJunction && tjunctionDebugCount < 10) { ... }
     
     // Debug: Look for issues that could cause grey dots
+    // PERFORMANCE: Disabled verbose debug output
     static int debugCount = 0;
-    if (debugCount++ < 5) {
+    if (false && debugCount++ < 5) {  // DISABLED FOR PERFORMANCE
         std::cout << "\n[DEBUG] Patch " << debugCount << " detailed analysis:" << std::endl;
         std::cout << "  Center: (" << patch.center.x << ", " << patch.center.y << ", " << patch.center.z << ")" << std::endl;
         std::cout << "  Level: " << patch.level << ", FaceId: " << patch.faceId << std::endl;

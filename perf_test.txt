@@ -1,0 +1,46 @@
+Starting Octree Planet Simulator...
+[DEBUG] Clipping planes OVERRIDDEN for debugging: near=1, far=1e+08
+Camera constructor: altitude=29000, near=1, far=1e+08
+Octree Planet Simulator (C++ Version)
+=====================================
+Radius: 6.371e+06 meters
+Max Depth: 10
+Seed: 42
+Resolution: 1280x720
+Auto-terminate: 2 seconds
+Starting initialization...
+=== INIT FUNCTION CALLED ===
+Generating planet...
+Generating sphere structure...
+Planet radius: 6.371e+06 meters
+Root node half-size: 9.5565e+06 meters
+Setting materials for leaf at depth 4 center=(-2.98641e+06,-4.18097e+06,-5.37553e+06) size=597281
+    Node center=(-2.98641e+06,-4.18097e+06,-5.37553e+06) halfSize=597281
+    Voxel offset=(-298641,-298641,-298641)
+    Voxel pos=(-3.28505e+06,-4.47961e+06,-5.67417e+06) dist=7.9407e+06
+    Planet radius=6.371e+06
+Setting materials for leaf at depth 4 center=(-4.18097e+06,-2.98641e+06,-5.37553e+06) size=597281
+    Node center=(-4.18097e+06,-2.98641e+06,-5.37553e+06) halfSize=597281
+    Voxel offset=(-298641,-298641,-298641)
+    Voxel pos=(-4.47961e+06,-3.28505e+06,-5.67417e+06) dist=7.9407e+06
+    Planet radius=6.371e+06
+Setting materials for leaf at depth 5 center=(-3.28505e+06,-3.28505e+06,-5.67417e+06) size=298641
+    Node center=(-3.28505e+06,-3.28505e+06,-5.67417e+06) halfSize=298641
+    Voxel offset=(-149320,-149320,-149320)
+    Voxel pos=(-3.43437e+06,-3.43437e+06,-5.82349e+06) dist=7.58306e+06
+    Planet radius=6.371e+06
+Setting materials for leaf at depth 5 center=(-2.68777e+06,-3.28505e+06,-5.67417e+06) size=298641
+Setting materials for leaf at depth 5 center=(-3.28505e+06,-2.68777e+06,-5.67417e+06) size=298641
+Setting materials for leaf at depth 6 center=(-2.83709e+06,-2.83709e+06,-5.82349e+06) size=149320
+Setting materials for leaf at depth 6 center=(-2.53845e+06,-2.83709e+06,-5.82349e+06) size=149320
+Setting materials for leaf at depth 6 center=(-2.83709e+06,-2.53845e+06,-5.82349e+06) size=149320
+Setting materials for leaf at depth 6 center=(-2.53845e+06,-2.53845e+06,-5.82349e+06) size=149320
+Setting materials for leaf at depth 6 center=(-2.83709e+06,-2.83709e+06,-5.52485e+06) size=149320
+  Continent value range: [0.294055, 0.355255]
+Generated 5939984 leaf nodes (3502856 with surface material)
+Planet generation complete (simplified)
+Planet generated successfully
+Initializing Vulkan renderer...
+Hierarchical GPU octree rendering enabled
+Found NVIDIA GPU: NVIDIA GeForce RTX 3070 Laptop GPU
+Selected GPU: NVIDIA GeForce RTX 3070 Laptop GPU

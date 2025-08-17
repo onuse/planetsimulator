@@ -119,6 +119,15 @@ private:
     // Buffer update tracking
     bool bufferUpdateRequired = false;
     
+    // PERFORMANCE: Cache generated patch meshes
+    struct PatchCacheEntry {
+        core::QuadtreePatch patch;  // The patch configuration
+        CPUVertexGenerator::PatchMesh mesh;  // The generated mesh
+        uint64_t frameUsed;  // Last frame this was used
+    };
+    std::unordered_map<uint64_t, PatchCacheEntry> patchMeshCache;
+    uint64_t currentFrameNumber = 0;
+    
     // Helper functions
     RenderingMode selectRenderingMode(float altitude);
     void updateQuadtreeBuffers_OLD(const std::vector<core::QuadtreePatch>& patches);

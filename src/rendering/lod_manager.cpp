@@ -41,12 +41,15 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
     // Initialize spherical quadtree for surface rendering
     core::SphericalQuadtree::Config quadConfig;
     quadConfig.planetRadius = planetRadius;
-    quadConfig.maxLevel = 20;
-    quadConfig.pixelError = 2.0f;
+    // PERFORMANCE FIX: DRASTICALLY reduced to prevent patch explosion
+    // Balanced LOD settings now that scaling is fixed
+    quadConfig.maxLevel = 8;  // Good detail without overwhelming
+    // Moderate pixel error for balanced subdivision
+    quadConfig.pixelError = 4.0f;  // Reasonable detail
     quadConfig.morphRegion = 0.3f;
     quadConfig.enableMorphing = true;
     quadConfig.enableCrackFixes = true;
-    quadConfig.enableFaceCulling = false;  // TEMPORARILY DISABLED FOR DEBUGGING
+    quadConfig.enableFaceCulling = false;  // TEMP: Disable to debug black wedge
     quadConfig.enableFrustumCulling = false;  // DISABLED - test without frustum culling
     quadConfig.enableDistanceCulling = false;  // DISABLED - test without distance culling
     
@@ -63,7 +66,9 @@ void LODManager::initialize(float planetRadius, uint32_t seed) {
     
     // Initialize CPU vertex generator
     CPUVertexGenerator::Config vertexGenConfig;
-    vertexGenConfig.gridResolution = 65;  // 65x65 vertices per patch
+    // BALANCE: 49x49 gives better surface quality while maintaining reasonable performance
+    // This is 2,401 vertices per patch (vs 4,225 for 65x65 or 1,089 for 33x33)
+    vertexGenConfig.gridResolution = 49;  // 49x49 vertices per patch
     vertexGenConfig.planetRadius = planetRadius;
     vertexGenConfig.enableSkirts = false;  // Disabled for debugging
     vertexGenConfig.skirtDepth = 500.0f;
@@ -257,29 +262,38 @@ void LODManager::update(const glm::vec3& cameraPos, const glm::mat4& viewProj, f
     currentMode = selectRenderingMode(currentAltitude);
     stats.mode = currentMode;
     
-    // Debug output periodically
-    static int updateCount = 0;
-    if (updateCount++ % 60 == 0) {
-        std::cout << "[LODManager] Altitude: " << currentAltitude << "m, Mode: " 
-                  << (currentMode == QUADTREE_ONLY ? "QUADTREE" : 
-                      currentMode == TRANSITION_ZONE ? "TRANSITION" : "OCTREE")
-                  << std::endl;
-    }
+    // PERFORMANCE: Disabled periodic debug output
+    // static int updateCount = 0;
+    // if (updateCount++ % 60 == 0) {
+    //     std::cout << "[LODManager] Altitude: " << currentAltitude << "m, Mode: " 
+    //               << (currentMode == QUADTREE_ONLY ? "QUADTREE" : 
+    //                   currentMode == TRANSITION_ZONE ? "TRANSITION" : "OCTREE")
+    //               << std::endl;
+    // }
     
     // Update quadtree LOD selection
     quadtree->update(cameraPos, viewProj, deltaTime);
     const auto& quadPatches = quadtree->getVisiblePatches();
     stats.quadtreePatches = static_cast<uint32_t>(quadPatches.size());
     
-    // DEBUG: Count patches per face
-    int faceDebugCounts[6] = {0};
-    for (const auto& patch : quadPatches) {
-        if (patch.faceId < 6) faceDebugCounts[patch.faceId]++;
+    // DEBUG: Enable patch counting to understand what we're getting
+    static int updateCount = 0;
+    updateCount++;
+    if (updateCount % 60 == 0) { // Every second at 60fps
+        int faceDebugCounts[6] = {0};
+        for (const auto& patch : quadPatches) {
+            if (patch.faceId < 6) faceDebugCounts[patch.faceId]++;
+        }
+        std::cout << "[LODManager] Got " << quadPatches.size() << " patches. Per face: "
+                  << faceDebugCounts[0] << " " << faceDebugCounts[1] << " " 
+                  << faceDebugCounts[2] << " " << faceDebugCounts[3] << " "
+                  << faceDebugCounts[4] << " " << faceDebugCounts[5] << std::endl;
+        
+        // Show total vertices that will be generated
+        size_t totalVertices = quadPatches.size() * 33 * 33; // 33x33 grid per patch
+        std::cout << "[LODManager] Will generate approximately " << totalVertices 
+                  << " vertices (" << (totalVertices/1000) << "k)" << std::endl;
     }
-    std::cout << "[LODManager] Got " << quadPatches.size() << " patches. Per face: "
-              << faceDebugCounts[0] << " " << faceDebugCounts[1] << " " 
-              << faceDebugCounts[2] << " " << faceDebugCounts[3] << " "
-              << faceDebugCounts[4] << " " << faceDebugCounts[5] << std::endl;
     
     // Update transition blend factor
     if (currentAltitude > config.transitionStartAltitude) {
@@ -371,8 +385,9 @@ void LODManager::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
                 }
                 
                 // Draw instanced
-                std::cout << "[DEBUG] Drawing with indexCount=" << quadtreeData.indexCount 
-                          << " instanceCount=" << quadtreeData.instanceCount << std::endl;
+                // PERFORMANCE: Disabled verbose drawing debug
+                // std::cout << "[DEBUG] Drawing with indexCount=" << quadtreeData.indexCount 
+                //           << " instanceCount=" << quadtreeData.instanceCount << std::endl;
                 vkCmdDrawIndexed(commandBuffer, quadtreeData.indexCount, 
                                quadtreeData.instanceCount, 0, 0, 0);
             }
@@ -797,7 +812,8 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
         return;
     }
     
-    std::cout << "[LODManager] Generating CPU vertices for " << patches.size() << " patches" << std::endl;
+    // PERFORMANCE: Disabled verbose logging
+    // std::cout << "[LODManager] Generating CPU vertices for " << patches.size() << " patches" << std::endl;
     
     // Calculate total vertex and index requirements
     size_t totalVertices = 0;
@@ -805,43 +821,114 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
     std::vector<CPUVertexGenerator::PatchMesh> meshes;
     meshes.reserve(patches.size());
     
+    // PERFORMANCE: Use cached meshes when possible
+    currentFrameNumber++;
+    size_t cacheHits = 0;
+    size_t cacheMisses = 0;
+    
     // Generate meshes for all patches
     for (const auto& patch : patches) {
-        // Create transform matrix for patch
-        core::GlobalPatchGenerator::GlobalPatch globalPatch;
+        // Create a unique key for this patch based on its properties
+        uint64_t patchKey = 0;
+        patchKey |= (uint64_t(patch.faceId) << 48);
+        patchKey |= (uint64_t(patch.level) << 40);
+        // Hash the center position to create a unique ID
+        auto centerHash = std::hash<float>{}(patch.center.x) ^ 
+                         (std::hash<float>{}(patch.center.y) << 1) ^
+                         (std::hash<float>{}(patch.center.z) << 2);
+        patchKey |= (centerHash & 0xFFFFFFFFFF);
         
-        // CRITICAL: Use the EXACT double-precision bounds stored in the patch
-        // These were computed once with full precision and must be preserved!
-        globalPatch.minBounds = patch.minBounds;
-        globalPatch.maxBounds = patch.maxBounds;
-        globalPatch.center = patch.center;
-        globalPatch.level = patch.level;
-        globalPatch.faceId = patch.faceId;
-        
-        glm::dmat4 transform = globalPatch.createTransform();
-        
-        // Generate mesh using CPU vertex generator
-        auto mesh = vertexGenerator->generatePatchMesh(patch, transform);
-        totalVertices += mesh.vertexCount;
-        totalIndices += mesh.indexCount;
-        meshes.push_back(std::move(mesh));
+        // Check cache first
+        auto cacheIt = patchMeshCache.find(patchKey);
+        if (cacheIt != patchMeshCache.end() && 
+            cacheIt->second.patch.level == patch.level &&
+            glm::distance(cacheIt->second.patch.center, patch.center) < 0.001f) {
+            // Cache hit - use existing mesh
+            cacheIt->second.frameUsed = currentFrameNumber;
+            totalVertices += cacheIt->second.mesh.vertexCount;
+            totalIndices += cacheIt->second.mesh.indexCount;
+            meshes.push_back(cacheIt->second.mesh);
+            cacheHits++;
+        } else {
+            // Cache miss - generate new mesh
+            // Create transform matrix for patch
+            core::GlobalPatchGenerator::GlobalPatch globalPatch;
+            
+            // CRITICAL: Use the EXACT double-precision bounds stored in the patch
+            // These were computed once with full precision and must be preserved!
+            globalPatch.minBounds = patch.minBounds;
+            globalPatch.maxBounds = patch.maxBounds;
+            globalPatch.center = patch.center;
+            globalPatch.level = patch.level;
+            globalPatch.faceId = patch.faceId;
+            
+            glm::dmat4 transform = globalPatch.createTransform();
+            
+            // Generate mesh using CPU vertex generator
+            auto mesh = vertexGenerator->generatePatchMesh(patch, transform);
+            totalVertices += mesh.vertexCount;
+            totalIndices += mesh.indexCount;
+            
+            // Add to cache
+            PatchCacheEntry entry;
+            entry.patch = patch;
+            entry.mesh = mesh;
+            entry.frameUsed = currentFrameNumber;
+            patchMeshCache[patchKey] = entry;
+            
+            meshes.push_back(std::move(mesh));
+            cacheMisses++;
+        }
     }
     
-    std::cout << "[LODManager] Generated " << totalVertices << " vertices and " 
-              << totalIndices << " indices" << std::endl;
+    // Clean up old cache entries periodically
+    if (currentFrameNumber % 60 == 0) {
+        auto it = patchMeshCache.begin();
+        while (it != patchMeshCache.end()) {
+            if (currentFrameNumber - it->second.frameUsed > 120) {
+                it = patchMeshCache.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+    
+    // Debug: Report cache effectiveness periodically
+    static size_t totalCacheHits = 0;
+    static size_t totalCacheMisses = 0;
+    totalCacheHits += cacheHits;
+    totalCacheMisses += cacheMisses;
+    if (currentFrameNumber % 300 == 0 && (totalCacheHits + totalCacheMisses) > 0) {
+        float hitRate = float(totalCacheHits) / float(totalCacheHits + totalCacheMisses) * 100.0f;
+        std::cout << "[LODManager] Cache hit rate: " << hitRate << "% (Cache size: " 
+                  << patchMeshCache.size() << " entries)" << std::endl;
+    }
+    
+    // DEBUG: Report actual patch and vertex counts every second
+    if (currentFrameNumber % 60 == 0) {
+        std::cout << "[LOD DEBUG] Patches: " << patches.size() 
+                  << ", Vertices: " << totalVertices 
+                  << " (" << (patches.size() > 0 ? totalVertices / patches.size() : 0) << " per patch)"
+                  << ", Indices: " << totalIndices << std::endl;
+    }
+    
+    // PERFORMANCE: Disabled verbose logging
+    // std::cout << "[LODManager] Generated " << totalVertices << " vertices and " 
+    //           << totalIndices << " indices" << std::endl;
     
     // Debug: Print first vertex to verify data
-    if (!meshes.empty() && !meshes[0].vertices.empty()) {
-        const auto& v = meshes[0].vertices[0];
-        std::cout << "[DEBUG] First vertex: pos(" << v.position.x << "," << v.position.y << "," << v.position.z 
-                  << ") normal(" << v.normal.x << "," << v.normal.y << "," << v.normal.z 
-                  << ") height=" << v.height << std::endl;
-        
-        // Also print camera distance for debugging
-        glm::vec3 cameraPos(1.115e+07, 4.770e+06, 9.556e+06);  // From debug output
-        float dist = glm::length(v.position - cameraPos);
-        std::cout << "[DEBUG] Distance from camera to first vertex: " << dist << " meters" << std::endl;
-    }
+    // PERFORMANCE: Disabled debug output
+    // if (!meshes.empty() && !meshes[0].vertices.empty()) {
+    //     const auto& v = meshes[0].vertices[0];
+    //     std::cout << "[DEBUG] First vertex: pos(" << v.position.x << "," << v.position.y << "," << v.position.z 
+    //               << ") normal(" << v.normal.x << "," << v.normal.y << "," << v.normal.z 
+    //               << ") height=" << v.height << std::endl;
+    //     
+    //     // Also print camera distance for debugging
+    //     glm::vec3 cameraPos(1.115e+07, 4.770e+06, 9.556e+06);  // From debug output
+    //     float dist = glm::length(v.position - cameraPos);
+    //     std::cout << "[DEBUG] Distance from camera to first vertex: " << dist << " meters" << std::endl;
+    // }
     
     // Allocate or reallocate vertex buffer if needed
     VkDeviceSize vertexBufferSize = totalVertices * sizeof(PatchVertex);
@@ -906,12 +993,13 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
         glm::vec3 cameraPos = viewPosition;
         
         // Debug: Print camera position once
-        static int uploadCount = 0;
-        if (uploadCount++ == 0) {
-            std::cout << "[Camera-Relative] Transforming vertices relative to camera at: (" 
-                      << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z 
-                      << "), distance: " << glm::length(cameraPos) << " meters" << std::endl;
-        }
+        // PERFORMANCE: Disabled debug output
+        // static int uploadCount = 0;
+        // if (uploadCount++ == 0) {
+        //     std::cout << "[Camera-Relative] Transforming vertices relative to camera at: (" 
+        //               << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z 
+        //               << "), distance: " << glm::length(cameraPos) << " meters" << std::endl;
+        // }
         
         size_t vertexOffset = 0;
         for (size_t m = 0; m < meshes.size(); m++) {
@@ -936,14 +1024,28 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
                 
                 // Apply camera-relative transform to avoid precision issues
                 vertex.position = vertex.position - cameraPos;
+                
+                // CRITICAL: Scale down to reasonable units (1 unit = 1 million meters)
+                // This makes the planet ~6.4 units in radius instead of 6.4 million
+                const float WORLD_SCALE = 1.0f / 1000000.0f;  // 1 unit = 1 million meters
+                vertex.position *= WORLD_SCALE;
+                
                 destVertices[v] = vertex;
                 
-                // Debug: Check for any extreme vertices after transform
-                if (uploadCount == 1 && m == 0 && v == 0) {
-                    float relDist = glm::length(vertex.position);
-                    std::cout << "  First vertex after transform: distance from camera = " 
-                              << relDist << " meters (should be ~planet radius)" << std::endl;
+                // DEBUG: Check first vertex of first mesh
+                static int debugVertexCount = 0;
+                if (m == 0 && v == 0 && debugVertexCount++ < 3) {
+                    std::cout << "[CAMERA-REL] Camera at: " << glm::length(cameraPos)/1e6 << "M meters from origin\n";
+                    std::cout << "[CAMERA-REL] Vertex world pos: " << glm::length(mesh.vertices[v].position)/1e6 << "M meters from origin\n";
+                    std::cout << "[CAMERA-REL] After scaling: " << glm::length(vertex.position) << " units from camera\n";
+                    std::cout << "[CAMERA-REL] Scaled vertex: (" << vertex.position.x << ", " 
+                              << vertex.position.y << ", " << vertex.position.z << ") units\n";
                 }
+                // if (uploadCount == 1 && m == 0 && v == 0) {
+                //     float relDist = glm::length(vertex.position);
+                //     std::cout << "  First vertex after transform: distance from camera = " 
+                //               << relDist << " meters (should be ~planet radius)" << std::endl;
+                // }
             }
             
             vertexOffset += mesh.vertexCount * sizeof(PatchVertex);
@@ -1023,14 +1125,31 @@ void LODManager::updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>
         vkUnmapMemory(device, quadtreeData.instanceMemory);
     }
     
+    // NOTE: We're NOT using instancing - all patches are concatenated into one buffer
+    // The vertex shader applies per-vertex transforms, not per-instance
     quadtreeData.indexCount = static_cast<uint32_t>(totalIndices);
-    quadtreeData.instanceCount = 1;  // Not using instancing - all vertices in one draw call
+    quadtreeData.instanceCount = 1;  // Single draw call with all patches
+    
+    // DEBUG: Log patch distribution
+    static int frameCount = 0;
+    if (frameCount++ % 60 == 0) {  // Every 60 frames
+        int faceCounts[6] = {0};
+        for (const auto& patch : patches) {
+            if (patch.faceId < 6) faceCounts[patch.faceId]++;
+        }
+        std::cout << "[LOD] Patches by face: ";
+        for (int i = 0; i < 6; i++) {
+            std::cout << faceCounts[i] << " ";
+        }
+        std::cout << "(total: " << patches.size() << ")" << std::endl;
+    }
     
     // Print stats
-    auto stats = vertexGenerator->getStats();
-    std::cout << "[LODManager] Vertex cache stats - Hits: " << stats.cacheHits 
-              << ", Misses: " << stats.cacheMisses 
-              << ", Cache size: " << stats.currentCacheSize << std::endl;
+    // PERFORMANCE: Disabled verbose stats
+    // auto stats = vertexGenerator->getStats();
+    // std::cout << "[LODManager] Vertex cache stats - Hits: " << stats.cacheHits 
+    //           << ", Misses: " << stats.cacheMisses 
+    //           << ", Cache size: " << stats.currentCacheSize << std::endl;
 }
 
 void LODManager::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,

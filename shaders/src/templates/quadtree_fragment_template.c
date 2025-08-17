@@ -43,13 +43,12 @@ void main() {
     float rim = 1.0 - max(dot(viewDir, normal), 0.0);
     rim = pow(rim, 3.0) * 0.1; // Reduced from 0.5 to 0.1
     
-    // DEBUG MODE: Color by face ID for debugging
-    // This will immediately show which face is missing
+    // DEBUG MODE: Choose visualization mode
     vec3 color;
-    bool debugFaceColors = true; // Toggle this for debug mode
+    int debugMode = 0; // 0=terrain, 1=face colors, 2=LOD patches
     
-    if (debugFaceColors) {
-        // Each face gets a distinct, bright color
+    if (debugMode == 1) {
+        // Mode 1: Each FACE gets a distinct color (6 colors total)
         switch(fragFaceId) {
             case 0u: color = vec3(1.0, 0.0, 0.0); break; // +X = RED
             case 1u: color = vec3(0.5, 0.0, 0.0); break; // -X = DARK RED
@@ -59,11 +58,27 @@ void main() {
             case 5u: color = vec3(0.0, 0.0, 0.5); break; // -Z = DARK BLUE
             default: color = vec3(1.0, 1.0, 0.0); break; // YELLOW = ERROR
         }
-        
-        // Add some shading to see the sphere shape
         color = color * (0.5 + 0.5 * diffuse);
+    } else if (debugMode == 2) {
+        // Mode 2: Color each PATCH differently to visualize LOD subdivision
+        // Create a pseudo-random color based on world position
+        float hash1 = fract(sin(dot(fragWorldPos.xy, vec2(12.9898, 78.233))) * 43758.5453);
+        float hash2 = fract(sin(dot(fragWorldPos.yz, vec2(93.989, 67.345))) * 24734.3421);
+        float hash3 = fract(sin(dot(fragWorldPos.xz, vec2(43.332, 93.532))) * 56472.3785);
         
-        // Add grid lines at patch boundaries for visibility
+        // Create vibrant colors that are easy to distinguish
+        color = vec3(
+            0.3 + 0.7 * hash1,  // R: 0.3-1.0
+            0.3 + 0.7 * hash2,  // G: 0.3-1.0  
+            0.3 + 0.7 * hash3   // B: 0.3-1.0
+        );
+        
+        // Apply lighting to see 3D shape
+        color = color * (0.6 + 0.4 * diffuse);
+    }
+    
+    if (debugMode > 0) {
+        // Add grid lines at patch boundaries for both debug modes
         float gridLine = 0.0;
         if (fragTexCoord.x < 0.02 || fragTexCoord.x > 0.98 ||
             fragTexCoord.y < 0.02 || fragTexCoord.y > 0.98) {

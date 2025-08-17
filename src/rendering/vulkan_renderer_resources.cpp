@@ -230,16 +230,30 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     viewRelative[3][2] = 0.0f;  // Zero Z translation
     // viewRelative[3][3] stays as 1.0
     
+    // CRITICAL: Scale coordinate system to match scaled vertices
+    // Vertices are scaled by 1/1,000,000 so 1 unit = 1 million meters
+    // We need to create a new projection matrix with scaled near/far planes
+    const float WORLD_SCALE = 1.0f / 1000000.0f;
+    
+    // Get camera parameters and scale them
+    float fov = camera->getFieldOfView();
+    // Calculate aspect ratio from swap chain extent
+    float aspect = swapChainExtent.width / (float) swapChainExtent.height;
+    float nearPlane = camera->getNearPlane() * WORLD_SCALE;  // Scale to new units
+    float farPlane = camera->getFarPlane() * WORLD_SCALE;    // Scale to new units
+    
+    // Create new projection matrix with scaled near/far
+    glm::mat4 scaledProj = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
+    
     // Build ViewProj with the translation-free view matrix
-    glm::mat4 viewProjF = projF * viewRelative;
+    glm::mat4 viewProjF = scaledProj * viewRelative;
     
     // Convert to double precision for shader (even though values are now small)
     ubo.view = glm::dmat4(viewRelative);
-    ubo.proj = glm::dmat4(projF);
+    ubo.proj = glm::dmat4(scaledProj);
     ubo.viewProj = glm::dmat4(viewProjF);
-    // Pass the actual world camera position for proper calculations in shader
-    // Even though vertices are camera-relative, shader needs world pos for altitude etc
-    ubo.viewPos = glm::dvec3(viewPosF);
+    // Pass the scaled world camera position for consistency
+    ubo.viewPos = glm::dvec3(viewPosF) * double(WORLD_SCALE);
     
     // Validate matrices - crash if they're invalid
     for (int i = 0; i < 4; i++) {

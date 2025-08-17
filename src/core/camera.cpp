@@ -368,13 +368,37 @@ void Camera::updateProjection() {
 }
 
 void Camera::autoAdjustClipPlanes(float altitude) {
-    // TEMPORARY: Fixed clipping planes for debugging
-    // Set near plane very close and far plane very far to see everything
-    nearPlane = 1.0f;  // 1 meter near plane
-    farPlane = 100000000.0f;  // 100M meters far plane
+    // Dynamic clipping planes based on altitude for scaled coordinate system
+    // altitude is in meters, we scale by 1/1,000,000 in the renderer
     
-    std::cout << "[DEBUG] Clipping planes OVERRIDDEN for debugging: near=" 
-              << nearPlane << ", far=" << farPlane << std::endl;
+    const float planetRadius = 6371000.0f;  // meters
+    float cameraDistance = altitude + planetRadius;  // Distance from planet center
+    
+    if (altitude < 1000.0f) {
+        // Very close to surface (< 1km) - for walking around
+        nearPlane = 0.1f;  // 10cm
+        farPlane = 10000.0f;  // 10km view distance
+    } else if (altitude < 100000.0f) {
+        // Low altitude (1km - 100km) - for flying
+        nearPlane = altitude * 0.01f;  // 1% of altitude
+        farPlane = altitude * 20.0f + planetRadius;  // See to horizon
+    } else if (altitude < 1000000.0f) {
+        // Medium altitude (100km - 1000km) - see significant portion of planet
+        nearPlane = altitude * 0.1f;  // 10% of altitude
+        farPlane = cameraDistance * 3.0f;  // See past planet
+    } else {
+        // High altitude (> 1000km) - see whole planet
+        nearPlane = altitude * 0.2f;  // 20% of altitude to avoid precision issues
+        farPlane = cameraDistance * 4.0f;  // See well past planet
+    }
+    
+    // Ensure minimum values for stability
+    nearPlane = std::max(nearPlane, 0.1f);
+    farPlane = std::max(farPlane, nearPlane * 1000.0f);  // Keep ratio reasonable
+    
+    // PERFORMANCE: Disabled clipping plane debug logging
+    // std::cout << "[DEBUG] Clipping planes OVERRIDDEN for debugging: near=" 
+    //           << nearPlane << ", far=" << farPlane << std::endl;
     
     /* ORIGINAL CODE - DISABLED FOR DEBUGGING
     // Adjust near/far planes based on altitude

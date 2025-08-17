@@ -215,13 +215,20 @@ float SphericalQuadtreeNode::calculateScreenSpaceError(const glm::vec3& viewPos,
         720  // Screen height
     );
     
-    // Log patch details for debugging
+    // DEBUG: Log screen space error for debugging patch sizes
     static int errorLogCount = 0;
-    if (errorLogCount++ % 500 == 0 || error > 1000.0f) {
-        std::cout << "[Node::ScreenError] Level:" << level 
-                  << " Center:" << math::toString(glm::dvec3(patch.center))
-                  << " Size:" << patch.size
-                  << " Error:" << error << std::endl;
+    static int frameCounter = 0;
+    frameCounter++;
+    
+    // Log first few patches and periodically
+    if ((errorLogCount++ < 20) || (frameCounter % 600 == 0 && errorLogCount % 50 == 0)) {
+        double distanceFromViewer = glm::length(sphereCenter - glm::dvec3(viewPos));
+        double patchWorldSize = patch.size * planetRadius; // Convert from cube space to world space
+        std::cout << "[ScreenError] Face:" << static_cast<int>(face) 
+                  << " Level:" << level 
+                  << " Error:" << error
+                  << " WorldSize:" << (patchWorldSize/1000.0) << "km"
+                  << " Distance:" << (distanceFromViewer/1000.0) << "km" << std::endl;
     }
     
     return error;
@@ -232,7 +239,9 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
                                       std::vector<QuadtreePatch>& visiblePatches) {
     
     // CRITICAL FIX 1: Hard limit on recursion depth
-    const uint32_t ABSOLUTE_MAX_LEVEL = 15;  // Proven sufficient by our tests
+    // BALANCE: Need enough subdivision for detail, but not too much for performance
+    // Level 10 = 1024 subdivisions per face edge = reasonable detail
+    const uint32_t ABSOLUTE_MAX_LEVEL = 10;  // Was 15, then 8, now 10
     if (level >= ABSOLUTE_MAX_LEVEL) {
         if (isLeaf()) {
             patch.isVisible = true;
@@ -241,14 +250,16 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
         return;  // Stop recursion immediately
     }
     
-    // Safety check - prevent buffer overflow (increased limit for close-up views)
-    if (visiblePatches.size() >= 20000) {  // Higher limit to support detailed close views
+    // PERFORMANCE FIX: DRASTICALLY reduced patch limit
+    // 500 patches * 1089 vertices per patch = ~500k vertices (manageable)
+    if (visiblePatches.size() >= 500) {  // Reduced from 5000!
         // Too many patches, just render current level without subdividing
         if (isLeaf()) {
             patch.isVisible = true;
             visiblePatches.push_back(patch);
         }
-        std::cout << "[SelectLOD] WARNING: Hit patch limit at 20000 patches" << std::endl;
+        // PERFORMANCE: Disabled warning (happens frequently during normal operation)
+        // std::cout << "[SelectLOD] WARNING: Hit patch limit at 5000 patches" << std::endl;
         return;
     }
     
@@ -257,6 +268,17 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
     
     float error = calculateScreenSpaceError(viewPos, viewProj);
     patch.screenSpaceError = error;
+    
+    // DEBUG: Disabled for performance
+    // static int patchDebugCount = 0;
+    // if (patchDebugCount++ < 10) {
+    //     std::cout << "[DEBUG] selectLOD: level=" << level 
+    //               << ", error=" << error 
+    //               << ", threshold=" << errorThreshold 
+    //               << ", maxLevel=" << maxLevel
+    //               << ", shouldSubdivide=" << (error > errorThreshold && level < maxLevel) 
+    //               << std::endl;
+    // }
     
     // CRITICAL FIX 2: Ensure maxLevel is reasonable
     uint32_t safeMaxLevel = std::min(maxLevel, ABSOLUTE_MAX_LEVEL);
@@ -284,6 +306,20 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
     //               << " IsLeaf:" << isLeaf() << std::endl;
     // }
     
+    // DEBUG: Log LOD selection decisions for root level patches
+    static int lodLogCount = 0;
+    if (level <= 1 && (lodLogCount++ % 20 == 0)) {
+        glm::dvec3 sphereCenter = cubeToSphere(patch.center, 6371000.0);
+        double distanceFromViewer = glm::length(sphereCenter - glm::dvec3(viewPos));
+        std::cout << "[LOD] Face:" << static_cast<int>(face) 
+                  << " Level:" << level 
+                  << " Error:" << error 
+                  << " Threshold:" << errorThreshold
+                  << " Distance:" << (distanceFromViewer/1000.0) << "km"
+                  << " ShouldSubdivide:" << shouldSubdivide
+                  << " IsLeaf:" << isLeaf() << std::endl;
+    }
+
     if (shouldSubdivide) {
         if (isLeaf()) {
             // This is a leaf that needs to subdivide
@@ -411,7 +447,8 @@ void SphericalQuadtreeNode::sampleHeights(const DensityField& densityField, uint
 // SphericalQuadtree implementation
 SphericalQuadtree::SphericalQuadtree(const Config& config, std::shared_ptr<DensityField> densityField)
     : config(config), densityField(densityField) {
-    std::cout << "[SphericalQuadtree] Creating with planet radius: " << config.planetRadius << std::endl;
+    // PERFORMANCE: Disabled initialization logging
+    // std::cout << "[SphericalQuadtree] Creating with planet radius: " << config.planetRadius << std::endl;
     initializeRoots();
 }
 
@@ -438,10 +475,16 @@ void SphericalQuadtree::initializeRoots() {
 void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewProj, float deltaTime) {
     auto startTime = std::chrono::high_resolution_clock::now();
     
-    static int updateCount = 0;
-    if (updateCount++ % 60 == 0) {
-        std::cout << "[SphericalQuadtree::update] ViewPos: " << glm::length(viewPos) 
-                  << ", Roots: " << roots.size() << std::endl;
+    // DEBUG: Add frame counter for logging
+    static int frameCount = 0;
+    frameCount++;
+    bool shouldLogFrame = (frameCount % 60 == 0); // Log every 60 frames
+    
+    if (shouldLogFrame) {
+        std::cout << "\n=== QUADTREE DEBUG FRAME " << frameCount << " ===\n";
+        std::cout << "[DEBUG] ViewPos: " << viewPos.x << "," << viewPos.y << "," << viewPos.z 
+                  << " (distance: " << glm::length(viewPos) << ")\n";
+        std::cout << "[DEBUG] Altitude: " << (glm::length(viewPos) - config.planetRadius) << "m\n";
     }
     
     // Clear visible patches from last frame
@@ -458,34 +501,42 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
     
     // Dynamic adjustment - if we're getting too many patches, increase threshold
     static int highPatchFrames = 0;
-    if (visiblePatches.size() > 5000) {
+    if (visiblePatches.size() > 2000) {  // More reasonable limit
         highPatchFrames++;
         if (highPatchFrames > 10) {
             // Sustained high patch count, increase threshold
-            errorThreshold *= 1.5f;
-            std::cout << "[SphericalQuadtree] Adjusting error threshold to " << errorThreshold 
-                      << " due to high patch count (" << visiblePatches.size() << ")" << std::endl;
+            errorThreshold *= 1.2f;  // Gentler adjustment
+            // PERFORMANCE: Disabled threshold adjustment logging
+            // std::cout << "[SphericalQuadtree] Adjusting error threshold to " << errorThreshold 
+            //           << " due to high patch count (" << visiblePatches.size() << ")" << std::endl;
         }
     } else {
         highPatchFrames = 0;
     }
     
-    // Select LOD for each root face - but only if the face is visible
-    static int frameCount = 0;
-    bool shouldLog = (frameCount++ % 120 == 0);  // Log every 2 seconds at 60fps
+    // PERFORMANCE: Disabled face processing debug logging
+    // static int frameCount = 0;
+    // bool shouldLog = (frameCount++ % 120 == 0);  // Log every 2 seconds at 60fps
+    bool shouldLog = false;  // PERFORMANCE: Disabled all debug logging
     
-    if (shouldLog) {
-        std::cout << "[DEBUG] Processing cube faces. enableFaceCulling=" 
-                  << config.enableFaceCulling << std::endl;
-    }
+    // if (shouldLog) {
+    //     std::cout << "[DEBUG] Processing cube faces. enableFaceCulling=" 
+    //               << config.enableFaceCulling << std::endl;
+    // }
+    
+    // DEBUG: Track patches per face
+    std::vector<size_t> patchesBeforeFace(6, 0);
+    std::vector<size_t> patchesAfterFace(6, 0);
     
     for (int i = 0; i < 6; i++) {
         auto& root = roots[i];
         
         if (!root) {
-            if (shouldLog) std::cout << "[DEBUG] Face " << i << " - root is null!" << std::endl;
+            if (shouldLogFrame) std::cout << "[DEBUG] Face " << i << " - root is null!" << std::endl;
             continue;
         }
+        
+        patchesBeforeFace[i] = visiblePatches.size();
         
         // Check if this cube face is visible from the camera
         // Get the face normal based on the face index
@@ -504,16 +555,33 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
             math::shouldCullFace(i, viewPos, config.planetRadius) : false;
         
         if (shouldCull) {
-            if (shouldLog) {
+            if (shouldLogFrame) {
                 std::cout << "[DEBUG] Face " << i << " - CULLED" << std::endl;
             }
             continue; // Face is on the far side of the planet
         }
         
-        if (shouldLog) {
-            std::cout << "[DEBUG] Face " << i << " - PROCESSING" << std::endl;
+        if (shouldLogFrame) {
+            std::cout << "[DEBUG] Face " << i << " - PROCESSING..." << std::endl;
         }
         root->selectLOD(viewPos, viewProj, errorThreshold, config.maxLevel, visiblePatches);
+        
+        patchesAfterFace[i] = visiblePatches.size();
+        
+        if (shouldLogFrame) {
+            size_t patchesAdded = patchesAfterFace[i] - patchesBeforeFace[i];
+            std::cout << "[DEBUG] Face " << i << " added " << patchesAdded << " patches" << std::endl;
+        }
+    }
+    
+    // DEBUG: Show detailed breakdown
+    if (shouldLogFrame) {
+        std::cout << "[DEBUG] Total patches: " << visiblePatches.size() << std::endl;
+        std::cout << "[DEBUG] Per face breakdown:" << std::endl;
+        for (int i = 0; i < 6; i++) {
+            size_t count = patchesAfterFace[i] - patchesBeforeFace[i];
+            std::cout << "  Face " << i << ": " << count << " patches" << std::endl;
+        }
     }
     
     stats.visibleNodes = static_cast<uint32_t>(visiblePatches.size());
@@ -522,7 +590,8 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
     // We need to do this in a second pass to avoid modifying the tree while traversing
     // IMPORTANT: Give each face a fair share of subdivisions to prevent imbalance
     // Negative faces need more aggressive subdivision to match positive faces
-    const int MAX_SUBDIVISIONS_PER_FACE = 200;  // Each face gets its own budget
+    // PERFORMANCE FIX: DRASTICALLY reduced subdivisions per face
+    const int MAX_SUBDIVISIONS_PER_FACE = 10;  // Was 50, originally 200!
     
     for (int i = 0; i < 6; i++) {
         auto& root = roots[i];
@@ -570,12 +639,12 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
     
     stats.visibleNodes = static_cast<uint32_t>(visiblePatches.size());
     
-    // Warn if approaching patch limit
-    if (visiblePatches.size() > 8000) {
-        std::cout << "[WARNING] High patch count: " << visiblePatches.size() 
-                  << " patches at altitude " << (glm::length(viewPos) - config.planetRadius) 
-                  << "m" << std::endl;
-    }
+    // PERFORMANCE: Disabled high patch count warning
+    // if (visiblePatches.size() > 8000) {
+    //     std::cout << "[WARNING] High patch count: " << visiblePatches.size() 
+    //               << " patches at altitude " << (glm::length(viewPos) - config.planetRadius) 
+    //               << "m" << std::endl;
+    // }
     
     auto lodTime = std::chrono::high_resolution_clock::now();
     stats.lodSelectionTime = std::chrono::duration<float, std::milli>(lodTime - startTime).count();
@@ -608,13 +677,17 @@ float SphericalQuadtree::calculateErrorThreshold(const glm::vec3& viewPos) const
         static_cast<double>(config.planetRadius)
     );
     
-    // Additional logging for debugging
-    static float lastLoggedAltitude = -1.0f;
-    if (std::abs(altitude - lastLoggedAltitude) > altitude * 0.1f) {  // Log when altitude changes by 10%
-        std::cout << "[Quadtree::ErrorThreshold] Altitude: " << altitude/1000.0f 
-                  << "km -> Threshold: " << threshold << std::endl;
-        lastLoggedAltitude = altitude;
-    }
+    // BALANCE: Allow subdivision but prevent over-subdivision at close range
+    // This minimum prevents excessive patches when very close to surface
+    threshold = std::max(threshold, 1.0f);  // Allow detail down to 1.0 threshold
+    
+    // PERFORMANCE: Disabled altitude threshold logging
+    // static float lastLoggedAltitude = -1.0f;
+    // if (std::abs(altitude - lastLoggedAltitude) > altitude * 0.1f) {  // Log when altitude changes by 10%
+    //     std::cout << "[Quadtree::ErrorThreshold] Altitude: " << altitude/1000.0f 
+    //               << "km -> Threshold: " << threshold << std::endl;
+    //     lastLoggedAltitude = altitude;
+    // }
     
     return threshold;
 }
@@ -633,13 +706,13 @@ void SphericalQuadtree::performSubdivisionsForFace(SphericalQuadtreeNode* node,
     performSubdivisionsRecursive(node, viewPos, viewProj, errorThreshold, 
                                 maxLevel, subdivisionsThisFace, maxSubdivisions);
     
-    // Log how many subdivisions this face got
-    static int faceLogCount = 0;
-    if (faceLogCount++ < 12) {  // Log first 2 frames (6 faces each)
-        std::cout << "[FACE SUBDIVISIONS] Face " << node->getFace() 
-                  << " performed " << subdivisionsThisFace 
-                  << " subdivisions (max: " << maxSubdivisions << ")" << std::endl;
-    }
+    // PERFORMANCE: Disabled face subdivision logging
+    // static int faceLogCount = 0;
+    // if (faceLogCount++ < 12) {  // Log first 2 frames (6 faces each)
+    //     std::cout << "[FACE SUBDIVISIONS] Face " << node->getFace() 
+    //               << " performed " << subdivisionsThisFace 
+    //               << " subdivisions (max: " << maxSubdivisions << ")" << std::endl;
+    // }
 }
 
 void SphericalQuadtree::performSubdivisionsRecursive(SphericalQuadtreeNode* node,
@@ -661,15 +734,15 @@ void SphericalQuadtree::performSubdivisionsRecursive(SphericalQuadtreeNode* node
         }
         
         // Subdivide this node
-        // Debug: log which face is subdividing
-        static int debugSubdivCount = 0;
-        if (debugSubdivCount++ < 50) {
-            std::cout << "[SUBDIVIDE] Face " << node->getFace() 
-                      << " Level " << node->getLevel() 
-                      << " Center: " << node->getPatch().center.x << "," 
-                      << node->getPatch().center.y << "," 
-                      << node->getPatch().center.z << std::endl;
-        }
+        // PERFORMANCE: Disabled subdivision debug logging
+        // static int debugSubdivCount = 0;
+        // if (debugSubdivCount++ < 50) {
+        //     std::cout << "[SUBDIVIDE] Face " << node->getFace() 
+        //               << " Level " << node->getLevel() 
+        //               << " Center: " << node->getPatch().center.x << "," 
+        //               << node->getPatch().center.y << "," 
+        //               << node->getPatch().center.z << std::endl;
+        // }
         node->subdivide(*densityField);
         stats.subdivisions++;
         subdivisionCount++;

@@ -139,10 +139,11 @@ public:
             float deltaTime = std::chrono::duration<float>(currentTime - lastFrame).count();
             lastFrame = currentTime;
             
-            if (frameCount < 5) {
-                std::cout << "DEBUG: Frame " << frameCount << ", elapsed=" << elapsed 
-                          << "s, shouldExit=" << shouldExit() << std::endl;
-            }
+            // PERFORMANCE: Disabled early frame debug logging
+            // if (frameCount < 5) {
+            //     std::cout << "DEBUG: Frame " << frameCount << ", elapsed=" << elapsed 
+            //               << "s, shouldExit=" << shouldExit() << std::endl;
+            // }
             
             // Check auto-terminate
             if (config.autoTerminate > 0 && elapsed >= config.autoTerminate) {
@@ -169,12 +170,12 @@ public:
             // Screenshots with automatic zoom sequence
             if (config.screenshotInterval > 0 && frameCount > 0) {
                 float screenshotElapsed = std::chrono::duration<float>(currentTime - lastScreenshot).count();
-                // Debug output
-                if (frameCount % 60 == 0) {
-                    std::cout << "Screenshot check: elapsed=" << screenshotElapsed 
-                              << "s, interval=" << config.screenshotInterval 
-                              << "s, frame=" << frameCount << std::endl << std::flush;
-                }
+                // PERFORMANCE: Disabled screenshot check debug output
+                // if (frameCount % 60 == 0) {
+                //     std::cout << "Screenshot check: elapsed=" << screenshotElapsed 
+                //               << "s, interval=" << config.screenshotInterval 
+                //               << "s, frame=" << frameCount << std::endl << std::flush;
+                // }
                 if (screenshotElapsed >= config.screenshotInterval) {
                     std::cout << "Taking screenshot at " << elapsed << "s..." << std::endl;
                     takeScreenshot(elapsed, simulationTime);
@@ -189,7 +190,8 @@ public:
             
             // Frame counter
             frameCount++;
-            if (!config.quiet && frameCount % 300 == 0) {  // Every 300 frames (~10 seconds at 30fps)
+            // PERFORMANCE: Less frequent frame stats (was every 300, now every 3000 frames)
+            if (!config.quiet && frameCount % 3000 == 0) {  // Every 3000 frames (~100 seconds at 30fps)
                 std::cout << "Frame " << frameCount 
                           << ", Time: " << elapsed << "s"
                           << ", Sim: " << simulationTime / 1000000.0f << " My"
