@@ -1,3 +1,6 @@
+// Template for GPU mesh generation compute shader
+// This shader generates terrain vertices by sampling the GPU octree
+
 #version 450
 
 // Local workgroup size for compute dispatch
@@ -26,8 +29,8 @@ layout(std430, binding = 1) readonly buffer VoxelData {
 // Input: Patch parameters via push constants
 layout(push_constant) uniform PatchParams {
     mat4 patchTransform;     // Transform from patch UV space to cube space
-    vec4 patchInfo;          // x=level, y=size, z=gridResolution, w=bufferOffset
-    vec4 viewPos;            // Camera position in world space (xyz), planetRadius (w)
+    vec4 patchInfo;          // x=level, y=size, z=gridResolution, w=planetRadius
+    vec4 viewPos;            // Camera position in world space (xyz), w unused
 } params;
 
 // Output: Generated vertices matching PatchVertex structure in C++
@@ -49,7 +52,7 @@ layout(std430, binding = 3) writeonly buffer IndexBuffer {
 } indexBuffer;
 
 // Output: Index count for draw call
-layout(std430, binding = 4) coherent buffer IndexCount {
+layout(std430, binding = 4) writeonly buffer IndexCount {
     uint count;
 } indexCount;
 
@@ -119,7 +122,7 @@ void main() {
     float height = getTerrainHeight(sphereNormal);
     
     // Step 5: Apply height displacement to get world position
-    float planetRadius = params.viewPos.w;  // Planet radius is now in viewPos.w
+    float planetRadius = params.patchInfo.w;
     vec3 worldPos = sphereNormal * (planetRadius + height);
     
     // Step 6: Transform to camera-relative coordinates (critical for precision)
@@ -131,9 +134,8 @@ void main() {
     // Calculate normal (for now just use sphere normal)
     vec3 normal = sphereNormal;
     
-    // Store vertex in buffer with proper offset for multi-patch generation
-    uint bufferOffset = uint(params.patchInfo.w);  // Get buffer offset from push constant
-    uint vertexIndex = bufferOffset + (y * gridRes + x);
+    // Store vertex in buffer
+    uint vertexIndex = y * gridRes + x;
     vertexBuffer.vertices[vertexIndex].position = finalPos;
     vertexBuffer.vertices[vertexIndex].normal = normal;
     vertexBuffer.vertices[vertexIndex].texCoord = uv;

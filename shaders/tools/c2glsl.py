@@ -7,11 +7,15 @@ Allows writing shaders in C for testing, then converting to GLSL
 import sys
 import re
 
-def transpile_c_to_glsl(c_code):
+def transpile_c_to_glsl(c_code, output_file):
     """
     Convert C-like shader code to GLSL
     """
     glsl = c_code
+    
+    # Detect shader type based on content or output file extension
+    is_compute = output_file.endswith('.comp') or 'local_size_x' in c_code
+    is_vertex = output_file.endswith('.vert') or 'gl_Position' in c_code
     
     # Replace C types with GLSL types
     type_map = {
@@ -53,8 +57,20 @@ def transpile_c_to_glsl(c_code):
     # Convert struct initializers
     glsl = re.sub(r'= \{([^}]+)\}', r'= vec3(\1)', glsl)
     
-    # Add GLSL header
-    header = """#version 450
+    # For compute shaders, don't add any boilerplate - the template should be complete
+    if is_compute:
+        # Compute shaders should be self-contained, just return the processed GLSL
+        return glsl
+    
+    # Add appropriate header for fragment/vertex shaders
+    if is_vertex:
+        header = """#version 450
+
+// Vertex shader header
+"""
+    else:
+        # Default fragment shader header
+        header = """#version 450
 
 layout(location = 0) out vec4 outColor;
 

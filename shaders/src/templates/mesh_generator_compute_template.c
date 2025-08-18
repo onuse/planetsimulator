@@ -29,8 +29,8 @@ layout(std430, binding = 1) readonly buffer VoxelData {
 // Input: Patch parameters via push constants
 layout(push_constant) uniform PatchParams {
     mat4 patchTransform;     // Transform from patch UV space to cube space
-    vec4 patchInfo;          // x=level, y=size, z=gridResolution, w=planetRadius
-    vec4 viewPos;            // Camera position in world space (xyz), w unused
+    vec4 patchInfo;          // x=level, y=size, z=gridResolution, w=bufferOffset
+    vec4 viewPos;            // Camera position in world space (xyz), planetRadius (w)
 } params;
 
 // Output: Generated vertices matching PatchVertex structure in C++
@@ -52,7 +52,7 @@ layout(std430, binding = 3) writeonly buffer IndexBuffer {
 } indexBuffer;
 
 // Output: Index count for draw call
-layout(std430, binding = 4) writeonly buffer IndexCount {
+layout(std430, binding = 4) coherent buffer IndexCount {
     uint count;
 } indexCount;
 
@@ -75,7 +75,6 @@ vec3 cubeToSphere(vec3 cubePos) {
 }
 
 // Simple procedural terrain height for testing
-// TODO: Replace with octree sampling once vertices are visible
 float getTerrainHeight(vec3 sphereNormal) {
     // Simple sine wave pattern for testing
     float height = sin(sphereNormal.x * 10.0) * 
@@ -84,18 +83,72 @@ float getTerrainHeight(vec3 sphereNormal) {
     return height;
 }
 
+// Sample density from GPU octree at world position
+float sampleOctreeDensity(vec3 worldPos) {
+    // Start at root node (index 0)
+    uint nodeIndex = 0;
+    
+    // Maximum traversal depth to prevent infinite loops
+    const int MAX_DEPTH = 20;
+    
+    for (int depth = 0; depth < MAX_DEPTH; depth++) {
+        GPUOctreeNode node = octreeNodes.nodes[nodeIndex];
+        
+        // Check if this is a leaf node (no children)
+        uint childrenOffset = node.childrenAndFlags.x;
+        if (childrenOffset == 0) {
+            // Leaf node - check if it has voxel data
+            uint voxelOffset = node.childrenAndFlags.y;
+            if (voxelOffset != 0) {
+                // Sample the voxel data
+                GPUVoxelData voxel = voxelData.voxels[voxelOffset];
+                // Return density converted to height
+                // Positive density = solid terrain above surface
+                // Negative density = empty space below surface
+                return voxel.colorAndDensity.a * 50000.0; // Scale density to world units
+            }
+            // No voxel data - return default
+            return 0.0;
+        }
+        
+        // Not a leaf - determine which child octant contains the position
+        vec3 center = node.centerAndSize.xyz;
+        float halfSize = node.centerAndSize.w;
+        
+        // Calculate which octant (0-7) the position falls into
+        uint octant = 0;
+        if (worldPos.x > center.x) octant |= 1;
+        if (worldPos.y > center.y) octant |= 2;
+        if (worldPos.z > center.z) octant |= 4;
+        
+        // Move to the child node
+        nodeIndex = childrenOffset + octant;
+    }
+    
+    // Max depth reached - return default
+    return 0.0;
+}
+
+// Sample height from GPU octree
+float sampleOctreeHeight(vec3 worldPos) {
+    // Sample density at this position
+    float density = sampleOctreeDensity(worldPos);
+    
+    // If we have valid density data, use it
+    // Otherwise fall back to procedural for now
+    if (abs(density) > 0.001) {
+        return density;
+    }
+    
+    // Fallback to procedural height for areas without octree data
+    return getTerrainHeight(normalize(worldPos));
+}
+
 // Calculate surface normal using finite differences
 vec3 calculateNormal(vec3 spherePos, float currentHeight) {
     // For now, return sphere normal
     // TODO: Implement proper normal calculation with height gradients
     return normalize(spherePos);
-}
-
-// Future: Sample height from GPU octree
-float sampleOctreeHeight(vec3 worldPos) {
-    // TODO: Implement octree traversal to sample voxel data
-    // For now, return procedural height
-    return getTerrainHeight(normalize(worldPos));
 }
 
 void main() {
@@ -118,11 +171,13 @@ void main() {
     vec3 spherePos = cubeToSphere(cubePos);
     vec3 sphereNormal = normalize(spherePos);
     
-    // Step 4: Generate terrain height
-    float height = getTerrainHeight(sphereNormal);
+    // Step 4: Generate terrain height from octree
+    // Sample at the surface position on the sphere
+    float planetRadius = params.viewPos.w;  // Planet radius from viewPos.w
+    vec3 samplePos = sphereNormal * planetRadius;
+    float height = sampleOctreeHeight(samplePos);
     
     // Step 5: Apply height displacement to get world position
-    float planetRadius = params.patchInfo.w;
     vec3 worldPos = sphereNormal * (planetRadius + height);
     
     // Step 6: Transform to camera-relative coordinates (critical for precision)
@@ -134,8 +189,9 @@ void main() {
     // Calculate normal (for now just use sphere normal)
     vec3 normal = sphereNormal;
     
-    // Store vertex in buffer
-    uint vertexIndex = y * gridRes + x;
+    // Store vertex in buffer with proper offset for multi-patch generation
+    uint bufferOffset = uint(params.patchInfo.w);  // Get buffer offset from push constant
+    uint vertexIndex = bufferOffset + (y * gridRes + x);
     vertexBuffer.vertices[vertexIndex].position = finalPos;
     vertexBuffer.vertices[vertexIndex].normal = normal;
     vertexBuffer.vertices[vertexIndex].texCoord = uv;
@@ -145,12 +201,15 @@ void main() {
     // Generate indices for triangle mesh (two triangles per quad)
     // Only thread (0,0) generates indices to avoid race conditions
     if (x == 0 && y == 0) {
-        uint idx = 0;
+        uint bufferOffset = uint(params.patchInfo.w);  // Vertex buffer offset
+        uint indexOffset = bufferOffset / (gridRes * gridRes) * ((gridRes - 1) * (gridRes - 1) * 6);  // Index buffer offset
+        uint idx = indexOffset;
+        
         for (uint row = 0; row < gridRes - 1; row++) {
             for (uint col = 0; col < gridRes - 1; col++) {
-                uint topLeft = row * gridRes + col;
+                uint topLeft = bufferOffset + (row * gridRes + col);
                 uint topRight = topLeft + 1;
-                uint bottomLeft = (row + 1) * gridRes + col;
+                uint bottomLeft = bufferOffset + ((row + 1) * gridRes + col);
                 uint bottomRight = bottomLeft + 1;
                 
                 // First triangle (counter-clockwise winding)
@@ -165,7 +224,7 @@ void main() {
             }
         }
         
-        // Store total index count for draw call
-        indexCount.count = idx;
+        // Use atomicAdd to safely update the total index count across patches
+        atomicAdd(indexCount.count, (gridRes - 1) * (gridRes - 1) * 6);
     }
 }
