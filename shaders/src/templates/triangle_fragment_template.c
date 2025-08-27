@@ -185,7 +185,7 @@ vec3 getTerrainColor(float altitude) {
 vec3 atmosphericScattering(vec3 color, float distance) {
     // Simple atmospheric scattering
     const vec3 atmosphereColor = vec3(0.5, 0.7, 1.0);
-    const float atmosphereDensity = 0.000002;
+    const float atmosphereDensity = 0.0000002; // Reduced 10x for clearer colors at 1000km scale
     
     float scatterAmount = 1.0 - exp(-distance * atmosphereDensity);
     scatterAmount = pow(scatterAmount, 1.5); // Adjust falloff
@@ -219,8 +219,8 @@ void main() {
     float skyFactor = normal.y * 0.5 + 0.5;
     vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.3;
     
-    // Get terrain color based on altitude
-    vec3 terrainColor = getTerrainColor(fragAltitude);
+    // Use vertex color directly (from voxel materials) instead of altitude-based coloring
+    vec3 terrainColor = fragColor; // getTerrainColor(fragAltitude);
     
     // Combine lighting
     vec3 color = terrainColor * (ambient + diffuse * 0.8) + specular;
@@ -228,7 +228,7 @@ void main() {
     // Rim lighting for atmosphere effect
     float rim = 1.0 - max(dot(normal, viewDir), 0.0);
     rim = pow(rim, 2.0);
-    color += skyColor * rim * 0.15;
+    color += skyColor * rim * 0.05; // Reduced rim lighting
     
     // Apply atmospheric scattering
     float distance = length(fragWorldPos - ubo.viewPos);

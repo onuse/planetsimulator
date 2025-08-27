@@ -155,6 +155,17 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
             float frameTime = renderer->getFrameTime();
             float fps = frameTime > 0.0f ? 1.0f / frameTime : 0.0f;  // frameTime is in seconds
             ImGui::Text("FPS: %.1f", fps);
+            ImGui::Text("LOD: %d", renderer->getLODLevel());
+            
+            // Color-coded LOD indicator with more levels
+            int lod = renderer->getLODLevel();
+            ImVec4 lodColor;
+            if (lod <= 2) lodColor = ImVec4(1.0f, 0.2f, 0.2f, 1.0f); // Red for very low LOD
+            else if (lod <= 4) lodColor = ImVec4(1.0f, 0.6f, 0.2f, 1.0f); // Orange for low
+            else if (lod <= 6) lodColor = ImVec4(1.0f, 1.0f, 0.2f, 1.0f); // Yellow for medium
+            else if (lod <= 8) lodColor = ImVec4(0.6f, 1.0f, 0.2f, 1.0f); // Yellow-green
+            else lodColor = ImVec4(0.2f, 1.0f, 0.2f, 1.0f); // Green for high LOD
+            ImGui::TextColored(lodColor, "● LOD %d", lod);
         }
         
         ImGui::EndMainMenuBar();
@@ -164,7 +175,7 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
     if (uiState.showStats && renderer) {
         float frameTime = renderer->getFrameTime();
         float fps = frameTime > 0.0f ? 1.0f / frameTime : 0.0f;  // frameTime is in seconds
-        renderStatsWindow(fps, 
+        renderStatsWindow(renderer, fps, 
                          renderer->getChunkCount(), 
                          renderer->getTriangleCount()); // Get actual triangle count from Transvoxel
     }
@@ -184,7 +195,7 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
     }
 }
 
-void ImGuiManager::renderStatsWindow(float fps, uint32_t chunkCount, uint32_t triangleCount) {
+void ImGuiManager::renderStatsWindow(const VulkanRenderer* renderer, float fps, uint32_t chunkCount, uint32_t triangleCount) {
     ImGui::SetNextWindowPos(ImVec2(10, 30), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
     
@@ -193,6 +204,35 @@ void ImGuiManager::renderStatsWindow(float fps, uint32_t chunkCount, uint32_t tr
         ImGui::Separator();
         ImGui::Text("FPS: %.1f", fps);
         ImGui::Text("Frame Time: %.3f ms", fps > 0.0f ? 1000.0f / fps : 0.0f);
+        
+        ImGui::Separator();
+        ImGui::Text("LOD System");
+        ImGui::Text("Current LOD Level: %d", renderer->getLODLevel());
+        int lodLevel = renderer->getLODLevel();
+        const char* lodDesc = "";
+        int expectedTriangles = 0;
+        switch(lodLevel) {
+            case 1: lodDesc = "Extreme distance"; expectedTriangles = 20; break;
+            case 2: lodDesc = "Very far"; expectedTriangles = 80; break;
+            case 3: lodDesc = "Far"; expectedTriangles = 320; break;
+            case 4: lodDesc = "Medium-far"; expectedTriangles = 1280; break;
+            case 5: lodDesc = "Medium"; expectedTriangles = 5120; break;
+            case 6: lodDesc = "Medium-close"; expectedTriangles = 20480; break;
+            case 7: lodDesc = "Close"; expectedTriangles = 81920; break;
+            case 8: lodDesc = "Very close"; expectedTriangles = 327680; break;
+            case 9: lodDesc = "Extremely close"; expectedTriangles = 1310720; break;
+            case 10: lodDesc = "Surface level"; expectedTriangles = 5242880; break;
+            case 11: lodDesc = "Maximum detail"; expectedTriangles = 20971520; break;
+            default: lodDesc = "Unknown"; break;
+        }
+        ImGui::Text("Description: %s", lodDesc);
+        ImGui::Text("Expected triangles: %s", 
+            expectedTriangles >= 1000000 ? 
+            (std::to_string(expectedTriangles / 1000000) + "M").c_str() :
+            expectedTriangles >= 1000 ? 
+            (std::to_string(expectedTriangles / 1000) + "K").c_str() :
+            std::to_string(expectedTriangles).c_str());
+        ImGui::ProgressBar(lodLevel / 11.0f, ImVec2(0, 0), "LOD");
         
         ImGui::Spacing();
         ImGui::Text("Rendering");

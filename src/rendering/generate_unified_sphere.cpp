@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include <map>
 #include <cmath>
 
 namespace rendering {
@@ -22,8 +23,8 @@ struct EdgeHash {
     }
 };
 
-bool VulkanRenderer::generateUnifiedSphere(octree::OctreePlanet* planet) {
-    std::cout << "\n=== Generating UNIFIED Sphere Mesh (Single Continuous Surface) ===\n";
+bool VulkanRenderer::generateUnifiedSphere(octree::OctreePlanet* planet, core::Camera* camera) {
+    std::cout << "\n=== Generating UNIFIED Sphere Mesh with LOD Support ===\n";
     
     if (!planet) {
         std::cerr << "ERROR: No planet provided!\n";
@@ -31,6 +32,42 @@ bool VulkanRenderer::generateUnifiedSphere(octree::OctreePlanet* planet) {
     }
     
     float planetRadius = planet->getRadius();
+    
+    // Use the LOD level that was already calculated in render()
+    int subdivisions = currentLODLevel;
+    
+    if (subdivisions <= 0) {
+        // Fallback: calculate if not set
+        subdivisions = 5; // Default level
+        if (camera) {
+            glm::vec3 cameraPos = camera->getPosition();
+            float distanceToCenter = glm::length(cameraPos);
+            float distanceToSurface = distanceToCenter - planetRadius;
+            
+            // LOD selection based on distance from surface
+            if (distanceToSurface > planetRadius * 10.0f) {
+                subdivisions = 2; // Very far: minimal detail (80 triangles)
+            } else if (distanceToSurface > planetRadius * 5.0f) {
+                subdivisions = 3; // Far: low detail (320 triangles)
+            } else if (distanceToSurface > planetRadius * 2.0f) {
+                subdivisions = 4; // Medium distance (1,280 triangles)
+            } else if (distanceToSurface > planetRadius * 0.5f) {
+                subdivisions = 5; // Close: high detail (5,120 triangles)
+            } else {
+                subdivisions = 6; // Very close: maximum detail (20,480 triangles)
+            }
+        }
+    }
+    
+    // Raise cap to 10 for better detail when close (20M triangles max)
+    // Modern GPUs can handle this, especially with frustum culling
+    if (subdivisions > 10) {
+        std::cout << "Capping LOD at level 10 (requested " << subdivisions << ")\n";
+        subdivisions = 10;
+    }
+    
+    std::cout << "Using LOD level: " << subdivisions << " subdivisions (" 
+              << (20 * static_cast<int>(pow(4, subdivisions))) << " triangles)\n";
     
     // Start with an icosahedron (20-sided polyhedron) - perfect for sphere approximation
     // It has 12 vertices and 20 triangular faces
@@ -67,7 +104,8 @@ bool VulkanRenderer::generateUnifiedSphere(octree::OctreePlanet* planet) {
     
     // RECURSIVE SUBDIVISION for smooth sphere
     // Each subdivision splits each triangle into 4 smaller triangles
-    int subdivisions = 5; // 5 subdivisions = 20 * 4^5 = 20,480 triangles
+    // int subdivisions = 5; // 5 subdivisions = 20 * 4^5 = 20,480 triangles
+    // Subdivision levels: 2=80, 3=320, 4=1280, 5=5120, 6=20480 triangles
     
     std::cout << "Subdividing icosahedron " << subdivisions << " times...\n";
     
@@ -128,49 +166,82 @@ bool VulkanRenderer::generateUnifiedSphere(octree::OctreePlanet* planet) {
     }
     
     // Now sample the planet's octree voxel data and apply terrain
-    std::cout << "Sampling octree voxel data for terrain...\n";
+    // Higher LOD = sample deeper into octree for more detail
+    int octreeSampleDepth = std::min(subdivisions + 2, planet->getMaxDepth());
+    std::cout << "Sampling octree voxel data at depth " << octreeSampleDepth << " for terrain...\n";
     
     std::vector<algorithms::MeshVertex> finalVertices;
     finalVertices.reserve(vertices.size());
+    
+    // Debug statistics
+    std::map<int, int> materialCounts;
+    int surfaceFound = 0;
     
     for (const auto& pos : vertices) {
         algorithms::MeshVertex vertex;
         glm::vec3 normal = glm::normalize(pos);
         
-        // Sample the octree voxel at this position
-        const octree::Voxel* voxel = planet->getVoxel(pos);
+        // Raycast sampling: Find the actual voxel surface
+        const octree::Voxel* voxel = nullptr;
+        
+        // Sample multiple positions from outside to inside
+        for (float r = 1.05f; r >= 0.95f; r -= 0.01f) {
+            glm::vec3 samplePos = normal * (planetRadius * r);
+            const octree::Voxel* test = planet->getVoxel(samplePos);
+            
+            if (test) {
+                auto matId = test->getDominantMaterialID();
+                // Found non-air voxel? Use it!
+                if (matId != core::MaterialID::Air && matId != core::MaterialID::Vacuum) {
+                    voxel = test;
+                    surfaceFound++;
+                    break;
+                }
+            }
+        }
+        
+        // Fallback to original position
+        if (!voxel) {
+            voxel = planet->getVoxel(pos);
+        }
         
         float displacement = 0.0f;
         glm::vec3 color(0.5f, 0.5f, 0.5f); // Default gray
+        
+        // Scale displacement based on LOD - more detail when closer
+        float detailScale = 1.0f + (subdivisions - 2) * 0.2f; // Higher LOD = more terrain variation
         
         if (voxel) {
             // Get dominant material from MixedVoxel
             auto materialID = voxel->getDominantMaterialID();
             
-            // Map material to terrain height and color
+            // Track material counts for debugging
+            materialCounts[static_cast<int>(materialID)]++;
+            
+            // Map material to terrain height and color with LOD-scaled detail
             switch(materialID) {
                 case core::MaterialID::Water:
-                    displacement = -planetRadius * 0.01f; // Ocean depth
+                    displacement = -200.0f * detailScale; // Ocean depth ~200-600m
                     color = glm::vec3(0.1f, 0.3f, 0.6f);  // Deep blue
                     break;
                 case core::MaterialID::Sand:
-                    displacement = planetRadius * 0.001f;  // Beach level
+                    displacement = 10.0f * detailScale;  // Beach level ~10-30m
                     color = glm::vec3(0.9f, 0.85f, 0.65f); // Sandy
                     break;
                 case core::MaterialID::Grass:
-                    displacement = planetRadius * 0.005f;  // Plains
+                    displacement = 50.0f * detailScale;  // Plains ~50-150m
                     color = glm::vec3(0.2f, 0.6f, 0.2f);   // Green
                     break;
                 case core::MaterialID::Rock:
-                    displacement = planetRadius * 0.015f;  // Hills
+                    displacement = 200.0f * detailScale;  // Hills ~200-600m
                     color = glm::vec3(0.4f, 0.3f, 0.2f);   // Brown
                     break;
                 case core::MaterialID::Snow:
-                    displacement = planetRadius * 0.025f;  // Mountains
+                    displacement = 500.0f * detailScale;  // Mountains ~500-1500m
                     color = glm::vec3(0.95f, 0.95f, 0.98f); // White
                     break;
                 case core::MaterialID::Lava:
-                    displacement = planetRadius * 0.002f;  // Volcanic
+                    displacement = 30.0f * detailScale;  // Volcanic ~30-90m
                     color = glm::vec3(0.8f, 0.2f, 0.0f);   // Red-orange
                     break;
                 default:
@@ -180,37 +251,14 @@ bool VulkanRenderer::generateUnifiedSphere(octree::OctreePlanet* planet) {
                     break;
             }
             
-            // Mix materials based on amounts for smoother transitions
-            float totalAmount = 0.0f;
-            glm::vec3 mixedColor(0.0f);
-            float mixedDisplacement = 0.0f;
-            
-            for (int i = 0; i < 4; i++) {
-                if (voxel->amounts[i] > 0) {
-                    float weight = voxel->amounts[i] / 255.0f;
-                    totalAmount += weight;
-                    
-                    // Extract material ID from packed format
-                    uint8_t matId = (i < 2) ? 
-                        ((voxel->materialIds[0] >> (i * 4)) & 0xF) :
-                        ((voxel->materialIds[1] >> ((i-2) * 4)) & 0xF);
-                    
-                    // Add weighted contribution (simplified - reuse switch logic)
-                    mixedColor += color * weight;
-                    mixedDisplacement += displacement * weight;
-                }
-            }
-            
-            if (totalAmount > 0) {
-                color = mixedColor / totalAmount;
-                displacement = mixedDisplacement / totalAmount;
-            }
+            // DISABLED mixing for now - just use dominant material
+            // The mixing code was broken anyway (using same color for all materials)
         } else {
             // No voxel data - use distance from center for basic sphere
             float distFromCenter = glm::length(pos);
             if (distFromCenter < planetRadius * 0.98f) {
                 // Below sea level
-                displacement = -planetRadius * 0.01f;
+                displacement = -200.0f;
                 color = glm::vec3(0.2f, 0.4f, 0.7f); // Ocean
             } else {
                 // Above sea level - simple height-based coloring
@@ -226,6 +274,15 @@ bool VulkanRenderer::generateUnifiedSphere(octree::OctreePlanet* planet) {
         
         finalVertices.push_back(vertex);
     }
+    
+    // Print material statistics
+    std::cout << "\nMaterial distribution found by raycasting:\n";
+    std::cout << "  Surface vertices hit by raycast: " << surfaceFound << "/" << vertices.size() 
+              << " (" << (100.0f * surfaceFound / vertices.size()) << "%)\n";
+    for (const auto& [materialId, count] : materialCounts) {
+        std::cout << "  Material " << materialId << ": " << count << " vertices\n";
+    }
+    std::cout << "\n";
     
     // Recalculate normals based on actual triangle geometry
     std::cout << "Calculating smooth normals...\n";

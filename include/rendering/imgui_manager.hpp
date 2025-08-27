@@ -40,7 +40,7 @@ public:
     
     // UI rendering functions
     void renderDebugUI(const VulkanRenderer* renderer, const core::Camera* camera = nullptr);
-    void renderStatsWindow(float fps, uint32_t nodeCount, uint32_t triangleCount);
+    void renderStatsWindow(const VulkanRenderer* renderer, float fps, uint32_t nodeCount, uint32_t triangleCount);
     void renderCameraWindow(const glm::vec3& position, const glm::vec3& forward, const core::Camera* camera = nullptr);
     void renderSettingsWindow();
     

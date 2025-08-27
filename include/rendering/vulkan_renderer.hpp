@@ -108,6 +108,7 @@ public:
     uint32_t getTriangleCount() const { 
         return meshIndexCount / 3; // From GPU mesh
     }
+    int getLODLevel() const { return currentLODLevel; }  // Get current LOD level
     
 private:
     // Window
@@ -224,6 +225,7 @@ private:
     VkDeviceMemory meshIndexBufferMemory = VK_NULL_HANDLE;
     uint32_t meshVertexCount = 0;
     uint32_t meshIndexCount = 0;
+    int currentLODLevel = 5;  // Track current LOD level for display
     
     // GPU mesh generation
     bool generateGPUMesh(octree::OctreePlanet* planet, core::Camera* camera);   // Generate mesh vertices on GPU
@@ -233,7 +235,7 @@ private:
     bool generateSphereMesh(octree::OctreePlanet* planet);
     bool generateSphereMeshHighRes(octree::OctreePlanet* planet);  // High resolution version
     bool generateSeamlessSphere(octree::OctreePlanet* planet);  // Seamless version with vertex deduplication
-    bool generateUnifiedSphere(octree::OctreePlanet* planet);  // Unified recursive subdivision approach
+    bool generateUnifiedSphere(octree::OctreePlanet* planet, core::Camera* camera = nullptr);  // Unified recursive subdivision approach with LOD
     
 #ifdef DEBUG_CPU_REFERENCE
     // TEMPORARY: CPU reference implementation for debugging GPU mesh generation

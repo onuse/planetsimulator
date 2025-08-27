@@ -135,9 +135,12 @@ private:
     
     // Helper functions  
     void generateTestSphere(OctreeNode* node, int depth);
+    float sampleImprovedTerrain(const glm::vec3& sphereNormal) const;
     // Removed: generateSphere() - functionality in setMaterials()
     bool isInsidePlanet(const glm::vec3& position) const;
     float getDistanceFromSurface(const glm::vec3& position) const;
+    
+    uint32_t seed = 42;
 };
 
 } // namespace octree

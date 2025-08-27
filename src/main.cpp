@@ -27,8 +27,8 @@ void signalHandler(int signal) {
 
 // Command line arguments
 struct Config {
-    float radius = 1000.0f;      // 1km radius for easier testing (was Earth: 6371000)
-    int maxDepth = 10;           // Reasonable depth for smaller planet
+    float radius = 1000000.0f;   // 1000km radius - larger planet for better scale
+    int maxDepth = 10;           // Reduced depth for better performance (still gives ~2m voxels)
     uint32_t seed = 42;          // Random seed
     int width = 1280;            // Window width
     int height = 720;            // Window height

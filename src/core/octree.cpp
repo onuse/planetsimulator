@@ -315,8 +315,10 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                 voxel.temperature = 128;  // Moderate temp
                 voxel.pressure = 128;     // Moderate pressure
                 
-                // Add water/land variation only at the surface
-                if (voxelDist > radius * 0.98f && voxelDist < radius * 1.02f) {
+                // Add water/land variation at the surface
+                // Make the surface layer thicker for better sampling at all scales
+                // With 1000km radius, this gives us a 100km thick surface layer (950km to 1050km)
+                if (voxelDist > radius * 0.95f && voxelDist < radius * 1.05f) {
                 // Use simple height-based distribution for testing
                 // This ensures we get both water and land at all scales
                 glm::vec3 sphereNormal = glm::normalize(voxelPos);
@@ -327,21 +329,12 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                 // Add some longitude variation
                 float longitude = atan2(sphereNormal.x, sphereNormal.z);
                 
-                // Create continent pattern using trigonometric functions
-                // This works at all scales since it's based on angles, not absolute position
-                float pattern1 = sin(longitude * 3.0f) * cos(latitude * 2.0f);
-                float pattern2 = sin(longitude * 5.0f + 1.0f) * cos(latitude * 4.0f);
-                float pattern3 = cos(longitude * 2.0f) * sin(latitude * 3.0f);
+                // Use improved terrain generation
+                float continentValue = sampleImprovedTerrain(sphereNormal);
                 
-                // Combine patterns for more interesting terrain
-                float continentValue = pattern1 * 0.4f + pattern2 * 0.3f + pattern3 * 0.3f;
-                
-                // Add some noise-like variation
-                continentValue += sin(longitude * 17.0f) * cos(latitude * 13.0f) * 0.1f;
-                
-                // Normalize to 0-1 range with bias toward ocean (40% land, 60% ocean)
-                continentValue = (continentValue + 1.0f) * 0.5f;
-                continentValue = continentValue * 0.8f + 0.1f; // Compress range to 0.1-0.9
+                // Don't remap - let the terrain function output determine ocean/land
+                // The sampleImprovedTerrain already includes ocean bias via power curve
+                // continentValue is now in range 0-1 with natural distribution
                 
                 // DEBUG: Track continent value distribution
                 static int debugCount = 0;
@@ -355,27 +348,27 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                     }
                 }
                 
-                // 40% land, 60% ocean based on actual continent value range (0.29-0.55)
-                // Use mixed materials for more realistic boundaries
-                if (continentValue > 0.5f) {
+                // Use natural distribution from terrain function
+                // Ocean below 0.4, land above 0.4 (roughly 60/40 split)
+                if (continentValue > 0.7f) {
                     // Mountain peaks - rock with some snow
                     voxel = MixedVoxel::createMix(
                         core::MaterialID::Rock, 200,
                         core::MaterialID::Snow, 55
                     );
                     voxel.temperature = 110;  // Cold mountains
-                } else if (continentValue > 0.45f) {
+                } else if (continentValue > 0.6f) {
                     // High ground - pure rock
                     voxel = MixedVoxel::createPure(core::MaterialID::Rock);
                     voxel.temperature = 120;  
-                } else if (continentValue > 0.40f) {
+                } else if (continentValue > 0.5f) {
                     // Lowlands - rock with grass
                     voxel = MixedVoxel::createMix(
                         core::MaterialID::Rock, 150,
                         core::MaterialID::Grass, 105
                     );
                     voxel.temperature = 128;
-                } else if (continentValue > 0.37f) {
+                } else if (continentValue > 0.45f) {
                     // Coastline - sand and rock mix
                     float blend = (continentValue - 0.37f) * 33.33f;  // 0 to 1 over 0.03 range
                     uint8_t sandAmt = static_cast<uint8_t>(255 - 255 * blend);
@@ -385,11 +378,11 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                         core::MaterialID::Rock, rockAmt
                     );
                     voxel.temperature = 130;
-                } else if (continentValue > 0.35f) {
+                } else if (continentValue > 0.42f) {
                     // Beach - pure sand
                     voxel = MixedVoxel::createPure(core::MaterialID::Sand);
                     voxel.temperature = 135;
-                } else if (continentValue > 0.33f) {
+                } else if (continentValue > 0.4f) {
                     // Shallow water - water with sand
                     voxel = MixedVoxel::createMix(
                         core::MaterialID::Water, 200,
@@ -418,10 +411,13 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
 }
 
 void OctreePlanet::generate(uint32_t seed) {
+    // Store seed for terrain generation
+    this->seed = seed;
+    
     // Initialize random number generator with seed
     srand(seed);
     
-    std::cout << "Generating sphere structure..." << std::endl;
+    std::cout << "Generating sphere structure with improved terrain..." << std::endl;
     std::cout << "Planet radius: " << radius << " meters" << std::endl;
     std::cout << "Root node half-size: " << root->halfSize << " meters" << std::endl;
     std::cout << "Max depth: " << maxDepth << std::endl;
@@ -728,6 +724,65 @@ bool OctreePlanet::isInsidePlanet(const glm::vec3& position) const {
 
 float OctreePlanet::getDistanceFromSurface(const glm::vec3& position) const {
     return glm::length(position) - radius;
+}
+
+// Improved terrain sampling using smooth value noise
+float OctreePlanet::sampleImprovedTerrain(const glm::vec3& sphereNormal) const {
+    // Convert to spherical coordinates for better distribution
+    float longitude = atan2(sphereNormal.x, sphereNormal.z);
+    float latitude = asin(sphereNormal.y);
+    
+    // Use seed to create variation
+    float seedOffset = seed * 0.0123f;
+    
+    // Start with large-scale continent shapes
+    float continents = 0.0f;
+    
+    // Layer 1: Major continents (very low frequency, MUCH larger amplitude)
+    continents += sin((longitude + seedOffset) * 1.5f) * 0.7f;
+    continents += cos((latitude * 2.0f + seedOffset * 2.0f) * 1.2f) * 0.6f;
+    continents += sin((longitude * 0.8f - latitude * 1.1f + seedOffset * 3.0f)) * 0.5f;
+    
+    // Layer 2: Regional variations (medium frequency)
+    float regional = 0.0f;
+    regional += sin((longitude * 3.2f + seedOffset * 4.0f)) * cos(latitude * 2.8f) * 0.35f;
+    regional += cos((longitude * 4.1f - seedOffset * 2.0f)) * sin(latitude * 3.5f) * 0.3f;
+    
+    // Layer 3: Mountain ridges using absolute value for ridge effect
+    float ridges = 0.0f;
+    float ridgeX = sin(longitude * 5.0f + latitude * 3.0f + seedOffset * 5.0f);
+    float ridgeY = cos(longitude * 4.0f - latitude * 6.0f + seedOffset * 6.0f);
+    ridges = (1.0f - abs(ridgeX)) * 0.25f + (1.0f - abs(ridgeY)) * 0.25f;
+    
+    // Layer 4: Small-scale turbulence
+    float detail = 0.0f;
+    detail += sin(longitude * 12.0f + latitude * 8.0f + seedOffset * 7.0f) * 0.15f;
+    detail += cos(longitude * 15.0f - latitude * 11.0f + seedOffset * 8.0f) * 0.12f;
+    
+    // Combine all layers
+    float terrain = continents + regional + ridges + detail;
+    
+    // Add polar ice tendency
+    float polarBias = abs(sphereNormal.y);
+    if (polarBias > 0.8f) {
+        terrain += (polarBias - 0.8f) * 1.5f; // Make poles more likely to be land/ice
+    }
+    
+    // Add some asymmetry to avoid too-perfect distribution
+    terrain += sin(sphereNormal.x * 2.1f + sphereNormal.z * 1.7f + seedOffset * 9.0f) * 0.1f;
+    
+    // Normalize to 0-1 range
+    // The range is now roughly -3.5 to +3.5, so we scale appropriately
+    terrain = (terrain + 3.5f) / 7.0f; // Convert from -3.5..3.5 to 0..1
+    
+    // Add some variation based on 3D position for less predictable patterns
+    float variation = sin(sphereNormal.x * 7.0f) * cos(sphereNormal.y * 9.0f) * sin(sphereNormal.z * 8.0f) * 0.12f;
+    terrain += variation;
+    
+    // Apply a power curve to create more ocean and sharper coastlines
+    terrain = pow(glm::clamp(terrain, 0.0f, 1.0f), 1.8f);
+    
+    return glm::clamp(terrain, 0.0f, 1.0f);
 }
 
 } // namespace octree

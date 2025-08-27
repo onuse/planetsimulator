@@ -243,7 +243,7 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     
     // DEBUG: Print actual values being used
     static int debugCount = 0;
-    if (debugCount++ % 60 == 0) {
+    if (false && debugCount++ % 60 == 0) {  // Disabled verbose debug
         std::cout << "\n[UNIFORM BUFFER DEBUG]" << std::endl;
         std::cout << "  Camera position: " << viewPosF.x << ", " << viewPosF.y << ", " << viewPosF.z << std::endl;
         std::cout << "  WORLD_SCALE: " << WORLD_SCALE << std::endl;

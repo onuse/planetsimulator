@@ -95,11 +95,48 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     frameTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
     lastFrameTime = currentTime;
     
-    // GPU mesh generation - simplified single path
-    static bool meshGenerated = false;
-    if (!meshGenerated && planet && camera) {
+    // Update LOD level based on camera distance every frame
+    if (camera && planet) {
+        float distanceToOrigin = glm::length(camera->getPosition());
+        float planetRadius = planet->getRadius();
+        float distanceToSurface = distanceToOrigin - planetRadius;
+        
+        // More granular LOD levels based on distance
+        // Each level roughly doubles triangle count
+        if (distanceToSurface > planetRadius * 100.0f) {
+            currentLODLevel = 1; // Extreme distance: 20 triangles
+        } else if (distanceToSurface > planetRadius * 50.0f) {
+            currentLODLevel = 2; // Very far: 80 triangles
+        } else if (distanceToSurface > planetRadius * 20.0f) {
+            currentLODLevel = 3; // Far: 320 triangles
+        } else if (distanceToSurface > planetRadius * 10.0f) {
+            currentLODLevel = 4; // Medium-far: 1,280 triangles
+        } else if (distanceToSurface > planetRadius * 5.0f) {
+            currentLODLevel = 5; // Medium: 5,120 triangles
+        } else if (distanceToSurface > planetRadius * 2.0f) {
+            currentLODLevel = 6; // Medium-close: 20,480 triangles
+        } else if (distanceToSurface > planetRadius * 1.0f) {
+            currentLODLevel = 7; // Close: 81,920 triangles
+        } else if (distanceToSurface > planetRadius * 0.5f) {
+            currentLODLevel = 8; // Very close: 327,680 triangles
+        } else if (distanceToSurface > planetRadius * 0.1f) {
+            currentLODLevel = 9; // Extremely close: 1,310,720 triangles
+        } else if (distanceToSurface > planetRadius * 0.01f) {
+            currentLODLevel = 10; // Surface level: 5,242,880 triangles
+        } else {
+            currentLODLevel = 11; // Below surface: maximum detail
+        }
+    }
+    
+    // Regenerate mesh when LOD changes
+    static int lastLODLevel = -1;
+    if (planet && camera && currentLODLevel != lastLODLevel) {
+        // LOD changed, regenerate mesh
+        std::cout << "[LOD] Level changed from " << lastLODLevel << " to " << currentLODLevel << " - regenerating mesh\n";
+        lastLODLevel = currentLODLevel;
+        
         // Try proper sphere mesh generation first
-        meshGenerated = generateUnifiedSphere(planet);
+        bool meshGenerated = generateUnifiedSphere(planet, camera);
         if (!meshGenerated) {
             std::cerr << "ERROR: Sphere mesh generation failed, trying GPU mesh generation...\n";
             meshGenerated = generateGPUMesh(planet, camera);
@@ -512,7 +549,7 @@ void VulkanRenderer::renderGPUMesh() {
     
     static int drawCallCount = 0;
     if (drawCallCount++ % 60 == 0) {
-        std::cout << "[renderGPUMesh] DRAW CALL EXECUTED: " << meshIndexCount << " indices (" << meshIndexCount/3 << " triangles)\n";
+        // std::cout << "[renderGPUMesh] DRAW CALL EXECUTED: " << meshIndexCount << " indices (" << meshIndexCount/3 << " triangles)\n";
     }
     
     static int meshDebugCount = 0;
