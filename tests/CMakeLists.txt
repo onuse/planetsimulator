@@ -63,3 +63,15 @@ add_executable(test_lod_system
 target_link_libraries(test_lod_system
     glm::glm
 )
+
+# Mesh generation validation test
+add_executable(test_mesh_generation_validation
+    test_mesh_generation_validation.cpp
+    ../src/algorithms/mesh_generation.cpp
+    ../src/core/octree.cpp
+    ../src/core/material_table.cpp
+)
+
+target_link_libraries(test_mesh_generation_validation
+    glm::glm
+)

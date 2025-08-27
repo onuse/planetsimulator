@@ -1,6 +1,7 @@
 #include "core/octree.hpp"
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include <functional>
 #include <iostream>
 
@@ -307,17 +308,15 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                 std::cout << "    Planet radius=" << radius << std::endl;
             }
             
-            // Mixed material assignment
-            if (voxelDist < radius * 0.9f) {
-                // Core/mantle - pure rock
+            // Mixed material assignment - FIXED to actually create a solid sphere
+            if (voxelDist < radius * 1.05f) {  // Include everything up to slightly past surface
+                // For simplicity, make everything rock first to ensure we get a visible sphere
                 voxel = MixedVoxel::createPure(core::MaterialID::Rock);
-                voxel.temperature = 255;  // Hot core (normalized)
-                voxel.pressure = 255;     // High pressure
-                if (surfaceDebugCount++ < 5) {
-                    std::cout << "    Set ROCK for voxel at dist=" << voxelDist 
-                              << " (inside planet core)\n";
-                }
-            } else if (voxelDist < radius) {
+                voxel.temperature = 128;  // Moderate temp
+                voxel.pressure = 128;     // Moderate pressure
+                
+                // Add water/land variation only at the surface
+                if (voxelDist > radius * 0.98f && voxelDist < radius * 1.02f) {
                 // Use simple height-based distribution for testing
                 // This ensures we get both water and land at all scales
                 glm::vec3 sphereNormal = glm::normalize(voxelPos);
@@ -332,12 +331,17 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                 // This works at all scales since it's based on angles, not absolute position
                 float pattern1 = sin(longitude * 3.0f) * cos(latitude * 2.0f);
                 float pattern2 = sin(longitude * 5.0f + 1.0f) * cos(latitude * 4.0f);
+                float pattern3 = cos(longitude * 2.0f) * sin(latitude * 3.0f);
                 
-                // Combine patterns
-                float continentValue = pattern1 * 0.6f + pattern2 * 0.4f;
+                // Combine patterns for more interesting terrain
+                float continentValue = pattern1 * 0.4f + pattern2 * 0.3f + pattern3 * 0.3f;
                 
-                // Normalize to 0-1 range
+                // Add some noise-like variation
+                continentValue += sin(longitude * 17.0f) * cos(latitude * 13.0f) * 0.1f;
+                
+                // Normalize to 0-1 range with bias toward ocean (40% land, 60% ocean)
                 continentValue = (continentValue + 1.0f) * 0.5f;
+                continentValue = continentValue * 0.8f + 0.1f; // Compress range to 0.1-0.9
                 
                 // DEBUG: Track continent value distribution
                 static int debugCount = 0;
@@ -351,39 +355,57 @@ void OctreePlanet::generateTestSphere(OctreeNode* node, int depth) {
                     }
                 }
                 
-                // 30% land, 70% ocean (Earth-like ratio)
+                // 40% land, 60% ocean based on actual continent value range (0.29-0.55)
                 // Use mixed materials for more realistic boundaries
-                if (continentValue > 0.8f) {
-                    // Mountain peaks - pure rock
-                    voxel = MixedVoxel::createPure(core::MaterialID::Rock);
-                    voxel.temperature = 128;  // Temperate
-                } else if (continentValue > 0.7f) {
-                    // Coastline - mixed rock and water
-                    float blend = (continentValue - 0.7f) * 10.0f;  // 0 to 1
-                    uint8_t rockAmt = static_cast<uint8_t>(128 + 127 * blend);
-                    uint8_t waterAmt = static_cast<uint8_t>(127 - 127 * blend);
+                if (continentValue > 0.5f) {
+                    // Mountain peaks - rock with some snow
                     voxel = MixedVoxel::createMix(
-                        core::MaterialID::Rock, rockAmt,
-                        core::MaterialID::Water, waterAmt
+                        core::MaterialID::Rock, 200,
+                        core::MaterialID::Snow, 55
+                    );
+                    voxel.temperature = 110;  // Cold mountains
+                } else if (continentValue > 0.45f) {
+                    // High ground - pure rock
+                    voxel = MixedVoxel::createPure(core::MaterialID::Rock);
+                    voxel.temperature = 120;  
+                } else if (continentValue > 0.40f) {
+                    // Lowlands - rock with grass
+                    voxel = MixedVoxel::createMix(
+                        core::MaterialID::Rock, 150,
+                        core::MaterialID::Grass, 105
                     );
                     voxel.temperature = 128;
-                } else if (continentValue > 0.1f) {
+                } else if (continentValue > 0.37f) {
+                    // Coastline - sand and rock mix
+                    float blend = (continentValue - 0.37f) * 33.33f;  // 0 to 1 over 0.03 range
+                    uint8_t sandAmt = static_cast<uint8_t>(255 - 255 * blend);
+                    uint8_t rockAmt = static_cast<uint8_t>(255 * blend);
+                    voxel = MixedVoxel::createMix(
+                        core::MaterialID::Sand, sandAmt,
+                        core::MaterialID::Rock, rockAmt
+                    );
+                    voxel.temperature = 130;
+                } else if (continentValue > 0.35f) {
+                    // Beach - pure sand
+                    voxel = MixedVoxel::createPure(core::MaterialID::Sand);
+                    voxel.temperature = 135;
+                } else if (continentValue > 0.33f) {
+                    // Shallow water - water with sand
+                    voxel = MixedVoxel::createMix(
+                        core::MaterialID::Water, 200,
+                        core::MaterialID::Sand, 55
+                    );
+                    voxel.temperature = 128;
+                } else {
                     // Ocean - pure water
                     voxel = MixedVoxel::createPure(core::MaterialID::Water);
-                    voxel.temperature = 128;
+                    voxel.temperature = 125;
                     if (surfaceDebugCount++ < 5) {
                         std::cout << "    Set WATER for voxel at dist=" << voxelDist 
                                   << " (ocean, continent=" << continentValue << ")\n";
                     }
-                } else {
-                    // Deep ocean trenches - water with some sediment
-                    voxel = MixedVoxel::createMix(
-                        core::MaterialID::Water, 200,
-                        core::MaterialID::Sand, 55  // Sand as sediment
-                    );
-                    voxel.temperature = 120;  // Slightly cooler
-                    voxel.pressure = 150;  // Higher pressure at depth
                 }
+                } // Close surface variation if block
             } else {
                 // Space/atmosphere - pure air
                 voxel = MixedVoxel::createPure(core::MaterialID::Air);
@@ -402,11 +424,19 @@ void OctreePlanet::generate(uint32_t seed) {
     std::cout << "Generating sphere structure..." << std::endl;
     std::cout << "Planet radius: " << radius << " meters" << std::endl;
     std::cout << "Root node half-size: " << root->halfSize << " meters" << std::endl;
+    std::cout << "Max depth: " << maxDepth << std::endl;
+    
+    // Timer for performance measurement
+    auto startTime = std::chrono::high_resolution_clock::now();
     
     // Create a more detailed test sphere
     if (root) {
         // Subdivide nodes near the surface for better detail
         generateTestSphere(root.get(), 0);
+        
+        auto endTime = std::chrono::high_resolution_clock::now();
+        float elapsed = std::chrono::duration<float>(endTime - startTime).count();
+        std::cout << "Octree generation took: " << elapsed << " seconds" << std::endl;
         
         // Count nodes for debugging
         int nodeCount = 0;
@@ -534,28 +564,43 @@ OctreePlanet::RenderData OctreePlanet::prepareRenderData(const glm::vec3& viewPo
     int nodesSkippedAir = 0;
     int nodesAdded = 0;
     
+    // Add a limit to prevent hanging with millions of nodes
+    const int MAX_NODES_TO_PROCESS = 50000;  // Process at most 50k nodes
+    
     // Traverse octree and collect visible nodes with hierarchical frustum culling
     std::function<bool(OctreeNode*, uint32_t)> collectNodes = [&](OctreeNode* node, uint32_t parentIndex) -> bool {
         nodesChecked++;
         
-        // Hierarchical frustum culling - if parent is rejected, don't check children
+        // Safety limit to prevent hanging
+        if (nodesChecked > MAX_NODES_TO_PROCESS) {
+            return false;  // Stop processing
+        }
+        
+        // HIERARCHICAL FRUSTUM CULLING
+        // Test node's bounding sphere against all frustum planes
+        // This works for both internal and leaf nodes
         bool inFrustum = true;
         
-        // For small test planets, disable frustum culling entirely
-        if (radius >= 10000.0f) {
-            // Always do frustum culling for internal nodes to enable hierarchical rejection
-            if (!node->isLeaf()) {  // Check all internal nodes
-                for (int i = 0; i < 6; i++) {
-                    float distance = glm::dot(glm::vec3(frustumPlanes[i]), node->center) + frustumPlanes[i].w;
-                    if (distance < -node->halfSize * 1.732f) { // sqrt(3) for diagonal
-                        inFrustum = false;
-                        nodesSkippedFrustum++;
-                        break;
-                    }
-                }
-                if (!inFrustum) return false;  // Early rejection - don't check children
+        // Always perform frustum culling for better performance
+        // The bounding sphere radius is halfSize * sqrt(3) for a cube
+        float boundingSphereRadius = node->halfSize * 1.732f; // sqrt(3) for diagonal
+        
+        for (int i = 0; i < 6; i++) {
+            // Calculate signed distance from sphere center to plane
+            float distance = glm::dot(glm::vec3(frustumPlanes[i]), node->center) + frustumPlanes[i].w;
+            
+            // If sphere is completely behind the plane, it's outside frustum
+            if (distance < -boundingSphereRadius) {
+                inFrustum = false;
+                nodesSkippedFrustum++;
+                
+                // For internal nodes, skip entire subtree
+                // For leaf nodes, just skip this node
+                return false;  // Don't process this node or its children
             }
         }
+        
+        // Node is at least partially in frustum, continue processing
         
         // Only process leaf nodes for rendering
         if (node->isLeaf()) {

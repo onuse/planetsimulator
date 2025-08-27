@@ -63,6 +63,7 @@ struct TransvoxelChunk {
     glm::vec3 position;          // World position of chunk
     float voxelSize;             // Size of each voxel at this LOD level
     uint32_t lodLevel;           // Level of detail (0 = highest detail)
+    int faceId = -1;             // Cube face ID (0-5) for cube-sphere mapping, -1 for regular chunks
     
     // Generated mesh data
     std::vector<Vertex> vertices;

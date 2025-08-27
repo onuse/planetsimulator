@@ -16,13 +16,13 @@ Camera::Camera(uint32_t width, uint32_t height)
     : viewportWidth(width)
     , viewportHeight(height)
     , aspectRatio(static_cast<float>(width) / static_cast<float>(height))
-    , position(0.0f, 0.0f, 6400000.0f)  // Start ~30km above planet surface
+    , position(0.0f, 0.0f, 10000.0f)  // Start at reasonable distance, will be set properly
     , target(0.0f, 0.0f, 0.0f)
     , up(0.0f, 1.0f, 0.0f)
     , orientation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)) {
     
-    // Auto-adjust clip planes based on initial altitude
-    float altitude = glm::length(position) - 6371000.0f; // Assume planet radius
+    // Auto-adjust clip planes based on initial altitude (temporary until properly set)
+    float altitude = glm::length(position) - 1000.0f; // Temporary default
     autoAdjustClipPlanes(altitude);
     
     std::cout << "Camera constructor: altitude=" << altitude << ", near=" << nearPlane << ", far=" << farPlane << std::endl;
@@ -58,14 +58,15 @@ void Camera::update(float deltaTime) {
     }
     
     // Enforce minimum altitude to prevent going inside planet
-    const float PLANET_RADIUS = 6371000.0f;
-    const float MIN_ALTITUDE = 10000.0f; // 10km minimum altitude
+    // Note: This should be set based on actual planet radius from outside
+    // For now, just ensure we don't go too close to origin
+    const float MIN_DISTANCE = 10.0f; // Minimum 10 meters from origin
     float distanceFromCenter = glm::length(position);
-    if (distanceFromCenter < PLANET_RADIUS + MIN_ALTITUDE) {
-        // Push camera back to minimum altitude
-        position = glm::normalize(position) * (PLANET_RADIUS + MIN_ALTITUDE);
+    if (distanceFromCenter < MIN_DISTANCE) {
+        // Push camera back to minimum distance
+        position = glm::normalize(position) * MIN_DISTANCE;
         if (mode == CameraMode::Orbital) {
-            orbitDistance = PLANET_RADIUS + MIN_ALTITUDE;
+            orbitDistance = MIN_DISTANCE;
         }
     }
     
@@ -94,8 +95,9 @@ void Camera::orbit(float deltaAzimuth, float deltaElevation) {
 
 void Camera::zoom(float delta) {
     if (mode == CameraMode::Orbital) {
-        const float PLANET_RADIUS = 6371000.0f;
-        const float MIN_ALTITUDE = 10000.0f; // 10km minimum altitude above surface
+        // Get actual planet radius from orbit center distance (approximation)
+        const float PLANET_RADIUS = glm::length(orbitCenter) > 1.0f ? glm::length(orbitCenter) : 100.0f;
+        const float MIN_ALTITUDE = PLANET_RADIUS * 0.01f; // 1% of radius minimum altitude
         
         float oldDistance = orbitDistance;
         
@@ -103,14 +105,15 @@ void Camera::zoom(float delta) {
         float altitude = orbitDistance - PLANET_RADIUS;
         float speedScale = 1.0f;
         
-        if (altitude < 100000.0f) {  // Below 100km
+        // Scale thresholds based on planet size
+        if (altitude < PLANET_RADIUS * 1.0f) {  // Below 1x radius altitude
             speedScale = 0.3f;  // Very slow zoom
-        } else if (altitude < 500000.0f) {  // Below 500km
+        } else if (altitude < PLANET_RADIUS * 5.0f) {  // Below 5x radius
             speedScale = 0.5f;  // Slow zoom
-        } else if (altitude < 2000000.0f) {  // Below 2000km
+        } else if (altitude < PLANET_RADIUS * 20.0f) {  // Below 20x radius
             speedScale = 0.7f;  // Moderate zoom
         }
-        // Above 2000km: normal zoom speed
+        // Above 20x radius: normal zoom speed
         
         // Apply scaled exponential zoom
         float adjustedDelta = delta * speedScale;
@@ -203,6 +206,9 @@ void Camera::setPosition(const glm::vec3& pos) {
             orbitElevation = std::asin(dir.y);
             orbitAzimuth = std::atan2(dir.x, dir.z);
         }
+        
+        std::cout << "[CAMERA] setPosition in Orbital mode: orbitDistance=" << orbitDistance 
+                  << ", orbitCenter=(" << orbitCenter.x << "," << orbitCenter.y << "," << orbitCenter.z << ")" << std::endl;
     }
 }
 
@@ -381,7 +387,9 @@ void Camera::autoAdjustClipPlanes(float altitude) {
     // Dynamic clipping planes based on altitude for scaled coordinate system
     // altitude is in meters, we scale by 1/1,000,000 in the renderer
     
-    const float planetRadius = 6371000.0f;  // meters
+    // Note: This function needs the actual planet radius passed in
+    // For now, use a reasonable default that works for various planet sizes
+    const float planetRadius = 100.0f;  // Will be overridden by actual value
     float cameraDistance = altitude + planetRadius;  // Distance from planet center
     
     if (altitude < 1000.0f) {
@@ -614,11 +622,18 @@ void Camera::updateOrbitalPosition() {
     float cosAzim = std::cos(orbitAzimuth);
     float sinAzim = std::sin(orbitAzimuth);
     
+    glm::vec3 oldPos = position;
     position = orbitCenter + glm::vec3(
         orbitDistance * cosElev * sinAzim,
         orbitDistance * sinElev,
         orbitDistance * cosElev * cosAzim
     );
+    
+    // Debug output if position changed significantly
+    if (glm::length(position - oldPos) > 10.0f) {
+        std::cout << "[CAMERA UPDATE] Orbital position updated: dist=" << orbitDistance 
+                  << ", pos=(" << position.x << "," << position.y << "," << position.z << ")" << std::endl;
+    }
     
     target = orbitCenter;
 }

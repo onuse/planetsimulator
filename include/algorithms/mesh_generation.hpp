@@ -43,9 +43,10 @@ struct MeshGenParams {
     float voxelSize;         // Size of each voxel at this LOD
     glm::ivec3 dimensions;   // Number of voxels in each dimension
     uint32_t lodLevel;       // Level of detail (0 = highest)
+    int faceId = -1;         // Cube face ID for cube-sphere mapping (-1 = no mapping)
     
-    MeshGenParams(const glm::vec3& pos, float size, const glm::ivec3& dims, uint32_t lod = 0)
-        : worldPos(pos), voxelSize(size), dimensions(dims), lodLevel(lod) {}
+    MeshGenParams(const glm::vec3& pos, float size, const glm::ivec3& dims, uint32_t lod = 0, int face = -1)
+        : worldPos(pos), voxelSize(size), dimensions(dims), lodLevel(lod), faceId(face) {}
 };
 
 // Simple cube-based mesh generation (for testing)

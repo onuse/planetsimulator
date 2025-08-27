@@ -28,6 +28,14 @@ public:
     GPUOctree(VkDevice device, VkPhysicalDevice physicalDevice);
     ~GPUOctree();
     
+    // Prevent copying to avoid double-delete
+    GPUOctree(const GPUOctree&) = delete;
+    GPUOctree& operator=(const GPUOctree&) = delete;
+    
+    // Custom move operations (needed for Vulkan handles)
+    GPUOctree(GPUOctree&& other) noexcept;
+    GPUOctree& operator=(GPUOctree&& other) noexcept;
+    
     // Upload octree from CPU to GPU
     // Now takes viewPos and viewProj to use prepareRenderData for proper filtering
     void uploadOctree(octree::OctreePlanet* planet, 
@@ -58,9 +66,7 @@ private:
     VkBuffer voxelBuffer = VK_NULL_HANDLE;
     VkDeviceMemory voxelBufferMemory = VK_NULL_HANDLE;
     
-    // Staging buffers for upload
-    VkBuffer stagingBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
+    // Removed unused staging buffer members - we use local buffers in uploadOctree
     
     uint32_t nodeCount = 0;
     uint32_t voxelCount = 0;

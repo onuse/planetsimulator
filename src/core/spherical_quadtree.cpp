@@ -237,7 +237,8 @@ float SphericalQuadtreeNode::calculateScreenSpaceError(const glm::vec3& viewPos,
 
 void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4& viewProj,
                                       float errorThreshold, uint32_t maxLevel,
-                                      std::vector<QuadtreePatch>& visiblePatches) {
+                                      std::vector<QuadtreePatch>& visiblePatches,
+                                      bool enableBackfaceCulling) {
     
     // CRITICAL FIX 1: Hard limit on recursion depth
     // BALANCE: Need enough subdivision for detail, but not too much for performance
@@ -306,56 +307,58 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
     }
     
     // BACKFACE CULLING: Check if this patch faces away from the camera
-    // First convert cube position to sphere position
-    glm::dvec3 spherePos = cubeToSphere(patch.center, 6371000.0);
-    glm::dvec3 patchNormal = glm::normalize(spherePos);
-    glm::dvec3 toCamera = glm::normalize(glm::dvec3(viewPos) - spherePos);
-    
-    // Dot product tells us if patch faces camera
-    double dotProduct = glm::dot(patchNormal, toCamera);
-    
-    // Cull patches facing away (with some tolerance for edge cases)
-    // Tolerance depends on patch size and level
-    // At the horizon, dot product is 0, so we need to be careful
-    // Positive dot = facing camera, negative = facing away
-    double cullThreshold = 0.0; // Cull if dot < 0 (facing away)
-    
-    // Add some tolerance based on patch level to account for curvature
-    // Higher level patches are smaller and need less tolerance
-    // Level 1 patches are our base 24 patches, they need special handling
-    if (level == 0) {
-        // Never cull level 0 (the 6 root faces) - they're not leaves anyway
-        cullThreshold = -1.0;
-    } else if (level == 1) {
-        // Level 1 are our 24 base patches - be lenient to see horizon
-        cullThreshold = -0.4; // Allow patches up to 40% facing away
-    } else if (level <= 3) {
-        cullThreshold = -0.1; // Some tolerance for mid-level patches
-    } else {
-        cullThreshold = 0.0; // Strict for deeply subdivided patches
-    }
-    
-    // Track culling statistics for leaf nodes
-    static int cullCount = 0;
-    static int totalLeafChecks = 0;
-    if (isLeaf()) {
-        totalLeafChecks++;
-    }
-    
-    if (dotProduct < cullThreshold) {
-        // Patch faces away from camera - cull it
-        // But if it's not a leaf, we still need to check children
-        // as they might be visible due to sphere curvature
-        if (isLeaf()) {
-            cullCount++;
-            if (totalLeafChecks % 1000 == 0) {
-                std::cout << "[BACKFACE CULLING] Culled " << cullCount << " of " << totalLeafChecks 
-                          << " leaf patches (" << (100.0f * cullCount / totalLeafChecks) << "%)" << std::endl;
-            }
-            return; // Skip this patch entirely
+    if (enableBackfaceCulling) {
+        // First convert cube position to sphere position
+        glm::dvec3 spherePos = cubeToSphere(patch.center, 6371000.0);
+        glm::dvec3 patchNormal = glm::normalize(spherePos);
+        glm::dvec3 toCamera = glm::normalize(glm::dvec3(viewPos) - spherePos);
+        
+        // Dot product tells us if patch faces camera
+        double dotProduct = glm::dot(patchNormal, toCamera);
+        
+        // Cull patches facing away (with some tolerance for edge cases)
+        // Tolerance depends on patch size and level
+        // At the horizon, dot product is 0, so we need to be careful
+        // Positive dot = facing camera, negative = facing away
+        double cullThreshold = 0.0; // Cull if dot < 0 (facing away)
+        
+        // Add some tolerance based on patch level to account for curvature
+        // Higher level patches are smaller and need less tolerance
+        // Level 1 patches are our base 24 patches, they need special handling
+        if (level == 0) {
+            // Never cull level 0 (the 6 root faces) - they're not leaves anyway
+            cullThreshold = -1.0;
+        } else if (level == 1) {
+            // Level 1 are our 24 base patches - be lenient to see horizon
+            cullThreshold = -0.4; // Allow patches up to 40% facing away
+        } else if (level <= 3) {
+            cullThreshold = -0.1; // Some tolerance for mid-level patches
+        } else {
+            cullThreshold = 0.0; // Strict for deeply subdivided patches
         }
-        // For non-leaves, still recurse but with tighter culling
-        cullThreshold = 0.1; // More aggressive for children
+        
+        // Track culling statistics for leaf nodes
+        static int cullCount = 0;
+        static int totalLeafChecks = 0;
+        if (isLeaf()) {
+            totalLeafChecks++;
+        }
+        
+        if (dotProduct < cullThreshold) {
+            // Patch faces away from camera - cull it
+            // But if it's not a leaf, we still need to check children
+            // as they might be visible due to sphere curvature
+            if (isLeaf()) {
+                cullCount++;
+                if (totalLeafChecks % 1000 == 0) {
+                    std::cout << "[BACKFACE CULLING] Culled " << cullCount << " of " << totalLeafChecks 
+                              << " leaf patches (" << (100.0f * cullCount / totalLeafChecks) << "%)" << std::endl;
+                }
+                return; // Skip this patch entirely
+            }
+            // For non-leaves, still recurse but with tighter culling
+            cullThreshold = 0.1; // More aggressive for children
+        }
     }
     
     float error = calculateScreenSpaceError(viewPos, viewProj);
@@ -434,7 +437,7 @@ void SphericalQuadtreeNode::selectLOD(const glm::vec3& viewPos, const glm::mat4&
             // Already subdivided, recurse to children
             for (auto& child : children) {
                 if (child) {
-                    child->selectLOD(viewPos, viewProj, errorThreshold, maxLevel, visiblePatches);
+                    child->selectLOD(viewPos, viewProj, errorThreshold, maxLevel, visiblePatches, enableBackfaceCulling);
                 }
             }
         }
@@ -639,6 +642,10 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
     stats.subdivisions = 0;
     stats.merges = 0;
     
+    // Debug: Track patch selection
+    static int frameDebugCount = 0;
+    bool debugFrame = (frameDebugCount++ % 60 == 0);  // Every 60 frames
+    
     // Safety limit - prevent excessive patches
     const size_t MAX_PATCHES = 50000;  // Increased limit for close-up detail
     
@@ -717,7 +724,7 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
                       << " (isLeaf: " << root->isLeaf() 
                       << ", children: " << (root->children[0] ? "Y" : "N") << ")" << std::endl;
         }
-        root->selectLOD(viewPos, viewProj, errorThreshold, config.maxLevel, visiblePatches);
+        root->selectLOD(viewPos, viewProj, errorThreshold, config.maxLevel, visiblePatches, config.enableBackfaceCulling);
         
         patchesAfterFace[i] = visiblePatches.size();
         
@@ -754,8 +761,9 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
         // We need to do this in a second pass to avoid modifying the tree while traversing
         // IMPORTANT: Give each face a fair share of subdivisions to prevent imbalance
         // Negative faces need more aggressive subdivision to match positive faces
-        // PERFORMANCE FIX: DRASTICALLY reduced subdivisions per face
-        const int MAX_SUBDIVISIONS_PER_FACE = 10;  // Was 50, originally 200!
+        // BALANCE: Need enough subdivisions to cover the face properly
+        // For level 4: need 4+16+64 = 84 subdivisions minimum
+        const int MAX_SUBDIVISIONS_PER_FACE = 100;  // Increased to allow proper coverage
         
         for (int i = 0; i < 6; i++) {
             auto& root = roots[i];
@@ -802,7 +810,7 @@ void SphericalQuadtree::update(const glm::vec3& viewPos, const glm::mat4& viewPr
             continue;
         }
         
-        root->selectLOD(viewPos, viewProj, errorThreshold, config.maxLevel, visiblePatches);
+        root->selectLOD(viewPos, viewProj, errorThreshold, config.maxLevel, visiblePatches, config.enableBackfaceCulling);
     }
     
     stats.visibleNodes = static_cast<uint32_t>(visiblePatches.size());

@@ -77,6 +77,13 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     viewport.height = static_cast<float>(swapChainExtent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
+    
+    static int viewportDebug = 0;
+    if (viewportDebug++ % 60 == 0) {
+        std::cout << "[VIEWPORT] " << viewport.width << "x" << viewport.height 
+                  << " depth: " << viewport.minDepth << "-" << viewport.maxDepth << std::endl;
+    }
+    
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     
     // Set scissor
@@ -85,105 +92,41 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     
-    // EXCLUSIVE RENDERING PATHS - Only one system renders at a time
+    // GPU mesh is the only rendering path
     bool renderedSomething = false;
     
-    // LOD SYSTEM RENDERING
-    if (lodManager) {
-        auto lodMode = lodManager->getCurrentMode();
-        auto stats = lodManager->getStats();
-        
-        // Debug output when at minimum altitude
-        if (stats.altitude <= 10000.0f) {
-            static int debugCount = 0;
-            if (debugCount++ % 60 == 0) {
-                std::cout << "[RENDER DEBUG] At minimum altitude: " 
-                          << stats.altitude << "m, Patches: " << stats.quadtreePatches 
-                          << ", Mode: " << lodMode << std::endl;
-            }
-        }
-        
-        if (lodMode == rendering::LODManager::QUADTREE_ONLY) {
-            // Render LOD quadtree patches when at far distance
-            if (quadtreePipeline != VK_NULL_HANDLE) {
-                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, quadtreePipeline);
-                
-                // Bind quadtree descriptor sets
-                if (!quadtreeDescriptorSets.empty()) {
-                    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           quadtreePipelineLayout, 0, 1,
-                                           &quadtreeDescriptorSets[currentFrame], 0, nullptr);
-                }
-                
-                // Render the LOD terrain
-                lodManager->render(commandBuffer, quadtreePipelineLayout, glm::mat4(1.0f));
-                renderedSomething = true;
-            }
-        } else if (lodMode == rendering::LODManager::TRANSITION_ZONE) {
-            // In transition zone, render both with blending
-            // For now, just render quadtree until transition is fully implemented
-            if (quadtreePipeline != VK_NULL_HANDLE) {
-                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, quadtreePipeline);
-                if (!quadtreeDescriptorSets.empty()) {
-                    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           quadtreePipelineLayout, 0, 1,
-                                           &quadtreeDescriptorSets[currentFrame], 0, nullptr);
-                }
-                lodManager->render(commandBuffer, quadtreePipelineLayout, glm::mat4(1.0f));
-                renderedSomething = true;
-            }
-        } else if (lodMode == rendering::LODManager::OCTREE_TRANSVOXEL) {
-            // Close range - use transvoxel rendering
-            // Fall through to transvoxel rendering below
-            renderedSomething = false; // Let transvoxel handle it
-        }
-    }
+    // LOD system removed - using GPU mesh only
     
-    // TRANSVOXEL MESH RENDERING - Only if LOD didn't render
-    
-    // Debug output for investigating chunk rendering issue
-    static int debugFrameCount = 0;
-    if (debugFrameCount++ % 60 == 0) { // Every 60 frames
-        int validChunks = 0;
-        int chunksWithBuffers = 0;
-        for (const auto& chunk : activeChunks) {
-            if (chunk.hasValidMesh) validChunks++;
-            if (chunk.vertexBuffer != VK_NULL_HANDLE && chunk.indexBuffer != VK_NULL_HANDLE) {
-                chunksWithBuffers++;
-            }
-        }
-        // std::cout << "[RENDER DEBUG] activeChunks: " << activeChunks.size() 
-        //           << ", validMeshes: " << validChunks 
-        //           << ", chunksWithBuffers: " << chunksWithBuffers
-        //           << ", transvoxelRenderer: " << (transvoxelRenderer ? "valid" : "null") << std::endl;
-    }
-    
-    // Only render transvoxel if LOD system didn't render anything
+    // GPU MESH RENDERING - The ONLY rendering path
     if (!renderedSomething) {
-        if (transvoxelRenderer && !activeChunks.empty()) {
-            // Bind the triangle mesh pipeline for Transvoxel rendering
-            if (trianglePipeline == VK_NULL_HANDLE) {
-                std::cerr << "ERROR: trianglePipeline is NULL when rendering chunks!" << std::endl;
-            }
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-            
-            // Bind uniform descriptor sets
-            if (!hierarchicalDescriptorSets.empty()) {
-                vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                       hierarchicalPipelineLayout, 0, 1, 
-                                       &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
-            }
-            
-            // Render all active chunks with valid meshes
-            transvoxelRenderer->render(activeChunks, commandBuffer, hierarchicalPipelineLayout);
-        } else if (!lodManager) {
-            // Only use fallback triangle if no LOD manager exists
-            // Use trianglePipeline for fallback render since hierarchicalPipeline is not created
-            if (trianglePipeline == VK_NULL_HANDLE) {
-                std::cerr << "ERROR: trianglePipeline is NULL in fallback render!" << std::endl;
-            }
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-            vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        // Check if we have a valid pipeline
+        if (trianglePipeline == VK_NULL_HANDLE) {
+            std::cerr << "ERROR: trianglePipeline is NULL!" << std::endl;
+            return;
+        }
+        
+        // Check if we have descriptor sets
+        if (hierarchicalDescriptorSets.empty()) {
+            std::cerr << "ERROR: No descriptor sets!" << std::endl;
+            return;
+        }
+        
+        // Bind the triangle pipeline
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+        
+        // Bind descriptor sets
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                               hierarchicalPipelineLayout, 0, 1, 
+                               &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
+        
+        // Render the GPU-generated mesh
+        currentCommandBuffer = commandBuffer;
+        renderGPUMesh();
+        currentCommandBuffer = VK_NULL_HANDLE;
+        
+        static int frameCount = 0;
+        if (frameCount++ % 60 == 0) {
+            std::cout << "[GPU RENDERING] Using GPU mesh generation pipeline\n";
         }
     }
     
@@ -291,15 +234,9 @@ void VulkanRenderer::drawFrame(octree::OctreePlanet* /*planet*/, core::Camera* c
         std::cerr << "Current Frame: " << currentFrame << std::endl;
         std::cerr << "Image Index: " << imageIndex << std::endl;
         
-        // Get LOD manager stats if available
-        if (lodManager) {
-            auto stats = lodManager->getStats();
-            std::cerr << "Quadtree Patches: " << stats.quadtreePatches << std::endl;
-            std::cerr << "Octree Chunks: " << stats.octreeChunks << std::endl;
-            std::cerr << "Altitude: " << stats.altitude << "m" << std::endl;
-            std::cerr << "Current Mode: " << (stats.mode == rendering::LODManager::QUADTREE_ONLY ? "QUADTREE" : 
-                                              stats.mode == rendering::LODManager::OCTREE_TRANSVOXEL ? "OCTREE" : "TRANSITION") << std::endl;
-        }
+        // GPU mesh stats
+        std::cerr << "GPU Mesh Vertices: " << meshVertexCount << std::endl;
+        std::cerr << "GPU Mesh Triangles: " << (meshIndexCount/3) << std::endl;
         
         // Check device lost
         if (submitResult == VK_ERROR_DEVICE_LOST) {

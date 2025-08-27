@@ -1,0 +1,180 @@
+Building Planet Simulator (C++)...
+
+Cleaning and rebuilding shaders...
+Deleting all .frag and .spv files...
+Compiling shaders...
+Compiling shaders...
+Using glslc: glslc
+Transpiling triangle_fragment_template.c to triangle.frag...
+Extracted GLSL from src\templates\triangle_fragment_template.c to src\fragment\triangle.frag
+Transpiling quadtree_vertex_template.c to quadtree_patch.vert...
+Extracted GLSL from src\templates\quadtree_vertex_template.c to src\vertex\quadtree_patch.vert
+Transpiling quadtree_fragment_template.c to quadtree_patch.frag...
+Extracted GLSL from src\templates\quadtree_fragment_template.c to src\fragment\quadtree_patch.frag
+Compiling test_simple.vert...
+Compiling triangle.vert...
+Compiling triangle.frag...
+Compiling quadtree_patch.vert...
+Compiling quadtree_patch_cpu.vert...
+Compiling quadtree_patch.frag...
+Compiling mesh_generator.comp...
+
+Shaders compiled successfully
+Output files:
+quadtree_patch.frag.spv
+quadtree_patch.vert.spv
+quadtree_patch_cpu.vert.spv
+test_simple.vert.spv
+triangle.frag.spv
+triangle.vert.spv
+Shaders compiled successfully
+Configuring with CMake...
+-- Using Win32 for window creation
+CMake Deprecation Warning at build/_deps/glm-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+CMake Deprecation Warning at build/_deps/glm-src/CMakeLists.txt:2 (cmake_policy):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- GLM: Version 1.0.1
+-- GLM: Build with C++ features auto detection
+CMake Deprecation Warning at build/_deps/fastnoise2-src/CMakeLists.txt:2 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+FastNoise2 Arch: AMD64
+-- 
+-- === Configuration Summary ===
+-- C++ Standard: 17
+-- Build Type: Release
+-- Vulkan SDK: C:\VulkanSDK\1.4.321.1
+-- Output Directory: C:/Users/glimm/Documents/Projects/planetsimulator/build/bin
+-- ============================
+-- 
+-- Configuring done (6.1s)
+-- Generating done (1.4s)
+-- Build files have been written to: C:/Users/glimm/Documents/Projects/planetsimulator/build
+
+Building Release build...
+MSBuild version 17.14.18+a338add32 for .NET Framework
+
+  Creating shader output directory
+  FastNoise.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\lib\Release\FastNoise.lib
+  test_draw_calls.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_draw_calls.exe
+  test_buffer_binding.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_buffer_binding.exe
+  glm.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\lib\Release\glm.lib
+  glfw.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\lib\Release\glfw3.lib
+  test_pipeline_state.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_pipeline_state.exe
+  test_gpu_attributes.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_gpu_attributes.exe
+  test_mixed_voxel_integration.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_mixed_voxel_integration.exe
+  test_full_pipeline.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_full_pipeline.exe
+  test_material_tracking.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_material_tracking.exe
+  test_shader_attributes.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_shader_attributes.exe
+  test_octree_core.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_octree_core.exe
+  test_transvoxel_algorithm.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_transvoxel_algorithm.exe
+  test_rendering_pipeline.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_rendering_pipeline.exe
+  test_materials.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_materials.exe
+  test_planet_math.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_planet_math.exe
+  test_shader_material_lookup.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_shader_material_lookup.exe
+  test_transvoxel_debug.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_transvoxel_debug.exe
+  test_same_face_boundaries.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_same_face_boundaries.exe
+  test_gpu_validation.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_gpu_validation.exe
+  test_instance_count.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_instance_count.exe
+  test_material_table.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_material_table.exe
+  test_mesh_connectivity.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_mesh_connectivity.exe
+  test_mixed_voxel.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_mixed_voxel.exe
+  test_face_boundary_alignment.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_face_boundary_alignment.exe
+  test_gpu_rendering.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_gpu_rendering.exe
+  test_material_pipeline.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_material_pipeline.exe
+  test_lod_selection.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_lod_selection.exe
+  test_chunk_boundaries.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\test_chunk_boundaries.exe
+  main.cpp
+C:\Users\glimm\Documents\Projects\planetsimulator\include\rendering\vulkan_renderer.hpp(58,27): warning C4324: 'rendering::UniformBufferObject': structure was padded due to alignment specifier [C:\Users\glimm\Documents\Projects\planetsimulator\build\PlanetSimulator.vcxproj]
+  (compiling source file '../src/main.cpp')
+  
+  Generating code
+  Finished generating code
+  PlanetSimulator.vcxproj -> C:\Users\glimm\Documents\Projects\planetsimulator\build\bin\Release\PlanetSimulator.exe
+
+Build complete
+Copying shaders to build directory...
+
+Running tests...
+Test project C:/Users/glimm/Documents/Projects/planetsimulator/build
+      Start  1: OctreeCore
+ 1/25 Test  #1: OctreeCore .......................   Passed    0.01 sec
+      Start  2: MaterialTable
+ 2/25 Test  #2: MaterialTable ....................   Passed    0.01 sec
+      Start  3: Materials
+ 3/25 Test  #3: Materials ........................   Passed    0.01 sec
+      Start  4: GPURendering
+ 4/25 Test  #4: GPURendering .....................   Passed    0.02 sec
+      Start  5: InstanceCount
+ 5/25 Test  #5: InstanceCount ....................   Passed    0.02 sec
+      Start  6: RenderingPipeline
+ 6/25 Test  #6: RenderingPipeline ................   Passed    0.05 sec
+      Start  7: PipelineState
+ 7/25 Test  #7: PipelineState ....................   Passed    0.01 sec
+      Start  8: BufferBinding
+ 8/25 Test  #8: BufferBinding ....................   Passed    0.01 sec
+      Start  9: DrawCalls
+ 9/25 Test  #9: DrawCalls ........................   Passed    0.01 sec
+      Start 10: ShaderMaterialLookup
+10/25 Test #10: ShaderMaterialLookup .............   Passed    0.02 sec
+      Start 11: LODSelection
+11/25 Test #11: LODSelection .....................   Passed    0.01 sec
+      Start 12: MaterialTracking
+12/25 Test #12: MaterialTracking .................   Passed    0.01 sec
+      Start 13: MixedVoxel
+13/25 Test #13: MixedVoxel .......................   Passed    0.01 sec
+      Start 14: MixedVoxelIntegration
+14/25 Test #14: MixedVoxelIntegration ............   Passed    0.02 sec
+      Start 15: GPUValidation
+15/25 Test #15: GPUValidation ....................   Passed    0.01 sec
+      Start 16: ShaderAttributes
+16/25 Test #16: ShaderAttributes .................   Passed    0.01 sec
+      Start 17: GPUAttributes
+17/25 Test #17: GPUAttributes ....................   Passed    0.01 sec
+      Start 18: FullPipeline
+18/25 Test #18: FullPipeline .....................   Passed    0.01 sec
+      Start 19: MeshConnectivity
+19/25 Test #19: MeshConnectivity .................   Passed    0.20 sec
+      Start 20: ChunkBoundaries
+20/25 Test #20: ChunkBoundaries ..................   Passed    0.14 sec
+      Start 21: TransvoxelAlgorithm
+21/25 Test #21: TransvoxelAlgorithm ..............   Passed    0.21 sec
+      Start 22: TransvoxelDebug
+22/25 Test #22: TransvoxelDebug ..................   Passed    0.02 sec
+      Start 23: PlanetMath
+23/25 Test #23: PlanetMath .......................   Passed    0.01 sec
+      Start 24: FaceBoundaryAlignment
+24/25 Test #24: FaceBoundaryAlignment ............   Passed    0.02 sec
+      Start 25: SameFaceBoundaries
+25/25 Test #25: SameFaceBoundaries ...............   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 25
+
+Total Test time (real) =   0.90 sec
+All tests passed
+
+Executable: build\bin\Release\PlanetSimulator.exe
+
+Run with: bin\Release\PlanetSimulator.exe
+Or with options: bin\Release\PlanetSimulator.exe -auto-terminate 60 -screenshot-interval 10

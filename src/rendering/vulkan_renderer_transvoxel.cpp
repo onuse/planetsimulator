@@ -1,5 +1,4 @@
 #include "rendering/vulkan_renderer.hpp"
-#include "rendering/hierarchical_gpu_octree.hpp"
 #include <iostream>
 #include <cmath>
 #include <cstddef>
@@ -72,6 +71,14 @@ std::array<VkDescriptorSetLayoutBinding, 4> layoutBindings{};
     
     // Create triangle mesh pipeline
     createTrianglePipeline();
+    
+    // CHEAT: Also create test NDC pipeline
+    try {
+        createTestNDCPipeline();
+    } catch (const std::exception& e) {
+        std::cout << "[WARNING] Failed to create test NDC pipeline: " << e.what() << std::endl;
+        // Not fatal - continue without it
+    }
     
     std::cout << "Transvoxel pipeline created successfully\n";
     
@@ -154,21 +161,59 @@ std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 void VulkanRenderer::createTrianglePipeline() {
     std::cout << "Creating triangle mesh pipeline..." << std::endl;
     
+    // Set flag for NDC mode
+    bool useNDCShaders = false; // DISABLE CHEAT MODE - use real shaders!
+    
     // Load shaders - for now, use simple vertex/fragment shaders
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
     
+    
     try {
-        vertShaderCode = readFile("shaders/triangle.vert.spv");
-        fragShaderCode = readFile("shaders/triangle.frag.spv");
-        std::cout << "Loaded triangle shaders: vert=" << vertShaderCode.size() << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
+        if (useNDCShaders) {
+            // Try to load NDC cheat shaders
+            try {
+                vertShaderCode = readFile("shaders/test_ndc.vert.spv");
+                fragShaderCode = readFile("shaders/test_ndc.frag.spv");
+                std::cout << "\n[CHEAT MODE] Using NDC HARDCODED shaders - this MUST work!\n";
+                std::cout << "Loaded NDC shaders: vert=" << vertShaderCode.size() << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
+                std::cout << "These shaders hardcode triangle positions in NDC space!\n";
+            } catch (const std::exception& e) {
+                std::cout << "[ERROR] Failed to load NDC shaders: " << e.what() << std::endl;
+                // Fall back to test shaders
+                try {
+                    vertShaderCode = readFile("shaders/test_simple.vert.spv");
+                    fragShaderCode = readFile("shaders/test_simple.frag.spv");
+                    std::cout << "[DEBUG] Using TEST SIMPLE shaders for rendering\n";
+                } catch (...) {
+                    // Fall back to normal shaders
+                    std::cout << "[DEBUG] Test shaders not found, using normal triangle shaders\n";
+                    vertShaderCode = readFile("shaders/triangle.vert.spv");
+                    fragShaderCode = readFile("shaders/triangle.frag.spv");
+                }
+            }
+        } else {
+            vertShaderCode = readFile("shaders/triangle.vert.spv");
+            fragShaderCode = readFile("shaders/triangle.frag.spv");
+            std::cout << "Loaded triangle shaders: vert=" << vertShaderCode.size() << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
+        }
     } catch (const std::exception& e) {
-        throw std::runtime_error("Failed to load triangle shaders for Transvoxel: " + std::string(e.what()));
+        throw std::runtime_error("Failed to load shaders for Transvoxel: " + std::string(e.what()));
     }
     
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+    
+    if (vertShaderModule == VK_NULL_HANDLE || fragShaderModule == VK_NULL_HANDLE) {
+        std::cerr << "ERROR: Failed to create shader modules!" << std::endl;
+        std::cerr << "  Vert module: " << (vertShaderModule != VK_NULL_HANDLE ? "OK" : "FAILED") << std::endl;
+        std::cerr << "  Frag module: " << (fragShaderModule != VK_NULL_HANDLE ? "OK" : "FAILED") << std::endl;
+        throw std::runtime_error("Shader module creation failed!");
+    }
+    
     std::cout << "Created shader modules successfully" << std::endl;
+    std::cout << "  Vert: 0x" << std::hex << reinterpret_cast<uint64_t>(vertShaderModule) << std::dec << std::endl;
+    std::cout << "  Frag: 0x" << std::hex << reinterpret_cast<uint64_t>(fragShaderModule) << std::dec << std::endl;
     
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -184,10 +229,11 @@ void VulkanRenderer::createTrianglePipeline() {
     
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     
-    // Vertex input state - define the vertex format
+    // Vertex input state - GPU generates vertices with this format:
+    // vec3 position, vec3 color, vec3 normal, vec2 texCoord
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(Vertex);
+    bindingDescription.stride = sizeof(glm::vec3) * 3 + sizeof(glm::vec2); // pos + color + normal + texCoord
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     
     std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
@@ -196,32 +242,46 @@ void VulkanRenderer::createTrianglePipeline() {
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
     attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = offsetof(Vertex, position);
+    attributeDescriptions[0].offset = 0;
     
     // Color attribute - location 1
     attributeDescriptions[1].binding = 0;
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(Vertex, color);
+    attributeDescriptions[1].offset = sizeof(glm::vec3);
     
     // Normal attribute - location 2
     attributeDescriptions[2].binding = 0;
     attributeDescriptions[2].location = 2;
     attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[2].offset = offsetof(Vertex, normal);
+    attributeDescriptions[2].offset = sizeof(glm::vec3) * 2;
     
     // Texture coordinate attribute - location 3
     attributeDescriptions[3].binding = 0;
     attributeDescriptions[3].location = 3;
     attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[3].offset = offsetof(Vertex, texCoord);
+    attributeDescriptions[3].offset = sizeof(glm::vec3) * 3;
+    
+    // CHEAT MODE: Check if we're using NDC shaders
+    bool isNDCMode = useNDCShaders; // Reference the flag from above
     
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+    
+    if (isNDCMode) {
+        // NDC MODE: No vertex input needed - shader generates everything
+        std::cout << "[CHEAT MODE] Creating pipeline with NO vertex input - all hardcoded!\n";
+        vertexInputInfo.vertexBindingDescriptionCount = 0;
+        vertexInputInfo.pVertexBindingDescriptions = nullptr;
+        vertexInputInfo.vertexAttributeDescriptionCount = 0;
+        vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+    } else {
+        // Normal mode: Use vertex buffers
+        vertexInputInfo.vertexBindingDescriptionCount = 1;
+        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+    }
     
     // Input assembly - triangles
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -256,7 +316,7 @@ void VulkanRenderer::createTrianglePipeline() {
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_NONE;  // Disable culling to test
+    rasterizer.cullMode = VK_CULL_MODE_NONE;  // Disable culling to see all triangles
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     
@@ -330,92 +390,16 @@ void VulkanRenderer::createTrianglePipeline() {
 // Include sphere patch generator
 #include "../sphere_patch_generator.cpp"
 
-void VulkanRenderer::updateChunks(octree::OctreePlanet* planet, core::Camera* camera) {
-    glm::vec3 cameraPos = camera->getPosition();
-    glm::vec3 planetCenter(0.0f);
-    float planetRadius = planet->getRadius();
-    
-    // Create planet sphere patches once
-    static bool spherePatchesCreated = false;
-    // DISABLED: Old sphere patches - we're using LOD quadtree now
-    if (false && !spherePatchesCreated) {
-        activeChunks.clear();
-        
-        std::cout << "Creating planet sphere patches...\n";
-        
-        // Generate sphere patches at planet scale
-        int resolution = 3;  // 384 patches (8x8 per cube face)
-        
-        std::cout << "Creating sphere with radius=" << planetRadius/1000000.0f
-                  << "M meters, resolution=" << resolution 
-                  << " (" << (6 * (1 << (2*resolution))) << " patches)\n";
-        
-        // Generate all sphere patches with planet material data
-        auto patches = sphere_patches::generateSphere(planetRadius, resolution, planet);
-        
-        // Add all patches as chunks
-        for (auto& patch : patches) {
-            patch.isDirty = true;
-            patch.hasValidMesh = false;
-            activeChunks.push_back(patch);
-        }
-        
-        std::cout << "Created " << activeChunks.size() << " sphere patches\n";
-        std::cout << "Each patch has " << (patches.empty() ? 0 : patches[0].vertices.size()) 
-                  << " vertices\n";
-        
-        // Position camera to view the full planet
-        float viewDistance = planetRadius * 2.5f; // View from 2.5x planet radius
-        camera->setPosition(glm::vec3(0, 0, viewDistance));
-        camera->lookAt(glm::vec3(0, 0, 0));
-        camera->setMode(core::CameraMode::Orbital); // Ensure orbital mode for drag rotation
-        std::cout << "Camera positioned at " << viewDistance/1000000.0f << "M meters from planet center\n";
-        
-        spherePatchesCreated = true;
-    }
-    
-    // Sphere patches are static, no need to update them
+void VulkanRenderer::updateChunks(octree::OctreePlanet* /*planet*/, core::Camera* /*camera*/) {
+    // GPU-ONLY: CPU chunk management removed
+    // All mesh generation now happens on GPU via compute shaders
     return;
 }
 
+
 void VulkanRenderer::generateChunkMeshes(octree::OctreePlanet* /*planet*/) {
-    if (!transvoxelRenderer) return;
-    
-    // Track mesh generation
-    int meshesGenerated = 0;
-    int validMeshes = 0;
-    int alreadyValid = 0;
-    
-    // Generate meshes for all dirty chunks
-    for (auto& chunk : activeChunks) {
-        if (chunk.hasValidMesh) {
-            alreadyValid++;
-        }
-        
-        if (chunk.isDirty || !chunk.hasValidMesh) {
-            // Sphere patches already have vertices, just create GPU buffers
-            if (!chunk.vertices.empty()) {
-                try {
-                    transvoxelRenderer->createVertexBuffer(chunk);
-                    transvoxelRenderer->createIndexBuffer(chunk);
-                    chunk.hasValidMesh = true;
-                    chunk.isDirty = false;
-                    meshesGenerated++;
-                    validMeshes++;
-                    // Removed verbose output
-                } catch (const std::exception& e) {
-                    std::cerr << "Failed to create GPU buffers: " << e.what() << std::endl;
-                }
-            }
-        }
-    }
-    
-    // Debug output occasionally
-    static int frameCount = 0;
-    if (frameCount++ % 600 == 0 && meshesGenerated > 0) {  // Every 600 frames (about 10 seconds)
-        std::cout << "Mesh generation: " << meshesGenerated << " new, " 
-                  << validMeshes << " valid total\n";
-    }
+    // CPU chunk generation removed - using GPU mesh generation only
+    return;
 }
 
 // ============================================================================

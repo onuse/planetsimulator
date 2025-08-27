@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
-project(OctreePlanet VERSION 1.0.0 LANGUAGES CXX)
+project(PlanetSimulator VERSION 1.0.0 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Debug options
+option(DEBUG_CPU_REFERENCE "Enable CPU reference mesh generation for debugging" ON)
 
 # Set output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -23,7 +26,8 @@ endif()
 find_package(Vulkan REQUIRED)
 find_package(Threads REQUIRED)
 
-# Collect source files
+# IMPORTANT: Using GLOB_RECURSE with configure_file to auto-reconfigure on file changes
+# This ensures new files are automatically detected
 file(GLOB_RECURSE SOURCES 
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
@@ -39,6 +43,10 @@ file(GLOB_RECURSE HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
 )
+
+# Force CMake to reconfigure when source files change
+# This addresses the GLOB_RECURSE limitation
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${SOURCES} ${HEADERS})
 
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
@@ -162,6 +170,12 @@ if(WIN32)
         NOMINMAX
         _CRT_SECURE_NO_WARNINGS
     )
+endif()
+
+# Debug features
+if(DEBUG_CPU_REFERENCE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE DEBUG_CPU_REFERENCE)
+    message(STATUS "CPU reference mesh generation enabled (DEBUG_CPU_REFERENCE)")
 endif()
 
 # Compiler-specific settings
@@ -372,8 +386,8 @@ add_test(NAME ShaderMaterialLookup COMMAND test_shader_material_lookup)
 add_custom_target(run_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
     DEPENDS test_octree_core test_material_table test_materials test_gpu_rendering
-            test_material_pipeline test_hierarchical_octree
-            test_frustum_culling test_lod_selection
+            test_material_pipeline
+            test_lod_selection
             test_mixed_voxel test_mixed_voxel_integration
             test_material_tracking test_gpu_validation
             test_shader_attributes test_gpu_attributes
@@ -418,44 +432,44 @@ set_target_properties(test_material_pipeline PROPERTIES
 # Additional Tests - Tests that exist and should be kept
 # ============================================================================
 
-# Test for hierarchical octree
-add_executable(test_hierarchical_octree
-    tests/test_hierarchical_octree.cpp
-    src/core/octree.cpp
-    src/core/material_table.cpp
-    src/rendering/hierarchical_gpu_octree.cpp
-)
-target_include_directories(test_hierarchical_octree PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${glm_SOURCE_DIR}
-    ${Vulkan_INCLUDE_DIRS}
-)
-target_link_libraries(test_hierarchical_octree PRIVATE
-    glm::glm
-    ${Vulkan_LIBRARIES}
-)
-set_target_properties(test_hierarchical_octree PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-)
-add_test(NAME HierarchicalOctree COMMAND test_hierarchical_octree)
+# Test for hierarchical octree - DISABLED (hierarchical_gpu_octree.cpp was removed)
+# add_executable(test_hierarchical_octree
+#     tests/test_hierarchical_octree.cpp
+#     src/core/octree.cpp
+#     src/core/material_table.cpp
+#     src/rendering/hierarchical_gpu_octree.cpp
+# )
+# target_include_directories(test_hierarchical_octree PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}/include
+#     ${glm_SOURCE_DIR}
+#     ${Vulkan_INCLUDE_DIRS}
+# )
+# target_link_libraries(test_hierarchical_octree PRIVATE
+#     glm::glm
+#     ${Vulkan_LIBRARIES}
+# )
+# set_target_properties(test_hierarchical_octree PROPERTIES
+#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+# )
+# add_test(NAME HierarchicalOctree COMMAND test_hierarchical_octree)
 
-# Frustum culling tests
-add_executable(test_frustum_culling
-    tests/test_frustum_culling.cpp
-)
-target_include_directories(test_frustum_culling PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${glm_SOURCE_DIR}
-    ${Vulkan_INCLUDE_DIRS}
-)
-target_link_libraries(test_frustum_culling PRIVATE 
-    glm::glm
-    ${Vulkan_LIBRARIES}
-)
-set_target_properties(test_frustum_culling PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-)
-add_test(NAME FrustumCulling COMMAND test_frustum_culling)
+# Frustum culling tests - DISABLED (depends on removed hierarchical_gpu_octree.hpp)
+# add_executable(test_frustum_culling
+#     tests/test_frustum_culling.cpp
+# )
+# target_include_directories(test_frustum_culling PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}/include
+#     ${glm_SOURCE_DIR}
+#     ${Vulkan_INCLUDE_DIRS}
+# )
+# target_link_libraries(test_frustum_culling PRIVATE 
+#     glm::glm
+#     ${Vulkan_LIBRARIES}
+# )
+# set_target_properties(test_frustum_culling PROPERTIES
+#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+# )
+# add_test(NAME FrustumCulling COMMAND test_frustum_culling)
 
 # LOD selection tests
 add_executable(test_lod_selection
@@ -748,22 +762,5 @@ set_target_properties(test_same_face_boundaries PROPERTIES
 )
 add_test(NAME SameFaceBoundaries COMMAND test_same_face_boundaries)
 
-# Test: Vertex generation determinism
-add_executable(test_vertex_generation_determinism
-    tests/test_vertex_generation_determinism.cpp
-    src/rendering/cpu_vertex_generator.cpp
-    src/core/spherical_quadtree.cpp
-    src/core/octree.cpp
-    src/core/material_table.cpp
-    src/core/density_field.cpp
-)
-target_include_directories(test_vertex_generation_determinism PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${glm_SOURCE_DIR}
-)
-target_link_libraries(test_vertex_generation_determinism PRIVATE glm::glm)
-set_target_properties(test_vertex_generation_determinism PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-)
-add_test(NAME VertexGenerationDeterminism COMMAND test_vertex_generation_determinism)
+# Test: Vertex generation determinism removed - CPU vertex generator deleted
 

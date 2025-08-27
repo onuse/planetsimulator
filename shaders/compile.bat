@@ -62,6 +62,23 @@ if exist %SRC_TEMPLATES%\quadtree_fragment_template.c (
     )
 )
 
+REM Compile test shaders if they exist (for debugging)
+if exist %SRC_VERTEX%\test_simple.vert (
+    echo Compiling test_simple.vert...
+    "%GLSLC%" %SRC_VERTEX%\test_simple.vert -o test_simple.vert.spv
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to compile test_simple.vert
+    )
+)
+
+if exist %SRC_FRAGMENT%\test_simple.frag (
+    echo Compiling test_simple.frag...
+    "%GLSLC%" %SRC_FRAGMENT%\test_simple.frag -o test_simple.frag.spv
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to compile test_simple.frag
+    )
+)
+
 REM Compile triangle shaders for Transvoxel
 echo Compiling triangle.vert...
 "%GLSLC%" %SRC_VERTEX%\triangle.vert -o triangle.vert.spv
@@ -103,13 +120,129 @@ if exist %SRC_FRAGMENT%\quadtree_patch.frag (
     )
 )
 
+REM Transpile point cloud shaders
+if exist %SRC_TEMPLATES%\point_cloud_vertex_template.c (
+    echo Transpiling point_cloud_vertex_template.c to point_cloud.vert...
+    python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\point_cloud_vertex_template.c %SRC_VERTEX%\point_cloud.vert
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to transpile point cloud vertex template
+    )
+)
+
+if exist %SRC_TEMPLATES%\point_cloud_fragment_template.c (
+    echo Transpiling point_cloud_fragment_template.c to point_cloud.frag...
+    python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\point_cloud_fragment_template.c %SRC_FRAGMENT%\point_cloud.frag
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to transpile point cloud fragment template
+    )
+)
+
+REM Transpile compute shader templates
+if exist %SRC_TEMPLATES%\octree_verify_compute_template.c (
+    echo Transpiling octree_verify_compute_template.c to octree_verify.comp...
+    python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\octree_verify_compute_template.c src\compute\octree_verify.comp
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to transpile octree_verify compute template
+    )
+)
+
+if exist %SRC_TEMPLATES%\surface_points_compute_template.c (
+    echo Transpiling surface_points_compute_template.c to surface_points.comp...
+    python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\surface_points_compute_template.c src\compute\surface_points.comp
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to transpile surface_points compute template
+    )
+)
+
+if exist %SRC_TEMPLATES%\mesh_generator_compute_template.c (
+    echo Transpiling mesh_generator_compute_template.c to mesh_generator.comp...
+    python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\mesh_generator_compute_template.c src\compute\mesh_generator.comp
+    if %errorlevel% neq 0 (
+        echo WARNING: Failed to transpile mesh_generator compute template
+    )
+)
+
 REM Compile compute shaders
 set SRC_COMPUTE=src\compute
 if exist %SRC_COMPUTE%\mesh_generator.comp (
     echo Compiling mesh_generator.comp...
-    "%GLSLC%" %SRC_COMPUTE%\mesh_generator.comp -o compiled\mesh_generator.comp.spv
+    "%GLSLC%" %SRC_COMPUTE%\mesh_generator.comp -o mesh_generator.comp.spv
     if %errorlevel% neq 0 (
-        echo WARNING: Failed to compile mesh_generator.comp
+        echo ERROR: Failed to compile mesh_generator.comp
+        exit /b 1
+    )
+)
+
+if exist %SRC_COMPUTE%\mesh_generator_simple.comp (
+    echo Compiling mesh_generator_simple.comp...
+    "%GLSLC%" %SRC_COMPUTE%\mesh_generator_simple.comp -o mesh_generator_simple.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile mesh_generator_simple.comp
+        exit /b 1
+    )
+)
+
+if exist %SRC_COMPUTE%\mesh_generator_simple_sphere.comp (
+    echo Compiling mesh_generator_simple_sphere.comp...
+    "%GLSLC%" %SRC_COMPUTE%\mesh_generator_simple_sphere.comp -o mesh_generator_simple_sphere.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile mesh_generator_simple_sphere.comp
+        exit /b 1
+    )
+)
+
+if exist %SRC_COMPUTE%\octree_verify.comp (
+    echo Compiling octree_verify.comp...
+    "%GLSLC%" %SRC_COMPUTE%\octree_verify.comp -o octree_verify.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile octree_verify.comp
+        exit /b 1
+    )
+)
+
+if exist %SRC_COMPUTE%\surface_points.comp (
+    echo Compiling surface_points.comp...
+    "%GLSLC%" %SRC_COMPUTE%\surface_points.comp -o surface_points.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile surface_points.comp
+        exit /b 1
+    )
+)
+
+if exist %SRC_COMPUTE%\sphere_generator.comp (
+    echo Compiling sphere_generator.comp...
+    "%GLSLC%" %SRC_COMPUTE%\sphere_generator.comp -o sphere_generator.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile sphere_generator.comp
+        exit /b 1
+    )
+)
+
+if exist %SRC_COMPUTE%\terrain_sphere.comp (
+    echo Compiling terrain_sphere.comp...
+    "%GLSLC%" %SRC_COMPUTE%\terrain_sphere.comp -o terrain_sphere.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile terrain_sphere.comp
+        exit /b 1
+    )
+)
+
+REM Compile point cloud shaders
+if exist %SRC_VERTEX%\point_cloud.vert (
+    echo Compiling point_cloud.vert...
+    "%GLSLC%" %SRC_VERTEX%\point_cloud.vert -o point_cloud.vert.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile point_cloud.vert
+        exit /b 1
+    )
+)
+
+if exist %SRC_FRAGMENT%\point_cloud.frag (
+    echo Compiling point_cloud.frag...
+    "%GLSLC%" %SRC_FRAGMENT%\point_cloud.frag -o point_cloud.frag.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile point_cloud.frag
+        exit /b 1
     )
 )
 

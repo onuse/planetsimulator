@@ -1,0 +1,38 @@
+=== TRANSVOXEL MESH DEBUG DUMP ===
+Total chunks: 1
+
+Chunk 0:
+  Position: (0, 0, 0)
+  Voxel Size: 100
+  LOD Level: 0
+  Vertices: 4517
+  Triangles: 3209
+  Vertex bounds: min(-1100,-1100,-1100) max(1100,1050,1100)
+  Bounding box size: (2200,2150,2200)
+  Average distance from origin: 1058.02
+  First 3 triangles (indices):
+    Triangle 0: [0,0,1]
+      v0: (-200,-400,-1100)
+      v1: (-200,-400,-1100)
+      v2: (-200,-400,-1000)
+      Edge lengths: 0, 100, 100
+      Triangle area: 0
+    Triangle 1: [2,3,4]
+      v0: (0,-400,-1100)
+      v1: (-100,-400,-1100)
+      v2: (-100,-400,-1000)
+      Edge lengths: 100, 100, 141.421
+      Triangle area: 5000
+    Triangle 2: [2,3,2]
+      v0: (0,-400,-1100)
+      v1: (-100,-400,-1100)
+      v2: (0,-400,-1100)
+      Edge lengths: 100, 100, 0
+      Triangle area: 0
+  WARNING: 884 degenerate triangles found!
+
+
+=== SUMMARY ===
+Valid chunks: 1 / 1
+Total vertices: 4517
+Total triangles: 3209

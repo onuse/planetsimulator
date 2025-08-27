@@ -9,7 +9,6 @@
 #include "core/spherical_quadtree.hpp"
 #include "core/octree.hpp"
 #include "transvoxel_renderer.hpp"
-#include "cpu_vertex_generator.hpp"
 #include "gpu_octree.hpp"
 
 namespace rendering {
@@ -64,6 +63,12 @@ public:
     core::SphericalQuadtree* getQuadtree() { return quadtree.get(); }
     octree::OctreePlanet* getOctree() { return octreePlanet.get(); }
     
+    // Set the GPU octree (owned by VulkanRenderer)
+    void setGPUOctree(GPUOctree* octree) { gpuOctree = octree; }
+    
+    // Update GPU mesh generation descriptors (call after setting GPU octree)
+    void updateGPUMeshGenerationDescriptors();
+    
     // Configuration
     Config& getConfig() { return config; }
     const Config& getConfig() const { return config; }
@@ -93,9 +98,8 @@ private:
     std::shared_ptr<core::DensityField> densityField;
     std::unique_ptr<core::SphericalQuadtree> quadtree;
     std::unique_ptr<octree::OctreePlanet> octreePlanet;
-    std::unique_ptr<GPUOctree> gpuOctree;  // GPU-resident voxel data
+    GPUOctree* gpuOctree = nullptr;  // Non-owning pointer to VulkanRenderer's GPUOctree
     std::unique_ptr<TransvoxelRenderer> transvoxelRenderer;
-    std::unique_ptr<CPUVertexGenerator> vertexGenerator;
     
     // Current state
     RenderingMode currentMode;
@@ -145,19 +149,9 @@ private:
     // Buffer update tracking
     bool bufferUpdateRequired = false;
     
-    // PERFORMANCE: Cache generated patch meshes
-    struct PatchCacheEntry {
-        core::QuadtreePatch patch;  // The patch configuration
-        CPUVertexGenerator::PatchMesh mesh;  // The generated mesh
-        uint64_t frameUsed;  // Last frame this was used
-    };
-    std::unordered_map<uint64_t, PatchCacheEntry> patchMeshCache;
-    uint64_t currentFrameNumber = 0;
     
     // Helper functions
     RenderingMode selectRenderingMode(float altitude);
-    void updateQuadtreeBuffers_OLD(const std::vector<core::QuadtreePatch>& patches);
-    void updateQuadtreeBuffersCPU(const std::vector<core::QuadtreePatch>& patches, const glm::vec3& viewPosition);
     void updateOctreeChunks(const glm::vec3& viewPos);
     void prepareTransitionZone(const glm::vec3& viewPos);
     

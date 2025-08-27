@@ -13,8 +13,8 @@
 #include "core/octree.hpp"
 #include "core/camera.hpp"
 #include "rendering/imgui_manager.hpp"
-#include "rendering/transvoxel_renderer.hpp"
-#include "rendering/lod_manager.hpp"
+#include "rendering/gpu_octree.hpp"
+// REMOVED: CPU-based renderers - using GPU mesh generation only
 
 namespace rendering {
 
@@ -50,10 +50,10 @@ struct SwapChainSupportDetails {
 };
 
 struct UniformBufferObject {
-    alignas(32) glm::dmat4 view;     // Double precision view matrix (32-byte aligned)
-    alignas(32) glm::dmat4 proj;     // Double precision projection matrix
-    alignas(32) glm::dmat4 viewProj;  // Double precision combined matrix
-    alignas(32) glm::dvec3 viewPos;  // Double precision view position
+    alignas(16) glm::mat4 view;      // Single precision view matrix
+    alignas(16) glm::mat4 proj;      // Single precision projection matrix
+    alignas(16) glm::mat4 viewProj;  // Single precision combined matrix
+    alignas(16) glm::vec3 viewPos;   // Single precision view position (camera-relative origin)
     float time;
     alignas(16) glm::vec3 lightDir;
     float padding;
@@ -104,9 +104,9 @@ public:
     // Stats
     float getFrameTime() const { return frameTime; }
     uint32_t getNodeCount() const { return visibleNodeCount; }
-    uint32_t getChunkCount() const { return static_cast<uint32_t>(activeChunks.size()); }
+    uint32_t getChunkCount() const { return 0; } // GPU mesh only
     uint32_t getTriangleCount() const { 
-        return transvoxelRenderer ? transvoxelRenderer->getTriangleCount() : 0; 
+        return meshIndexCount / 3; // From GPU mesh
     }
     
 private:
@@ -181,6 +181,7 @@ private:
     // Command buffers
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
+    VkCommandBuffer currentCommandBuffer = VK_NULL_HANDLE;  // Current command buffer being recorded
     
     // Synchronization
     std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -209,14 +210,41 @@ private:
     // Current camera (for debug display)
     core::Camera* currentCamera = nullptr;
     
-    // Transvoxel renderer - THE ONLY rendering path
-    std::unique_ptr<TransvoxelRenderer> transvoxelRenderer;
+    // REMOVED: CPU-based renderers - using GPU mesh generation only
     
-    // LOD manager for comprehensive LOD system
-    std::unique_ptr<LODManager> lodManager;
+    // GPU octree for GPU-only pipeline
+    std::unique_ptr<rendering::GPUOctree> gpuOctree;
     
-    // Chunk management
-    std::vector<TransvoxelChunk> activeChunks;
+    // REMOVED: GPU point cloud rendering - using only triangle mesh rendering
+    
+    // GPU mesh generation
+    VkBuffer meshVertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory meshVertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer meshIndexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory meshIndexBufferMemory = VK_NULL_HANDLE;
+    uint32_t meshVertexCount = 0;
+    uint32_t meshIndexCount = 0;
+    
+    // GPU mesh generation
+    bool generateGPUMesh(octree::OctreePlanet* planet, core::Camera* camera);   // Generate mesh vertices on GPU
+    void renderGPUMesh();                                                       // Render the generated mesh
+    
+    // Sphere mesh generation with proper cube-to-sphere mapping
+    bool generateSphereMesh(octree::OctreePlanet* planet);
+    bool generateSphereMeshHighRes(octree::OctreePlanet* planet);  // High resolution version
+    bool generateSeamlessSphere(octree::OctreePlanet* planet);  // Seamless version with vertex deduplication
+    bool generateUnifiedSphere(octree::OctreePlanet* planet);  // Unified recursive subdivision approach
+    
+#ifdef DEBUG_CPU_REFERENCE
+    // TEMPORARY: CPU reference implementation for debugging GPU mesh generation
+    // This code should be REMOVED once GPU mesh generation is verified working
+    bool generateCPUReferenceMesh(octree::OctreePlanet* planet);
+    void collectSurfaceLeaves(octree::OctreeNode* node, std::vector<octree::OctreeNode*>& leaves);
+    bool uploadCPUReferenceMesh(const void* vertexData, size_t vertexDataSize,
+                                const void* indexData, size_t indexDataSize,
+                                uint32_t vertexCount, uint32_t indexCount);
+    
+#endif // DEBUG_CPU_REFERENCE
     
     // Hierarchical pipeline (single rendering path)
     VkPipeline hierarchicalPipeline = VK_NULL_HANDLE;
@@ -224,6 +252,7 @@ private:
     
     // Triangle mesh pipeline for Transvoxel rendering
     VkPipeline trianglePipeline = VK_NULL_HANDLE;
+    // REMOVED: Test NDC pipeline - using only triangle mesh rendering
     VkDescriptorSetLayout hierarchicalDescriptorSetLayout = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> hierarchicalDescriptorSets;
     
@@ -303,6 +332,7 @@ private:
     void createTransvoxelPipeline();
     void createTransvoxelDescriptorSets();
     void createTrianglePipeline();
+    void createTestNDCPipeline(); // CHEAT: Minimal test pipeline
     
     // Quadtree rendering
     void createQuadtreePipeline();

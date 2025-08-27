@@ -1,7 +1,10 @@
-Write-Host "Running Octree Planet Simulator..." -ForegroundColor Green
+# This script redirects to the Windows-specific executable
+# For WSL/Linux builds, use run_wsl.sh instead
+
+Write-Host "Running Planet Simulator (Windows build)..." -ForegroundColor Green
 Push-Location $PSScriptRoot
 try {
-    & ".\build\bin\Release\OctreePlanet.exe" $args
+    & ".\build_windows\bin\Release\PlanetSimulator.exe" $args
 } finally {
     Pop-Location
 }

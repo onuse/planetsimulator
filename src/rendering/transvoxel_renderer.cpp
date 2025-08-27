@@ -85,27 +85,61 @@ void TransvoxelRenderer::generateMesh(TransvoxelChunk& chunk, const octree::Octr
     chunk.indices.clear();
     chunk.vertexColors.clear();
     
-    // Use the algorithm to generate mesh
-    const int chunkSize = 32;
-    algorithms::MeshGenParams params(
-        chunk.position - glm::vec3(chunkSize/2.0f * chunk.voxelSize),
-        chunk.voxelSize,
-        glm::ivec3(chunkSize, chunkSize, chunkSize),
-        chunk.lodLevel
-    );
-    
-    algorithms::MeshData meshData = algorithms::generateTransvoxelMesh(params, planet);
-    
-    // Convert algorithm mesh data to chunk format
-    for (const auto& vertex : meshData.vertices) {
-        Vertex v;
-        v.position = vertex.position;
-        v.normal = vertex.normal;
-        v.color = vertex.color;
-        v.texCoord = glm::vec2(0.0f); // Default texture coords
-        chunk.vertices.push_back(v);
+    // Check if this is a face chunk (for cube-sphere mapping)
+    if (chunk.faceId >= 0 && chunk.faceId < 6) {
+        // CUBE-SPHERE MAPPING: Generate grid on cube face, then map to sphere
+        const int gridSize = 128;  // 128x128 grid on face, with depth for thickness
+        const int depthSize = 16;  // Radial depth samples for the shell
+        
+        // Face-aligned grid parameters
+        glm::vec3 halfSize = glm::vec3(gridSize/2.0f * chunk.voxelSize, 
+                                       gridSize/2.0f * chunk.voxelSize,
+                                       depthSize/2.0f * chunk.voxelSize);
+        
+        algorithms::MeshGenParams params(
+            chunk.position - halfSize,  
+            chunk.voxelSize,
+            glm::ivec3(gridSize, gridSize, depthSize),  // Flat grid with some depth
+            chunk.lodLevel,
+            chunk.faceId  // Pass face ID to mesh generator
+        );
+        
+        algorithms::MeshData meshData = algorithms::generateTransvoxelMesh(params, planet);
+        
+        // Convert to chunk format
+        for (const auto& vertex : meshData.vertices) {
+            Vertex v;
+            v.position = vertex.position;
+            v.normal = vertex.normal;
+            v.color = vertex.color;
+            v.texCoord = glm::vec2(0.0f);
+            chunk.vertices.push_back(v);
+        }
+        chunk.indices = meshData.indices;
+    } else {
+        // Original code for non-face chunks
+        const int gridSize = 128;
+        glm::vec3 halfSize = glm::vec3(gridSize/2.0f * chunk.voxelSize);
+        
+        algorithms::MeshGenParams params(
+            chunk.position - halfSize,
+            chunk.voxelSize,
+            glm::ivec3(gridSize, gridSize, gridSize),
+            chunk.lodLevel
+        );
+        
+        algorithms::MeshData meshData = algorithms::generateTransvoxelMesh(params, planet);
+        
+        for (const auto& vertex : meshData.vertices) {
+            Vertex v;
+            v.position = vertex.position;
+            v.normal = vertex.normal;
+            v.color = vertex.color;
+            v.texCoord = glm::vec2(0.0f);
+            chunk.vertices.push_back(v);
+        }
+        chunk.indices = meshData.indices;
     }
-    chunk.indices = meshData.indices;
     
     // Create Vulkan buffers for the mesh
     if (!chunk.vertices.empty()) {
@@ -302,7 +336,7 @@ void TransvoxelRenderer::render(
     // }
     
     if (debugThis) {
-        // TransvoxelRenderer::render called with chunks
+        std::cout << "[DEBUG TRANSVOXEL] render() called with " << chunks.size() << " chunks\n";
     }
     
     int validMeshCount = 0;
@@ -325,16 +359,18 @@ void TransvoxelRenderer::render(
         vkCmdBindIndexBuffer(commandBuffer, chunk.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
         
         // Draw the mesh
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(chunk.indices.size()), 1, 0, 0, 0);
+        uint32_t indexCount = static_cast<uint32_t>(chunk.indices.size());
+        vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
         
-        if (debugThis) {
-            // Debug: Rendered chunk
-        }
+        //if (debugThis || validMeshCount == 1) {
+        //    std::cout << "[DEBUG DRAW] vkCmdDrawIndexed called with " << indexCount 
+        //              << " indices for chunk " << validMeshCount << "\n";
+        //}
     }
     
-    if (debugThis) {
-        // std::cout << "[TRANSVOXEL RENDER] Rendered " << validMeshCount 
-        //           << " chunks with " << totalTriangleCount << " triangles" << std::endl;
+    if (debugThis && validMeshCount > 0) {
+        std::cout << "[DEBUG TRANSVOXEL] Actually rendered " << validMeshCount 
+                  << " chunks with " << totalTriangleCount << " triangles\n";
     }
 }
 

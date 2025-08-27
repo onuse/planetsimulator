@@ -113,7 +113,7 @@ def create_glsl_from_c(c_file, glsl_file):
     with open(c_file, 'r') as f:
         c_code = f.read()
     
-    glsl_code = transpile_c_to_glsl(c_code)
+    glsl_code = transpile_c_to_glsl(c_code, glsl_file)
     
     with open(glsl_file, 'w') as f:
         f.write(glsl_code)

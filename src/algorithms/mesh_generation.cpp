@@ -165,13 +165,30 @@ static const uint8_t regularCellData[16][12] = {
 
 // Helper functions for Transvoxel
 static float sampleDensity(const octree::OctreePlanet& planet, const glm::vec3& position) {
+    // First check the octree for voxel data
     const octree::Voxel* voxel = planet.getVoxel(position);
-    if (!voxel) return 1.0f; // Outside = empty
     
-    if (voxel->getDominantMaterialID() == core::MaterialID::Air) {
-        return 1.0f;  // Air = positive (outside)
+    if (voxel) {
+        // Use actual voxel data from octree
+        auto materialID = voxel->getDominantMaterialID();
+        
+        // Air/Vacuum = positive (outside), solid = negative (inside)
+        if (materialID == core::MaterialID::Air || materialID == core::MaterialID::Vacuum) {
+            return 1.0f;
+        } else {
+            return -1.0f;
+        }
+    }
+    
+    // Fallback: use distance-based density for areas without voxel data
+    float distFromCenter = glm::length(position);
+    float planetRadius = planet.getRadius();
+    
+    // Simple threshold
+    if (distFromCenter < planetRadius) {
+        return -1.0f; // Inside = solid
     } else {
-        return -1.0f; // Solid = negative (inside)
+        return 1.0f;  // Outside = air
     }
 }
 
@@ -185,26 +202,29 @@ static glm::vec3 interpolateVertex(const glm::vec3& p1, const glm::vec3& p2, flo
 }
 
 static glm::vec3 calculateNormal(const octree::OctreePlanet& planet, const glm::vec3& position, float voxelSize) {
-    float h = voxelSize * 0.5f;
+    // For a spherical planet, the normal should point outward from the center
+    // This gives us smooth shading that follows the sphere's curvature
+    glm::vec3 normal = glm::normalize(position); // Position relative to origin (planet center)
     
-    float dx = sampleDensity(planet, position + glm::vec3(h, 0, 0)) - 
-               sampleDensity(planet, position - glm::vec3(h, 0, 0));
-    float dy = sampleDensity(planet, position + glm::vec3(0, h, 0)) - 
-               sampleDensity(planet, position - glm::vec3(0, h, 0));
-    float dz = sampleDensity(planet, position + glm::vec3(0, 0, h)) - 
-               sampleDensity(planet, position - glm::vec3(0, 0, h));
-    
-    glm::vec3 normal(-dx, -dy, -dz);
-    
-    if (glm::length(normal) > 0.001f) {
-        return glm::normalize(normal);
-    }
-    return glm::vec3(0, 1, 0);
+    // Optional: blend with gradient-based normal for surface details
+    // But for now, just use the spherical normal for smooth shading
+    return normal;
 }
 
 // Transvoxel mesh generation
 MeshData generateTransvoxelMesh(const MeshGenParams& params, const octree::OctreePlanet& planet) {
     MeshData mesh;
+    
+    static int debugCallCount = 0;
+    bool doDebug = (debugCallCount++ < 3);
+    
+    if (doDebug) {
+        std::cout << "[DEBUG Transvoxel] Call " << debugCallCount << ": Generating mesh at position (" 
+                  << params.worldPos.x << ", " << params.worldPos.y << ", " 
+                  << params.worldPos.z << ") with voxel size " << params.voxelSize 
+                  << " and grid " << params.dimensions.x << "x" 
+                  << params.dimensions.y << "x" << params.dimensions.z << "\n";
+    }
     
     // Validate that octree has been initialized
     if (!planet.getRoot()) {
@@ -229,15 +249,120 @@ MeshData generateTransvoxelMesh(const MeshGenParams& params, const octree::Octre
     
     std::vector<float> densityField(sizeX * sizeY * sizeZ);
     
+    int solidCount = 0;
+    int airCount = 0;
+    
     // Sample density at corners
-    for (int z = 0; z < sizeZ; z++) {
-        for (int y = 0; y < sizeY; y++) {
-            for (int x = 0; x < sizeX; x++) {
-                glm::vec3 worldPos = params.worldPos + glm::vec3(x, y, z) * params.voxelSize;
-                int idx = x + y * sizeX + z * sizeX * sizeY;
-                densityField[idx] = sampleDensity(planet, worldPos);
+    // Check if we should use cube-to-sphere mapping
+    bool useCubeSphere = (params.faceId >= 0 && params.faceId < 6);
+    
+    if (useCubeSphere) {
+        // CUBE-SPHERE MAPPING: Transform grid points through cube-to-sphere
+        float planetRadius = planet.getRadius();
+        
+        // Get face basis vectors
+        glm::vec3 faceNormal, faceUp, faceRight;
+        switch (params.faceId) {
+            case 0: // +X
+                faceNormal = glm::vec3(1, 0, 0);
+                faceUp = glm::vec3(0, 1, 0);
+                faceRight = glm::vec3(0, 0, 1);
+                break;
+            case 1: // -X
+                faceNormal = glm::vec3(-1, 0, 0);
+                faceUp = glm::vec3(0, 1, 0);
+                faceRight = glm::vec3(0, 0, -1);
+                break;
+            case 2: // +Y
+                faceNormal = glm::vec3(0, 1, 0);
+                faceUp = glm::vec3(0, 0, 1);
+                faceRight = glm::vec3(1, 0, 0);
+                break;
+            case 3: // -Y
+                faceNormal = glm::vec3(0, -1, 0);
+                faceUp = glm::vec3(0, 0, -1);
+                faceRight = glm::vec3(1, 0, 0);
+                break;
+            case 4: // +Z
+                faceNormal = glm::vec3(0, 0, 1);
+                faceUp = glm::vec3(0, 1, 0);
+                faceRight = glm::vec3(-1, 0, 0);
+                break;
+            case 5: // -Z
+                faceNormal = glm::vec3(0, 0, -1);
+                faceUp = glm::vec3(0, 1, 0);
+                faceRight = glm::vec3(1, 0, 0);
+                break;
+        }
+        
+        for (int z = 0; z < sizeZ; z++) {
+            for (int y = 0; y < sizeY; y++) {
+                for (int x = 0; x < sizeX; x++) {
+                    // Map grid coordinates to face coordinates (-1 to 1)
+                    float u = (x / float(params.dimensions.x)) * 2.0f - 1.0f;
+                    float v = (y / float(params.dimensions.y)) * 2.0f - 1.0f;
+                    
+                    // Depth coordinate (for shell thickness)
+                    float depth = (z / float(params.dimensions.z)) * 2.0f - 1.0f;
+                    float radiusScale = 1.0f + depth * 0.1f; // ±10% radius variation
+                    
+                    // Create cube position on face
+                    glm::vec3 cubePos = faceNormal + u * faceRight + v * faceUp;
+                    
+                    // Transform cube position to sphere
+                    glm::vec3 sphereDir = glm::normalize(cubePos);
+                    
+                    // Apply cube-to-sphere mapping for smooth deformation
+                    float x2 = cubePos.x * cubePos.x;
+                    float y2 = cubePos.y * cubePos.y;
+                    float z2 = cubePos.z * cubePos.z;
+                    
+                    glm::vec3 spherePos;
+                    spherePos.x = cubePos.x * sqrt(1.0f - y2 * 0.5f - z2 * 0.5f + y2 * z2 / 3.0f);
+                    spherePos.y = cubePos.y * sqrt(1.0f - x2 * 0.5f - z2 * 0.5f + x2 * z2 / 3.0f);
+                    spherePos.z = cubePos.z * sqrt(1.0f - x2 * 0.5f - y2 * 0.5f + x2 * y2 / 3.0f);
+                    
+                    // Scale to planet radius with depth variation
+                    glm::vec3 worldPos = spherePos * planetRadius * radiusScale;
+                    
+                    int idx = x + y * sizeX + z * sizeX * sizeY;
+                    densityField[idx] = sampleDensity(planet, worldPos);
+                    
+                    if (densityField[idx] < 0) solidCount++;
+                    else airCount++;
+                }
             }
         }
+    } else {
+        // Original Cartesian grid approach
+        for (int z = 0; z < sizeZ; z++) {
+            for (int y = 0; y < sizeY; y++) {
+                for (int x = 0; x < sizeX; x++) {
+                    glm::vec3 worldPos = params.worldPos + 
+                        glm::vec3(x * params.voxelSize,
+                                 y * params.voxelSize,
+                                 z * params.voxelSize);
+                    
+                    int idx = x + y * sizeX + z * sizeX * sizeY;
+                    densityField[idx] = sampleDensity(planet, worldPos);
+                    
+                    if (densityField[idx] < 0) solidCount++;
+                    else airCount++;
+                    
+                    // Debug first few samples
+                    if (doDebug && x < 2 && y < 2 && z < 2) {
+                        std::cout << "[DEBUG] Sample at (" << worldPos.x << ", " << worldPos.y 
+                                  << ", " << worldPos.z << ") = " << densityField[idx] 
+                                  << " (dist from center: " << glm::length(worldPos) << ")\n";
+                    }
+                }
+            }
+        }
+    }
+    
+    if (doDebug) {
+        std::cout << "[DEBUG] Density field: " << solidCount << " solid, " 
+                  << airCount << " air samples\n";
     }
     
     // Process each cell
@@ -272,16 +397,60 @@ MeshData generateTransvoxelMesh(const MeshGenParams& params, const octree::Octre
                 
                 const uint8_t* cellData = regularCellData[cellClass];
                 
-                // Corner positions
+                // Corner positions - either cube-sphere or world space
                 glm::vec3 cornerPositions[8];
-                cornerPositions[0] = params.worldPos + glm::vec3(x + 0, y + 0, z + 0) * params.voxelSize;
-                cornerPositions[1] = params.worldPos + glm::vec3(x + 1, y + 0, z + 0) * params.voxelSize;
-                cornerPositions[2] = params.worldPos + glm::vec3(x + 1, y + 0, z + 1) * params.voxelSize;
-                cornerPositions[3] = params.worldPos + glm::vec3(x + 0, y + 0, z + 1) * params.voxelSize;
-                cornerPositions[4] = params.worldPos + glm::vec3(x + 0, y + 1, z + 0) * params.voxelSize;
-                cornerPositions[5] = params.worldPos + glm::vec3(x + 1, y + 1, z + 0) * params.voxelSize;
-                cornerPositions[6] = params.worldPos + glm::vec3(x + 1, y + 1, z + 1) * params.voxelSize;
-                cornerPositions[7] = params.worldPos + glm::vec3(x + 0, y + 1, z + 1) * params.voxelSize;
+                
+                if (useCubeSphere) {
+                    // Use same transformation as density sampling
+                    float planetRadius = planet.getRadius();
+                    glm::vec3 faceNormal, faceUp, faceRight;
+                    
+                    // Get face basis (same as above)
+                    switch (params.faceId) {
+                        case 0: faceNormal = glm::vec3(1,0,0); faceUp = glm::vec3(0,1,0); faceRight = glm::vec3(0,0,1); break;
+                        case 1: faceNormal = glm::vec3(-1,0,0); faceUp = glm::vec3(0,1,0); faceRight = glm::vec3(0,0,-1); break;
+                        case 2: faceNormal = glm::vec3(0,1,0); faceUp = glm::vec3(0,0,1); faceRight = glm::vec3(1,0,0); break;
+                        case 3: faceNormal = glm::vec3(0,-1,0); faceUp = glm::vec3(0,0,-1); faceRight = glm::vec3(1,0,0); break;
+                        case 4: faceNormal = glm::vec3(0,0,1); faceUp = glm::vec3(0,1,0); faceRight = glm::vec3(-1,0,0); break;
+                        case 5: faceNormal = glm::vec3(0,0,-1); faceUp = glm::vec3(0,1,0); faceRight = glm::vec3(1,0,0); break;
+                    }
+                    
+                    // Generate corner positions using cube-sphere mapping
+                    for (int i = 0; i < 8; i++) {
+                        int cx = x + (i & 1);
+                        int cy = y + ((i >> 1) & 1);
+                        int cz = z + ((i >> 2) & 1);
+                        
+                        float u = (cx / float(params.dimensions.x)) * 2.0f - 1.0f;
+                        float v = (cy / float(params.dimensions.y)) * 2.0f - 1.0f;
+                        float depth = (cz / float(params.dimensions.z)) * 2.0f - 1.0f;
+                        float radiusScale = 1.0f + depth * 0.1f;
+                        
+                        glm::vec3 cubePos = faceNormal + u * faceRight + v * faceUp;
+                        
+                        // Cube-to-sphere transformation
+                        float x2 = cubePos.x * cubePos.x;
+                        float y2 = cubePos.y * cubePos.y;
+                        float z2 = cubePos.z * cubePos.z;
+                        
+                        glm::vec3 spherePos;
+                        spherePos.x = cubePos.x * sqrt(1.0f - y2*0.5f - z2*0.5f + y2*z2/3.0f);
+                        spherePos.y = cubePos.y * sqrt(1.0f - x2*0.5f - z2*0.5f + x2*z2/3.0f);
+                        spherePos.z = cubePos.z * sqrt(1.0f - x2*0.5f - y2*0.5f + x2*y2/3.0f);
+                        
+                        cornerPositions[i] = spherePos * planetRadius * radiusScale;
+                    }
+                } else {
+                    // Original world-space positions
+                    cornerPositions[0] = params.worldPos + glm::vec3(x + 0, y + 0, z + 0) * params.voxelSize;
+                    cornerPositions[1] = params.worldPos + glm::vec3(x + 1, y + 0, z + 0) * params.voxelSize;
+                    cornerPositions[2] = params.worldPos + glm::vec3(x + 1, y + 0, z + 1) * params.voxelSize;
+                    cornerPositions[3] = params.worldPos + glm::vec3(x + 0, y + 0, z + 1) * params.voxelSize;
+                    cornerPositions[4] = params.worldPos + glm::vec3(x + 0, y + 1, z + 0) * params.voxelSize;
+                    cornerPositions[5] = params.worldPos + glm::vec3(x + 1, y + 1, z + 0) * params.voxelSize;
+                    cornerPositions[6] = params.worldPos + glm::vec3(x + 1, y + 1, z + 1) * params.voxelSize;
+                    cornerPositions[7] = params.worldPos + glm::vec3(x + 0, y + 1, z + 1) * params.voxelSize;
+                }
                 
                 // Edge table
                 static const int edges[12][2] = {
@@ -305,8 +474,24 @@ MeshData generateTransvoxelMesh(const MeshGenParams& params, const octree::Octre
                 for (int i = 0; cellData[i] != 0xFF && i < 12; i += 3) {
                     uint32_t vertIndices[3];
                     
+                    // Debug first cell
+                    static bool debuggedFirst = false;
+                    bool debugThis = (!debuggedFirst && x == 0 && y == 0 && z == 0);
+                    if (debugThis) {
+                        debuggedFirst = true;
+                        std::cout << "[DEBUG] First cell triangle, edge indices: " 
+                                  << (int)cellData[i] << ", " << (int)cellData[i+1] 
+                                  << ", " << (int)cellData[i+2] << "\n";
+                    }
+                    
                     for (int j = 0; j < 3; j++) {
-                        glm::vec3 pos = edgeVertices[cellData[i + j]];
+                        uint8_t edgeIndex = cellData[i + j];
+                        if (edgeIndex >= 12) {
+                            std::cerr << "ERROR: Invalid edge index " << (int)edgeIndex << " in cell data!\n";
+                            continue;
+                        }
+                        
+                        glm::vec3 pos = edgeVertices[edgeIndex];
                         
                         // Check if vertex already exists
                         auto it = vertexMap.find(pos);
@@ -322,16 +507,25 @@ MeshData generateTransvoxelMesh(const MeshGenParams& params, const octree::Octre
                             const octree::Voxel* voxel = planet.getVoxel(pos);
                             glm::vec3 color = voxel ? voxel->getColor() : glm::vec3(0.5f);
                             
+                            // KEEP VERTICES IN WORLD SPACE - camera-relative transform happens in shader
                             mesh.vertices.emplace_back(pos, normal, color);
                             vertexMap[pos] = newIndex;
                             vertIndices[j] = newIndex;
                         }
                     }
                     
-                    // Add triangle indices
-                    mesh.indices.push_back(vertIndices[0]);
-                    mesh.indices.push_back(vertIndices[1]);
-                    mesh.indices.push_back(vertIndices[2]);
+                    // Only add triangle if all vertices are valid
+                    if (vertIndices[0] != vertIndices[1] && 
+                        vertIndices[1] != vertIndices[2] && 
+                        vertIndices[0] != vertIndices[2]) {
+                        mesh.indices.push_back(vertIndices[0]);
+                        mesh.indices.push_back(vertIndices[1]);
+                        mesh.indices.push_back(vertIndices[2]);
+                    } else if (debugThis) {
+                        std::cout << "[DEBUG] Skipping degenerate triangle: " 
+                                  << vertIndices[0] << ", " << vertIndices[1] 
+                                  << ", " << vertIndices[2] << "\n";
+                    }
                 }
             }
         }

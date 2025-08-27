@@ -69,13 +69,15 @@ inline glm::vec<3, T> uvToUnitCube(int face, T u, T v) {
     T y = T(2) * v - T(1);
     
     // Generate 3D position based on face
+    // FIXED: Correct UV mapping for each face
+    // u varies horizontally, v varies vertically in patch space
     switch(face) {
-        case 0: return glm::vec<3, T>( T(1),  y,     x);     // +X
-        case 1: return glm::vec<3, T>(-T(1),  y,    -x);     // -X
-        case 2: return glm::vec<3, T>( x,     T(1),  y);     // +Y
-        case 3: return glm::vec<3, T>( x,    -T(1), -y);     // -Y
-        case 4: return glm::vec<3, T>(-x,     y,     T(1));  // +Z
-        case 5: return glm::vec<3, T>( x,     y,    -T(1));  // -Z
+        case 0: return glm::vec<3, T>( T(1),  x,     y);     // +X: u->Y, v->Z
+        case 1: return glm::vec<3, T>(-T(1), -x,     y);     // -X: u->-Y, v->Z
+        case 2: return glm::vec<3, T>( x,     T(1),  y);     // +Y: u->X, v->Z
+        case 3: return glm::vec<3, T>( x,    -T(1), -y);     // -Y: u->X, v->-Z
+        case 4: return glm::vec<3, T>( x,     y,     T(1));  // +Z: u->X, v->Y
+        case 5: return glm::vec<3, T>( x,     y,    -T(1));  // -Z: u->X, v->Y
         default: return glm::vec<3, T>(T(0), T(0), T(0));
     }
 }

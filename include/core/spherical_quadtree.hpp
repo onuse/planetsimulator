@@ -82,7 +82,8 @@ public:
     float calculateScreenSpaceError(const glm::vec3& viewPos, const glm::mat4& viewProj) const;
     void selectLOD(const glm::vec3& viewPos, const glm::mat4& viewProj, 
                   float errorThreshold, uint32_t maxLevel,
-                  std::vector<QuadtreePatch>& visiblePatches);
+                  std::vector<QuadtreePatch>& visiblePatches,
+                  bool enableBackfaceCulling = true);
     
     // Morphing
     void updateMorphFactor(float targetError, float morphRegion);
@@ -140,6 +141,7 @@ public:
         bool enableMorphing = true;      // Enable vertex morphing
         bool enableCrackFixes = true;    // Enable T-junction prevention
         bool enableFaceCulling = false;   // DISABLED for testing - was causing missing faces
+        bool enableBackfaceCulling = false; // DISABLED - was culling 92% of patches, causing sparse rendering
         bool enableFrustumCulling = true; // Toggle view frustum culling
         bool enableDistanceCulling = true; // Toggle distance-based culling
     };

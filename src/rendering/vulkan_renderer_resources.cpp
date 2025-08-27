@@ -214,46 +214,63 @@ void VulkanRenderer::createUniformBuffers() {
 void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* camera) {
     UniformBufferObject ubo{};
     
-    // CAMERA-RELATIVE RENDERING (Industry Standard)
-    // Vertices are pre-transformed by -cameraPos on CPU for precision
-    // We must adjust the view matrix to account for this
+    // CAMERA-RELATIVE RENDERING for precision at planetary scales
+    // We transform vertices relative to camera position to maintain precision
+    // This avoids large world coordinates causing float precision issues
     
     glm::mat4 viewF = camera->getViewMatrix();
     glm::mat4 projF = camera->getProjectionMatrix();
     glm::vec3 viewPosF = camera->getPosition();
     
-    // Extract the rotation part of the view matrix (columns 0-2)
-    // and zero out the translation (column 3, rows 0-2)
+    // Extract rotation-only view matrix (remove translation)
+    // We'll handle translation by offsetting vertices on CPU
     glm::mat4 viewRelative = viewF;
-    viewRelative[3][0] = 0.0f;  // Zero X translation
-    viewRelative[3][1] = 0.0f;  // Zero Y translation  
-    viewRelative[3][2] = 0.0f;  // Zero Z translation
-    // viewRelative[3][3] stays as 1.0
+    viewRelative[3][0] = 0.0f;  // Remove translation X
+    viewRelative[3][1] = 0.0f;  // Remove translation Y  
+    viewRelative[3][2] = 0.0f;  // Remove translation Z
+    viewRelative[3][3] = 1.0f;
     
-    // CRITICAL: Scale coordinate system to match scaled vertices
-    // Vertices are scaled by 1/1,000,000 so 1 unit = 1 million meters
-    // We need to create a new projection matrix with scaled near/far planes
-    const float WORLD_SCALE = 1.0f / 1000000.0f;
+    // No scaling needed for camera-relative rendering
+    // Vertices will be transformed relative to camera on CPU/GPU
+    const float WORLD_SCALE = 1.0f;
     
-    // Get camera parameters and scale them
+    // Get camera parameters
     float fov = camera->getFieldOfView();
     // Calculate aspect ratio from swap chain extent
     float aspect = swapChainExtent.width / (float) swapChainExtent.height;
-    float nearPlane = camera->getNearPlane() * WORLD_SCALE;  // Scale to new units
-    float farPlane = camera->getFarPlane() * WORLD_SCALE;    // Scale to new units
+    float nearPlane = camera->getNearPlane();
+    float farPlane = camera->getFarPlane();
     
-    // Create new projection matrix with scaled near/far
+    // DEBUG: Print actual values being used
+    static int debugCount = 0;
+    if (debugCount++ % 60 == 0) {
+        std::cout << "\n[UNIFORM BUFFER DEBUG]" << std::endl;
+        std::cout << "  Camera position: " << viewPosF.x << ", " << viewPosF.y << ", " << viewPosF.z << std::endl;
+        std::cout << "  WORLD_SCALE: " << WORLD_SCALE << std::endl;
+        std::cout << "  Original near/far: " << camera->getNearPlane() << " / " << camera->getFarPlane() << std::endl;
+        std::cout << "  Scaled near/far: " << nearPlane << " / " << farPlane << std::endl;
+        std::cout << "  FOV: " << fov << ", Aspect: " << aspect << std::endl;
+        
+        // Debug the raw view matrix from camera
+        std::cout << "  Raw view matrix from camera:" << std::endl;
+        for (int i = 0; i < 4; i++) {
+            std::cout << "    [" << viewF[i][0] << ", " << viewF[i][1] 
+                      << ", " << viewF[i][2] << ", " << viewF[i][3] << "]" << std::endl;
+        }
+    }
+    
+    // Use camera's projection matrix directly
     glm::mat4 scaledProj = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
     
-    // Build ViewProj with the translation-free view matrix
+    // Build ViewProj with the rotation-only view matrix for camera-relative rendering
     glm::mat4 viewProjF = scaledProj * viewRelative;
     
-    // Convert to double precision for shader (even though values are now small)
-    ubo.view = glm::dmat4(viewRelative);
-    ubo.proj = glm::dmat4(scaledProj);
-    ubo.viewProj = glm::dmat4(viewProjF);
-    // Pass the scaled world camera position for consistency
-    ubo.viewPos = glm::dvec3(viewPosF) * double(WORLD_SCALE);
+    // Use single precision throughout (matches vertex data precision)
+    ubo.view = viewRelative;
+    ubo.proj = scaledProj;
+    ubo.viewProj = viewProjF;
+    // Camera position used as reference origin for camera-relative rendering
+    ubo.viewPos = viewPosF;
     
     // Validate matrices - crash if they're invalid
     for (int i = 0; i < 4; i++) {
@@ -346,15 +363,16 @@ void VulkanRenderer::createCubeGeometry() {
 void VulkanRenderer::createDescriptorPool() {
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 4); // Extra for multiple pipelines
+    poolSizes[0].descriptorCount = 100; // Increased for compute and multiple pipelines
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 8); // 4 SSBOs per Transvoxel set
+    poolSizes[1].descriptorCount = 200; // Increased for compute shader buffers
     
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT; // Allow freeing individual sets
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 4); // Extra sets for multiple pipelines
+    poolInfo.maxSets = 100; // Increased to handle compute shader allocations
     
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");

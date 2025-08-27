@@ -127,13 +127,13 @@ layout(binding = 0) uniform UniformBufferObject {
 // Output color
 layout(location = 0) out vec4 outColor;
 
-// Altitude-based coloring thresholds
-const float OCEAN_DEPTH = -4000.0;
+// Altitude-based coloring thresholds (scaled for 1000m radius test planet)
+const float OCEAN_DEPTH = -40.0;
 const float SEA_LEVEL = 0.0;
-const float BEACH_HEIGHT = 50.0;
-const float GRASS_HEIGHT = 1000.0;
-const float ROCK_HEIGHT = 2500.0;
-const float SNOW_HEIGHT = 4000.0;
+const float BEACH_HEIGHT = 5.0;
+const float GRASS_HEIGHT = 20.0;
+const float ROCK_HEIGHT = 35.0;
+const float SNOW_HEIGHT = 50.0;
 
 // Material colors
 const vec3 DEEP_OCEAN = vec3(0.02, 0.15, 0.35);
@@ -176,8 +176,8 @@ vec3 getTerrainColor(float altitude) {
         color = mix(MOUNTAIN_GRAY, SNOW_WHITE, smoothstep(0.0, 1.0, t));
     }
     
-    // Mix with vertex color for material variation
-    color = mix(color, fragColor, 0.3);
+    // Mix in a small amount of vertex color for variation
+    color = mix(color, fragColor, 0.1); // 10% vertex color
     
     return color;
 }

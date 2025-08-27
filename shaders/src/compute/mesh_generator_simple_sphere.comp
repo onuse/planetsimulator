@@ -1,0 +1,158 @@
+#version 450
+
+// ULTRA-SIMPLE sphere generator - ignore octree, just make a sphere
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// Octree node structure (we'll ignore most of this)
+struct OctreeNode {
+    vec4 centerAndSize;      // xyz = center, w = halfSize
+    uvec4 childrenAndFlags;  // x = children offset, y = voxel offset, z = flags, w = reserved
+};
+
+// Vertex structure matching the pipeline
+struct Vertex {
+    vec3 position;
+    vec3 normal;     // normal MUST be second to match C++ struct
+    vec3 color;      // color MUST be third to match C++ struct
+    vec2 texCoord;
+};
+
+// Input: Octree nodes (we'll just use for count)
+layout(binding = 0, std430) readonly buffer OctreeBuffer {
+    OctreeNode nodes[];
+} octree;
+
+// Output: Vertices
+layout(binding = 1, std430) writeonly buffer VertexBuffer {
+    Vertex vertices[];
+} vertexBuffer;
+
+// Output: Indices
+layout(binding = 2, std430) writeonly buffer IndexBuffer {
+    uint indices[];
+} indexBuffer;
+
+// Output: Counters
+layout(binding = 3, std430) buffer CounterBuffer {
+    uint vertexCount;
+    uint indexCount;
+} counter;
+
+const uint MAX_VERTICES = 1000000;
+const uint MAX_INDICES = 3000000;
+const float PLANET_RADIUS = 1000.0;
+const float PI = 3.14159265359;
+
+void main() {
+    uint quadIndex = gl_GlobalInvocationID.x;
+    
+    // Create a simple sphere with latitude/longitude quads
+    const uint LATS = 40;  // latitude divisions
+    const uint LONS = 80;  // longitude divisions
+    const uint MAX_QUADS = LATS * LONS;
+    
+    if (quadIndex >= MAX_QUADS) {
+        return;
+    }
+    
+    // Calculate lat/lon for this quad
+    uint lat = quadIndex / LONS;
+    uint lon = quadIndex % LONS;
+    
+    // Skip polar quads to avoid degenerate triangles
+    if (lat == 0 || lat == LATS - 1) {
+        return;
+    }
+    
+    // Convert to spherical coordinates
+    float theta = float(lat) / float(LATS) * PI;        // 0 to PI
+    float phi = float(lon) / float(LONS) * 2.0 * PI;   // 0 to 2*PI
+    
+    // Calculate the quad center on the sphere
+    vec3 spherePos;
+    spherePos.x = PLANET_RADIUS * sin(theta) * cos(phi);
+    spherePos.y = PLANET_RADIUS * cos(theta);
+    spherePos.z = PLANET_RADIUS * sin(theta) * sin(phi);
+    
+    // Normal points outward
+    vec3 normal = normalize(spherePos);
+    
+    // Simple color based on height
+    vec3 color = vec3(0.5, 0.7, 0.3);  // Green
+    if (spherePos.y < 0.0) {
+        color = vec3(0.3, 0.5, 0.7);  // Blue for lower hemisphere
+    }
+    
+    // Generate tangent vectors
+    vec3 up = abs(normal.y) < 0.999 ? vec3(0, 1, 0) : vec3(0, 0, 1);
+    vec3 tangent = normalize(cross(up, normal));
+    vec3 bitangent = cross(normal, tangent);
+    
+    // Allocate 4 vertices
+    uint baseVertex = atomicAdd(counter.vertexCount, 4u);
+    if (baseVertex + 3 >= MAX_VERTICES) return;
+    
+    // Create quad vertices ON the sphere surface (not tangent patches)
+    float dTheta = PI / float(LATS);
+    float dPhi = 2.0 * PI / float(LONS);
+    
+    // Calculate the 4 corners of this quad on the sphere surface
+    float theta0 = float(lat) / float(LATS) * PI;
+    float theta1 = float(lat + 1) / float(LATS) * PI;
+    float phi0 = float(lon) / float(LONS) * 2.0 * PI;
+    float phi1 = float(lon + 1) / float(LONS) * 2.0 * PI;
+    
+    // Bottom-left corner (lat, lon)
+    vertexBuffer.vertices[baseVertex + 0].position = vec3(
+        PLANET_RADIUS * sin(theta0) * cos(phi0),
+        PLANET_RADIUS * cos(theta0),
+        PLANET_RADIUS * sin(theta0) * sin(phi0)
+    );
+    vertexBuffer.vertices[baseVertex + 0].normal = normalize(vertexBuffer.vertices[baseVertex + 0].position);
+    vertexBuffer.vertices[baseVertex + 0].color = color;
+    vertexBuffer.vertices[baseVertex + 0].texCoord = vec2(0, 0);
+    
+    // Bottom-right corner  
+    vertexBuffer.vertices[baseVertex + 1].position = vec3(
+        PLANET_RADIUS * sin(theta0) * cos(phi1),
+        PLANET_RADIUS * cos(theta0),
+        PLANET_RADIUS * sin(theta0) * sin(phi1)
+    );
+    vertexBuffer.vertices[baseVertex + 1].normal = normalize(vertexBuffer.vertices[baseVertex + 1].position);
+    vertexBuffer.vertices[baseVertex + 1].color = color;
+    vertexBuffer.vertices[baseVertex + 1].texCoord = vec2(1, 0);
+    
+    // Top-right corner
+    vertexBuffer.vertices[baseVertex + 2].position = vec3(
+        PLANET_RADIUS * sin(theta1) * cos(phi1),
+        PLANET_RADIUS * cos(theta1),
+        PLANET_RADIUS * sin(theta1) * sin(phi1)
+    );
+    vertexBuffer.vertices[baseVertex + 2].normal = normalize(vertexBuffer.vertices[baseVertex + 2].position);
+    vertexBuffer.vertices[baseVertex + 2].color = color;
+    vertexBuffer.vertices[baseVertex + 2].texCoord = vec2(1, 1);
+    
+    // Top-left corner
+    vertexBuffer.vertices[baseVertex + 3].position = vec3(
+        PLANET_RADIUS * sin(theta1) * cos(phi0),
+        PLANET_RADIUS * cos(theta1),
+        PLANET_RADIUS * sin(theta1) * sin(phi0)
+    );
+    vertexBuffer.vertices[baseVertex + 3].normal = normalize(vertexBuffer.vertices[baseVertex + 3].position);
+    vertexBuffer.vertices[baseVertex + 3].color = color;
+    vertexBuffer.vertices[baseVertex + 3].texCoord = vec2(0, 1);
+    
+    // Allocate 6 indices (2 triangles)
+    uint baseIndex = atomicAdd(counter.indexCount, 6u);
+    if (baseIndex + 5 >= MAX_INDICES) return;
+    
+    // Triangle 1
+    indexBuffer.indices[baseIndex + 0] = baseVertex + 0;
+    indexBuffer.indices[baseIndex + 1] = baseVertex + 1;
+    indexBuffer.indices[baseIndex + 2] = baseVertex + 2;
+    
+    // Triangle 2
+    indexBuffer.indices[baseIndex + 3] = baseVertex + 0;
+    indexBuffer.indices[baseIndex + 4] = baseVertex + 2;
+    indexBuffer.indices[baseIndex + 5] = baseVertex + 3;
+}

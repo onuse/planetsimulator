@@ -1,6 +1,5 @@
 #include "rendering/vulkan_renderer.hpp"
 #include "rendering/gpu_octree.hpp"
-#include "rendering/hierarchical_gpu_octree.hpp"
 #include "utils/screenshot.hpp"
 
 #include <iostream>
@@ -66,17 +65,15 @@ bool VulkanRenderer::initialize() {
             throw std::runtime_error("Failed to initialize ImGui");
         }
         
-        // Initialize Transvoxel renderer - THE ONLY rendering path
-        transvoxelRenderer = std::make_unique<TransvoxelRenderer>(device, physicalDevice, commandPool, graphicsQueue);
+        // Initialize GPU octree for mesh generation
+        gpuOctree = std::make_unique<rendering::GPUOctree>(device, physicalDevice);
+        std::cout << "[VulkanRenderer] GPU octree initialized at " << gpuOctree.get() << std::endl;
+        
+        // Initialize GPU mesh pipeline
         createTransvoxelPipeline();
-        // Transvoxel mesh renderer initialized
         
-        // Create Quadtree pipeline for LOD rendering
+        // Create Quadtree pipeline (if needed for visualization)
         createQuadtreePipeline();
-        
-        // Initialize LOD manager
-        lodManager = std::make_unique<LODManager>(device, physicalDevice, commandPool, graphicsQueue);
-        // LOD manager will be initialized with planet data when first planet is rendered
         
         // Vulkan renderer initialized successfully
         return true;
@@ -98,51 +95,26 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     frameTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
     lastFrameTime = currentTime;
     
-    // Initialize LOD manager with planet data if needed
-    static bool lodInitialized = false;
-    if (lodManager && !lodInitialized) {
-        lodManager->initialize(planet->getRadius(), 42); // Use default seed for now
-        lodInitialized = true;
-    }
-    
-    // Update LOD system
-    if (lodManager) {
-        glm::mat4 viewProj = camera->getProjectionMatrix() * camera->getViewMatrix();
-        lodManager->update(camera->getPosition(), viewProj, frameTime);
-        
-        // Check if instance buffer was recreated and needs descriptor set update
-        // This MUST happen before any draw calls to prevent GPU crashes
-        static VkBuffer lastInstanceBuffer = VK_NULL_HANDLE;
-        if (lodManager->isBufferUpdateRequired()) {
-            VkBuffer instanceBuf = lodManager->getQuadtreeInstanceBuffer();
-            if (instanceBuf != VK_NULL_HANDLE) {
-                // Wait for GPU to finish before updating descriptor sets
-                vkDeviceWaitIdle(device);
-                updateQuadtreeInstanceBuffer(instanceBuf);
-                lastInstanceBuffer = instanceBuf;
-                // PERFORMANCE: Disabled verbose buffer update logging
-                // std::cout << "[VulkanRenderer] Instance buffer updated, descriptor sets refreshed" << std::endl;
+    // GPU mesh generation - simplified single path
+    static bool meshGenerated = false;
+    if (!meshGenerated && planet && camera) {
+        // Try proper sphere mesh generation first
+        meshGenerated = generateUnifiedSphere(planet);
+        if (!meshGenerated) {
+            std::cerr << "ERROR: Sphere mesh generation failed, trying GPU mesh generation...\n";
+            meshGenerated = generateGPUMesh(planet, camera);
+            if (!meshGenerated) {
+                std::cerr << "ERROR: GPU mesh generation failed!\n";
+                
+#ifdef DEBUG_CPU_REFERENCE
+                // Fall back to CPU reference mesh for debugging
+                std::cerr << "Attempting CPU reference mesh generation...\n";
+                meshGenerated = generateCPUReferenceMesh(planet);
+                if (!meshGenerated) {
+                    std::cerr << "ERROR: CPU reference mesh generation also failed!\n";
+                }
+#endif
             }
-        }
-        
-        // Use LOD manager for rendering decision
-        auto lodMode = lodManager->getCurrentMode();
-        if (lodMode == LODManager::OCTREE_TRANSVOXEL) {
-            // Use transvoxel ONLY for close-range rendering (not during quadtree mode)
-            updateChunks(planet, camera);
-            generateChunkMeshes(planet);
-        } else if (lodMode == LODManager::TRANSITION_ZONE) {
-            // In transition, prepare chunks but don't generate yet
-            // This avoids conflicts with quadtree rendering
-            updateChunks(planet, camera);
-            // Don't generate meshes - let LOD manager handle the transition
-        }
-        // For QUADTREE_ONLY mode, don't update chunks at all
-    } else {
-        // Fallback to legacy transvoxel path
-        if (transvoxelRenderer) {
-            updateChunks(planet, camera);
-            generateChunkMeshes(planet);
         }
     }
     
@@ -153,26 +125,20 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
 }
 
 void VulkanRenderer::cleanup() {
-    vkDeviceWaitIdle(device);
+    // Try to wait for device idle, but don't hang forever
+    // This prevents zombie processes when GPU is hung
+    VkResult result = vkDeviceWaitIdle(device);
+    if (result == VK_ERROR_DEVICE_LOST) {
+        std::cerr << "WARNING: Device lost during cleanup, skipping wait" << std::endl;
+        // Continue cleanup anyway to release resources
+    } else if (result != VK_SUCCESS) {
+        std::cerr << "WARNING: vkDeviceWaitIdle failed with error: " << result << std::endl;
+    }
     
     // Cleanup ImGui
     imguiManager.cleanup();
     
-    // Cleanup LOD manager
-    if (lodManager) {
-        lodManager.reset();
-    }
-    
-    // Cleanup Transvoxel renderer and chunk buffers
-    if (transvoxelRenderer) {
-        // Clean up all chunk buffers first
-        for (auto& chunk : activeChunks) {
-            transvoxelRenderer->destroyChunkBuffers(chunk);
-        }
-        activeChunks.clear();
-        transvoxelRenderer->clearCache();
-        transvoxelRenderer.reset();
-    }
+    // GPU mesh cleanup is handled by buffer destruction
     
     // Cleanup Transvoxel pipelines
     if (hierarchicalPipeline != VK_NULL_HANDLE) {
@@ -492,13 +458,72 @@ void VulkanRenderer::scrollCallback(GLFWwindow* window, double xoffset, double y
 // This file continues in vulkan_renderer_part2.cpp...
 
 void VulkanRenderer::dumpVertexData() {
-    // Dump vertex data from transvoxel renderer
-    if (transvoxelRenderer && !activeChunks.empty()) {
-        std::cout << "Dumping vertex data from " << activeChunks.size() << " chunks...\n";
-        transvoxelRenderer->dumpMeshDataToFile(activeChunks);
+    // GPU mesh vertex dump
+    if (meshVertexCount > 0 && meshIndexCount > 0) {
+        std::cout << "GPU mesh has " << meshVertexCount << " vertices and " 
+                  << (meshIndexCount/3) << " triangles\n";
+        // TODO: Implement GPU buffer readback for debugging
     } else {
-        std::cout << "No vertex data to dump (no active chunks)\n";
+        std::cout << "No GPU mesh data to dump\n";
     }
+}
+
+void VulkanRenderer::renderGPUMesh() {
+    if (meshVertexCount == 0 || meshIndexCount == 0) {
+        static int skipCount = 0;
+        if (skipCount++ % 60 == 0) {
+            std::cout << "[renderGPUMesh] Skipping - no mesh data (" << meshVertexCount << " verts, " << meshIndexCount << " indices)\n";
+        }
+        return;
+    }
+    
+    // We need currentCommandBuffer to be set - this should be called from drawFrame
+    if (!currentCommandBuffer) {
+        std::cerr << "[GPU MESH] No current command buffer!\n";
+        return;
+    }
+    
+    // Bind the triangle pipeline (reuse existing one)
+    if (trianglePipeline == VK_NULL_HANDLE) {
+        std::cerr << "[GPU MESH] No triangle pipeline!\n";
+        return;
+    }
+    
+    vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+    
+    // Bind descriptor sets (uniform buffer etc) - reuse from hierarchical pipeline
+    if (hierarchicalDescriptorSets.empty()) {
+        std::cerr << "[GPU MESH] No descriptor sets!\n";
+        return;
+    }
+    
+    vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            hierarchicalPipelineLayout, 0, 1, 
+                            &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
+    
+    // Bind vertex and index buffers
+    VkBuffer vertexBuffers[] = {meshVertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(currentCommandBuffer, meshIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+    
+    // Draw indexed
+    vkCmdDrawIndexed(currentCommandBuffer, meshIndexCount, 1, 0, 0, 0);
+    
+    static int drawCallCount = 0;
+    if (drawCallCount++ % 60 == 0) {
+        std::cout << "[renderGPUMesh] DRAW CALL EXECUTED: " << meshIndexCount << " indices (" << meshIndexCount/3 << " triangles)\n";
+    }
+    
+    static int meshDebugCount = 0;
+    if (meshDebugCount++ % 60 == 0) {
+        std::cout << "[GPU MESH] Rendering " << meshVertexCount << " vertices, " 
+                  << (meshIndexCount/3) << " triangles\n";
+    }
+}
+
+void VulkanRenderer::createTestNDCPipeline() {
+    // Empty stub - this test pipeline has been removed
 }
 
 } // namespace rendering

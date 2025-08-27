@@ -5,17 +5,30 @@
 #include <cstdlib>
 #include <string>
 #include <filesystem>
+#include <csignal>
+#include <atomic>
 
 #include "core/octree.hpp"
 #include "rendering/vulkan_renderer.hpp"
 #include "core/camera.hpp"
 
+// Global flag for clean shutdown
+std::atomic<bool> g_shouldExit(false);
+
+// Signal handler for Ctrl+C
+void signalHandler(int signal) {
+    if (signal == SIGINT) {
+        std::cout << "\n[INFO] Ctrl+C received, shutting down gracefully..." << std::endl;
+        g_shouldExit = true;
+    }
+}
+
 // Note: InputState is now defined in vulkan_renderer.hpp
 
 // Command line arguments
 struct Config {
-    float radius = 6371000.0f;  // Earth radius in meters
-    int maxDepth = 10;           // Octree depth (10 for good balance of quality/performance)
+    float radius = 1000.0f;      // 1km radius for easier testing (was Earth: 6371000)
+    int maxDepth = 10;           // Reasonable depth for smaller planet
     uint32_t seed = 42;          // Random seed
     int width = 1280;            // Window width
     int height = 720;            // Window height
@@ -151,11 +164,14 @@ public:
                 break;
             }
             
+            // Handle input FIRST so zoom changes take effect this frame
+            handleInput();
+            
             // Update simulation
             simulationTime += deltaTime * timeScale;
             planet.update(deltaTime);
             
-            // Update camera
+            // Update camera (will apply zoom changes from handleInput)
             camera.update(deltaTime);
             
             // Update LOD based on camera position
@@ -199,8 +215,7 @@ public:
                           << ", Nodes: " << renderer.getNodeCount() << "\n";
             }
             
-            // Handle input
-            handleInput();
+            // Note: handleInput() moved to before camera.update()
         }
         
         cleanup();
@@ -264,8 +279,8 @@ private:
             std::cout << "Camera set to preset view (nice continent/beach view)\n";
         } else {
             // Default view - far enough to see the planet properly
-            // Use 1.5x radius for better overview (about 3185 km altitude)
-            float initialDistance = config.radius * 1.5f;
+            // Use 3x radius to see the whole sphere
+            float initialDistance = config.radius * 3.0f;
             std::cout << "=== SETTING CAMERA POSITION ===\n";
             std::cout << "Initial distance: " << initialDistance << " (altitude: " << (initialDistance - config.radius) << ")\n";
             // Position camera to look at land/coast instead of open ocean
@@ -302,10 +317,13 @@ private:
     }
     
     bool shouldExit() {
-        return renderer.shouldClose();
+        return renderer.shouldClose() || g_shouldExit;
     }
     
     void handleInput() {
+        // Update input state from previous frame FIRST (before polling new events)
+        renderer.updateInput();
+        
         renderer.pollEvents();
         
         // Get input state from renderer
@@ -357,7 +375,8 @@ private:
         if (!imguiWantsMouse && input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
             float sensitivity = 0.002f; // Radians per pixel
             // Orbit the camera around the sphere (effectively rotating the view)
-            camera.orbit(-input.mouseDelta.x * sensitivity, input.mouseDelta.y * sensitivity);
+            // Note: Y-axis inverted for natural mouse control (drag up = rotate up)
+            camera.orbit(-input.mouseDelta.x * sensitivity, -input.mouseDelta.y * sensitivity);
         }
         
         // Camera rotation with mouse (right-click drag) - only if ImGui doesn't want mouse
@@ -368,6 +387,11 @@ private:
         
         // Zoom with scroll wheel - only if ImGui doesn't want mouse
         if (!imguiWantsMouse && input.scrollDelta.y != 0) {
+            // Debug output
+            std::cout << "[SCROLL] Delta: " << input.scrollDelta.y 
+                      << ", Altitude: " << altitude 
+                      << ", Radius: " << config.radius << std::endl;
+            
             // Scale zoom speed based on altitude - MUCH slower when closer
             // altitude is already calculated above
             float altitudeRatio = altitude / config.radius;
@@ -384,6 +408,7 @@ private:
             }
             
             float zoomDelta = input.scrollDelta.y * scaleFactor;
+            std::cout << "[ZOOM] Calling camera.zoom(" << zoomDelta << ")" << std::endl;
             camera.zoom(zoomDelta);
         }
         
@@ -455,8 +480,7 @@ private:
             glfwSetWindowShouldClose(renderer.getWindow(), GLFW_TRUE);
         }
         
-        // Update input state for next frame
-        renderer.updateInput();
+        // Note: updateInput() is now called at the beginning of handleInput()
     }
     
     void cleanupOldScreenshots() {
@@ -537,6 +561,10 @@ private:
 
 int main(int argc, char** argv) {
     std::cout << "Starting Octree Planet Simulator..." << std::endl;
+    
+    // Install signal handler for clean shutdown
+    std::signal(SIGINT, signalHandler);
+    
     try {
         Config config = parseArgs(argc, argv);
         OctreePlanetApp app(config);
