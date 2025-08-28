@@ -128,15 +128,30 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
         }
     }
     
-    // Regenerate mesh when LOD changes
+    // Regenerate mesh when LOD changes OR camera moves significantly (for dual-detail adaptation)
     static int lastLODLevel = -1;
-    if (planet && camera && currentLODLevel != lastLODLevel) {
-        // LOD changed, regenerate mesh
-        std::cout << "[LOD] Level changed from " << lastLODLevel << " to " << currentLODLevel << " - regenerating mesh\n";
+    static glm::vec3 lastCameraPos = glm::vec3(0, 0, 0);
+    
+    // Check if camera moved significantly (more than 10% of its distance to planet)
+    glm::vec3 currentCameraPos = camera->getPosition();
+    float cameraMoveDistance = glm::length(currentCameraPos - lastCameraPos);
+    float distanceToCenter = glm::length(currentCameraPos);
+    bool significantCameraMove = (cameraMoveDistance > distanceToCenter * 0.1f);
+    
+    // TEMPORARILY disable camera movement trigger to test dual-detail
+    if (planet && camera && (currentLODLevel != lastLODLevel /* || significantCameraMove */)) {
+        // LOD changed or camera moved significantly - regenerate mesh
+        if (currentLODLevel != lastLODLevel) {
+            std::cout << "[LOD] Level changed from " << lastLODLevel << " to " << currentLODLevel << " - regenerating mesh\n";
+        } else if (significantCameraMove) {
+            std::cout << "[CAMERA] Significant camera movement detected (moved " 
+                      << cameraMoveDistance / planet->getRadius() << " radii) - regenerating mesh for dual-detail adaptation\n";
+        }
         lastLODLevel = currentLODLevel;
+        lastCameraPos = currentCameraPos;
         
-        // Try proper sphere mesh generation first
-        bool meshGenerated = generateUnifiedSphere(planet, camera);
+        // Try adaptive dual-detail sphere mesh generation (Phase 1)
+        bool meshGenerated = generateAdaptiveSphere(planet, camera);
         if (!meshGenerated) {
             std::cerr << "ERROR: Sphere mesh generation failed, trying GPU mesh generation...\n";
             meshGenerated = generateGPUMesh(planet, camera);

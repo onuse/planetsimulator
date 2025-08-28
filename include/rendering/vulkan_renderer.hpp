@@ -110,6 +110,9 @@ public:
     }
     int getLODLevel() const { return currentLODLevel; }  // Get current LOD level
     
+    // Public static member for testing dual-detail flip
+    static bool adaptiveSphereFlipFrontBack;  // Toggle flag for testing dual-detail (flips which hemisphere gets high detail)
+    
 private:
     // Window
     GLFWwindow* window = nullptr;
@@ -236,15 +239,18 @@ private:
     bool generateSphereMeshHighRes(octree::OctreePlanet* planet);  // High resolution version
     bool generateSeamlessSphere(octree::OctreePlanet* planet);  // Seamless version with vertex deduplication
     bool generateUnifiedSphere(octree::OctreePlanet* planet, core::Camera* camera = nullptr);  // Unified recursive subdivision approach with LOD
+    bool generateAdaptiveSphere(octree::OctreePlanet* planet, core::Camera* camera);  // Dual-detail adaptive sphere generation (Phase 1)
+    // Upload CPU-generated mesh to GPU (used by adaptive sphere generation)
+    bool uploadCPUReferenceMesh(const void* vertexData, size_t vertexDataSize,
+                                const void* indexData, size_t indexDataSize,
+                                uint32_t vertexCount, uint32_t indexCount);
+
     
 #ifdef DEBUG_CPU_REFERENCE
     // TEMPORARY: CPU reference implementation for debugging GPU mesh generation
     // This code should be REMOVED once GPU mesh generation is verified working
     bool generateCPUReferenceMesh(octree::OctreePlanet* planet);
     void collectSurfaceLeaves(octree::OctreeNode* node, std::vector<octree::OctreeNode*>& leaves);
-    bool uploadCPUReferenceMesh(const void* vertexData, size_t vertexDataSize,
-                                const void* indexData, size_t indexDataSize,
-                                uint32_t vertexCount, uint32_t indexCount);
     
 #endif // DEBUG_CPU_REFERENCE
     

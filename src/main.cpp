@@ -458,6 +458,24 @@ private:
             }
         }
         
+        // Flip front/back detail assignment for testing dual-detail LOD
+        if (input.keys[GLFW_KEY_F] && !input.prevKeys[GLFW_KEY_F]) {
+            // Toggle the flip flag
+            rendering::VulkanRenderer::adaptiveSphereFlipFrontBack = !rendering::VulkanRenderer::adaptiveSphereFlipFrontBack;
+            
+            // Force mesh regeneration by slightly changing LOD 
+            // (commented out - user needs to move camera slightly to trigger regeneration)
+            
+            if (!config.quiet) {
+                if (rendering::VulkanRenderer::adaptiveSphereFlipFrontBack) {
+                    std::cout << "[F KEY] Dual-detail FLIPPED: Back hemisphere now gets HIGH detail\n";
+                } else {
+                    std::cout << "[F KEY] Dual-detail NORMAL: Front hemisphere gets HIGH detail\n";
+                }
+                std::cout << "NOTE: Move camera slightly or zoom to trigger mesh regeneration\n";
+            }
+        }
+        
         // Toggle face culling with C key - DISABLED FOR NOW
         // TODO: Add getLODManager() method to VulkanRenderer
         /*
