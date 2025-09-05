@@ -1,0 +1,327 @@
+#version 450
+
+// GPU Transvoxel implementation for voxel-to-mesh conversion
+// Processes octree nodes in parallel to generate triangle meshes
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// ==================== Input Uniforms ====================
+layout(binding = 0) uniform UBO {
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec3 cameraPos;
+    float planetRadius;
+    vec3 planetCenter;
+    float time;
+    float voxelSize;        // Size of voxels at current LOD
+    int gridSize;           // Grid resolution (e.g., 32x32x32)
+    int maxVertices;
+    int maxIndices;
+} ubo;
+
+// ==================== Octree Data Structures ====================
+struct GPUNode {
+    vec4 centerAndSize;      // xyz = center, w = halfSize
+    uvec4 childrenAndFlags;  // x = children index, y = voxel index, z = flags, w = padding
+};
+
+struct GPUVoxel {
+    vec4 colorAndDensity;    // xyz = color, w = density
+    vec4 extra;              // x = materialID, y = temperature, z = pressure, w = reserved
+};
+
+// Octree buffers
+layout(std430, binding = 1) readonly buffer OctreeNodes {
+    GPUNode nodes[];
+} octreeNodes;
+
+layout(std430, binding = 2) readonly buffer OctreeVoxels {
+    GPUVoxel voxels[];
+} octreeVoxels;
+
+// ==================== Output Buffers ====================
+layout(std430, binding = 3) writeonly buffer VertexBuffer {
+    float vertices[];  // Interleaved: pos(3), color(3), normal(3), uv(2) = 11 floats per vertex
+} vertexBuffer;
+
+layout(std430, binding = 4) writeonly buffer IndexBuffer {
+    uint indices[];
+} indexBuffer;
+
+layout(std430, binding = 5) buffer CounterBuffer {
+    uint vertexCount;
+    uint indexCount;
+    uint processedCells;
+    uint generatedTriangles;
+} counters;
+
+// ==================== Helper Functions ====================
+
+// Sample density from octree at world position
+float sampleDensity(vec3 worldPos) {
+    // Start at root node
+    uint nodeIndex = 0;
+    
+    // Traverse octree to find voxel
+    for (int depth = 0; depth < 20; depth++) {
+        GPUNode node = octreeNodes.nodes[nodeIndex];
+        
+        uint childrenIndex = node.childrenAndFlags.x;
+        uint voxelIndex = node.childrenAndFlags.y;
+        
+        // Check if leaf
+        if (childrenIndex == 0xFFFFFFFFU) {
+            if (voxelIndex != 0xFFFFFFFFU && voxelIndex < 100000U) {
+                // Sample from voxel block
+                vec3 localPos = worldPos - node.centerAndSize.xyz;
+                uint voxelOffset = 0;
+                if (localPos.x > 0) voxelOffset |= 1;
+                if (localPos.y > 0) voxelOffset |= 2;
+                if (localPos.z > 0) voxelOffset |= 4;
+                
+                GPUVoxel voxel = octreeVoxels.voxels[voxelIndex + voxelOffset];
+                
+                // Return density (0 = empty, 1 = solid)
+                // We determine solid/empty based on distance from planet surface
+                float distFromCenter = length(worldPos);
+                float surfaceDist = distFromCenter - ubo.planetRadius;
+                
+                // Simple threshold: negative = inside planet (solid), positive = outside (empty)
+                return surfaceDist < 0.0 ? 1.0 : 0.0;
+            }
+            return 0.0; // Empty if no voxel data
+        }
+        
+        // Determine child octant
+        vec3 center = node.centerAndSize.xyz;
+        uint childIdx = 0;
+        if (worldPos.x > center.x) childIdx |= 1;
+        if (worldPos.y > center.y) childIdx |= 2;
+        if (worldPos.z > center.z) childIdx |= 4;
+        
+        nodeIndex = childrenIndex + childIdx;
+        if (nodeIndex >= 100000U) break; // Safety
+    }
+    
+    return 0.0;
+}
+
+// Get material color from octree
+vec3 getMaterialColor(vec3 worldPos) {
+    // Simplified for now - sample from octree similar to density
+    // In full implementation, would traverse octree and get material color
+    
+    float height = length(worldPos) - ubo.planetRadius;
+    
+    // Simple height-based coloring
+    if (height < -1000.0) {
+        return vec3(0.5, 0.3, 0.2); // Deep rock (brown)
+    } else if (height < -100.0) {
+        return vec3(0.6, 0.4, 0.3); // Rock
+    } else if (height < 0.0) {
+        return vec3(0.2, 0.5, 0.2); // Grass
+    } else if (height < 100.0) {
+        return vec3(0.8, 0.8, 0.6); // Sand
+    } else {
+        return vec3(1.0, 1.0, 1.0); // Snow
+    }
+}
+
+// Linear interpolation for vertex position
+vec3 vertexInterp(vec3 p1, vec3 p2, float v1, float v2, float isolevel) {
+    if (abs(isolevel - v1) < 0.00001)
+        return p1;
+    if (abs(isolevel - v2) < 0.00001)
+        return p2;
+    if (abs(v1 - v2) < 0.00001)
+        return p1;
+    
+    float mu = (isolevel - v1) / (v2 - v1);
+    return p1 + mu * (p2 - p1);
+}
+
+// ==================== Main Compute Function ====================
+void main() {
+    // Get cell coordinates in the grid
+    uvec3 cellCoord = gl_GlobalInvocationID.xyz;
+    
+    // Check bounds
+    if (cellCoord.x >= uint(ubo.gridSize) || cellCoord.y >= uint(ubo.gridSize) || cellCoord.z >= uint(ubo.gridSize)) {
+        return;
+    }
+    
+    // Calculate world position of this cell
+    vec3 cellWorldPos = ubo.planetCenter + 
+                       (vec3(cellCoord) - vec3(ubo.gridSize/2)) * ubo.voxelSize;
+    
+    // Sample density at 8 corners of the cell
+    float densities[8];
+    vec3 positions[8];
+    
+    for (int i = 0; i < 8; i++) {
+        vec3 offset = vec3(
+            ((i & 1) != 0) ? ubo.voxelSize : 0.0,
+            ((i & 2) != 0) ? ubo.voxelSize : 0.0,
+            ((i & 4) != 0) ? ubo.voxelSize : 0.0
+        );
+        positions[i] = cellWorldPos + offset;
+        densities[i] = sampleDensity(positions[i]);
+    }
+    
+    // Determine marching cubes case
+    int cubeIndex = 0;
+    float isolevel = 0.5; // Threshold between empty and solid
+    
+    if (densities[0] > isolevel) cubeIndex |= 1;
+    if (densities[1] > isolevel) cubeIndex |= 2;
+    if (densities[2] > isolevel) cubeIndex |= 4;
+    if (densities[3] > isolevel) cubeIndex |= 8;
+    if (densities[4] > isolevel) cubeIndex |= 16;
+    if (densities[5] > isolevel) cubeIndex |= 32;
+    if (densities[6] > isolevel) cubeIndex |= 64;
+    if (densities[7] > isolevel) cubeIndex |= 128;
+    
+    // Skip if cell is entirely inside or outside
+    if (cubeIndex == 0 || cubeIndex == 255) {
+        return;
+    }
+    
+    // Simple edge table - just check which edges are crossed
+    // In production, would use full marching cubes tables
+    int edges = 0;
+    
+    // Check each edge for crossing
+    if ((cubeIndex & 1) != (cubeIndex & 2)) edges |= 1;    // Edge 0
+    if ((cubeIndex & 2) != (cubeIndex & 4)) edges |= 2;    // Edge 1
+    if ((cubeIndex & 4) != (cubeIndex & 8)) edges |= 4;    // Edge 2
+    if ((cubeIndex & 8) != (cubeIndex & 1)) edges |= 8;    // Edge 3
+    if ((cubeIndex & 16) != (cubeIndex & 32)) edges |= 16; // Edge 4
+    if ((cubeIndex & 32) != (cubeIndex & 64)) edges |= 32; // Edge 5
+    if ((cubeIndex & 64) != (cubeIndex & 128)) edges |= 64; // Edge 6
+    if ((cubeIndex & 128) != (cubeIndex & 16)) edges |= 128; // Edge 7
+    if ((cubeIndex & 1) != (cubeIndex & 16)) edges |= 256; // Edge 8
+    if ((cubeIndex & 2) != (cubeIndex & 32)) edges |= 512; // Edge 9
+    if ((cubeIndex & 4) != (cubeIndex & 64)) edges |= 1024; // Edge 10
+    if ((cubeIndex & 8) != (cubeIndex & 128)) edges |= 2048; // Edge 11
+    
+    // Calculate vertex positions on edges
+    vec3 vertList[12];
+    
+    if ((edges & 1) != 0)
+        vertList[0] = vertexInterp(positions[0], positions[1], densities[0], densities[1], isolevel);
+    if ((edges & 2) != 0)
+        vertList[1] = vertexInterp(positions[1], positions[2], densities[1], densities[2], isolevel);
+    if ((edges & 4) != 0)
+        vertList[2] = vertexInterp(positions[2], positions[3], densities[2], densities[3], isolevel);
+    if ((edges & 8) != 0)
+        vertList[3] = vertexInterp(positions[3], positions[0], densities[3], densities[0], isolevel);
+    if ((edges & 16) != 0)
+        vertList[4] = vertexInterp(positions[4], positions[5], densities[4], densities[5], isolevel);
+    if ((edges & 32) != 0)
+        vertList[5] = vertexInterp(positions[5], positions[6], densities[5], densities[6], isolevel);
+    if ((edges & 64) != 0)
+        vertList[6] = vertexInterp(positions[6], positions[7], densities[6], densities[7], isolevel);
+    if ((edges & 128) != 0)
+        vertList[7] = vertexInterp(positions[7], positions[4], densities[7], densities[4], isolevel);
+    if ((edges & 256) != 0)
+        vertList[8] = vertexInterp(positions[0], positions[4], densities[0], densities[4], isolevel);
+    if ((edges & 512) != 0)
+        vertList[9] = vertexInterp(positions[1], positions[5], densities[1], densities[5], isolevel);
+    if ((edges & 1024) != 0)
+        vertList[10] = vertexInterp(positions[2], positions[6], densities[2], densities[6], isolevel);
+    if ((edges & 2048) != 0)
+        vertList[11] = vertexInterp(positions[3], positions[7], densities[3], densities[7], isolevel);
+    
+    // Generate triangles (simplified - would use full triangle table in production)
+    // For now, just create a simple triangle if any edges are active
+    if (edges != 0) {
+        // Reserve vertex indices
+        uint baseVertex = atomicAdd(counters.vertexCount, 3);
+        uint baseIndex = atomicAdd(counters.indexCount, 3);
+        
+        // Safety check
+        if (baseVertex + 3 > uint(ubo.maxVertices) || baseIndex + 3 > uint(ubo.maxIndices)) {
+            return;
+        }
+        
+        // Find first 3 valid vertices for a simple triangle
+        vec3 v0, v1, v2;
+        int found = 0;
+        
+        for (int i = 0; i < 12 && found < 3; i++) {
+            if ((edges & (1 << i)) != 0) {
+                if (found == 0) v0 = vertList[i];
+                else if (found == 1) v1 = vertList[i];
+                else if (found == 2) v2 = vertList[i];
+                found++;
+            }
+        }
+        
+        // If we couldn't find 3 vertices, bail
+        if (found < 3) {
+            // Undo the atomic adds
+            atomicAdd(counters.vertexCount, -3);
+            atomicAdd(counters.indexCount, -3);
+            return;
+        }
+        
+        // Calculate normal
+        vec3 normal = normalize(cross(v1 - v0, v2 - v0));
+        
+        // Get material colors
+        vec3 color = getMaterialColor(cellWorldPos + vec3(ubo.voxelSize * 0.5));
+        
+        // Write vertices (interleaved format)
+        uint vIdx = baseVertex * 11;
+        
+        // Vertex 0
+        vertexBuffer.vertices[vIdx + 0] = v0.x;
+        vertexBuffer.vertices[vIdx + 1] = v0.y;
+        vertexBuffer.vertices[vIdx + 2] = v0.z;
+        vertexBuffer.vertices[vIdx + 3] = color.r;
+        vertexBuffer.vertices[vIdx + 4] = color.g;
+        vertexBuffer.vertices[vIdx + 5] = color.b;
+        vertexBuffer.vertices[vIdx + 6] = normal.x;
+        vertexBuffer.vertices[vIdx + 7] = normal.y;
+        vertexBuffer.vertices[vIdx + 8] = normal.z;
+        vertexBuffer.vertices[vIdx + 9] = 0.0;  // UV.x
+        vertexBuffer.vertices[vIdx + 10] = 0.0; // UV.y
+        
+        // Vertex 1
+        vIdx = (baseVertex + 1) * 11;
+        vertexBuffer.vertices[vIdx + 0] = v1.x;
+        vertexBuffer.vertices[vIdx + 1] = v1.y;
+        vertexBuffer.vertices[vIdx + 2] = v1.z;
+        vertexBuffer.vertices[vIdx + 3] = color.r;
+        vertexBuffer.vertices[vIdx + 4] = color.g;
+        vertexBuffer.vertices[vIdx + 5] = color.b;
+        vertexBuffer.vertices[vIdx + 6] = normal.x;
+        vertexBuffer.vertices[vIdx + 7] = normal.y;
+        vertexBuffer.vertices[vIdx + 8] = normal.z;
+        vertexBuffer.vertices[vIdx + 9] = 0.0;
+        vertexBuffer.vertices[vIdx + 10] = 0.0;
+        
+        // Vertex 2
+        vIdx = (baseVertex + 2) * 11;
+        vertexBuffer.vertices[vIdx + 0] = v2.x;
+        vertexBuffer.vertices[vIdx + 1] = v2.y;
+        vertexBuffer.vertices[vIdx + 2] = v2.z;
+        vertexBuffer.vertices[vIdx + 3] = color.r;
+        vertexBuffer.vertices[vIdx + 4] = color.g;
+        vertexBuffer.vertices[vIdx + 5] = color.b;
+        vertexBuffer.vertices[vIdx + 6] = normal.x;
+        vertexBuffer.vertices[vIdx + 7] = normal.y;
+        vertexBuffer.vertices[vIdx + 8] = normal.z;
+        vertexBuffer.vertices[vIdx + 9] = 0.0;
+        vertexBuffer.vertices[vIdx + 10] = 0.0;
+        
+        // Write indices
+        indexBuffer.indices[baseIndex + 0] = baseVertex;
+        indexBuffer.indices[baseIndex + 1] = baseVertex + 1;
+        indexBuffer.indices[baseIndex + 2] = baseVertex + 2;
+        
+        // Update counters
+        atomicAdd(counters.processedCells, 1);
+        atomicAdd(counters.generatedTriangles, 1);
+    }
+}

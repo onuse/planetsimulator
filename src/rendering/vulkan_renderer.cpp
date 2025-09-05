@@ -14,6 +14,9 @@
 
 namespace rendering {
 
+// Define static members
+VulkanRenderer::MeshPipeline VulkanRenderer::meshPipeline = VulkanRenderer::MeshPipeline::CPU_ADAPTIVE;
+
 // ============================================================================
 // Constructor and Main Interface
 // ============================================================================
@@ -150,23 +153,62 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
         lastLODLevel = currentLODLevel;
         lastCameraPos = currentCameraPos;
         
-        // Try adaptive dual-detail sphere mesh generation (Phase 1)
-        bool meshGenerated = generateAdaptiveSphere(planet, camera);
-        if (!meshGenerated) {
-            std::cerr << "ERROR: Sphere mesh generation failed, trying GPU mesh generation...\n";
-            meshGenerated = generateGPUMesh(planet, camera);
-            if (!meshGenerated) {
-                std::cerr << "ERROR: GPU mesh generation failed!\n";
-                
-#ifdef DEBUG_CPU_REFERENCE
-                // Fall back to CPU reference mesh for debugging
-                std::cerr << "Attempting CPU reference mesh generation...\n";
-                meshGenerated = generateCPUReferenceMesh(planet);
+        // MASTER PIPELINE SWITCH - Crystal clear pipeline selection
+        bool meshGenerated = false;
+        
+        switch (meshPipeline) {
+            case MeshPipeline::CPU_ADAPTIVE:
+                // Current working implementation
+                meshGenerated = generateAdaptiveSphere(planet, camera);
                 if (!meshGenerated) {
-                    std::cerr << "ERROR: CPU reference mesh generation also failed!\n";
+                    std::cerr << "ERROR: CPU adaptive sphere generation failed!\n";
                 }
-#endif
+                break;
+                
+            case MeshPipeline::GPU_COMPUTE:
+                // Future GPU implementation
+                meshGenerated = generateGPUMesh(planet, camera);
+                if (!meshGenerated) {
+                    std::cerr << "ERROR: GPU compute mesh generation failed!\n";
+                }
+                break;
+                
+            case MeshPipeline::GPU_WITH_CPU_VERIFY: {
+                // Debug mode - run both separately but use GPU result
+                std::cout << "[VERIFY MODE] Running GPU mesh generation for verification...\n";
+                
+                // Run GPU first
+                bool gpuSuccess = generateGPUMesh(planet, camera);
+                
+                // Store GPU mesh counts for comparison
+                size_t gpuVertexCount = meshVertexCount;
+                size_t gpuIndexCount = meshIndexCount;
+                
+                // Now run CPU to compare counts (but don't use its buffers)
+                // We need a separate function that doesn't overwrite buffers
+                // For now, just report GPU results
+                
+                if (gpuSuccess) {
+                    std::cout << "[VERIFY MODE] GPU generated " << gpuVertexCount 
+                              << " vertices, " << (gpuIndexCount/3) << " triangles\n";
+                    meshGenerated = true;
+                } else {
+                    std::cerr << "[VERIFY MODE] GPU generation failed!\n";
+                    // Fall back to CPU
+                    meshGenerated = generateAdaptiveSphere(planet, camera);
+                }
+                break;
             }
+        }
+        
+        if (!meshGenerated) {
+            // NO FALLBACKS! FAIL LOUDLY AND CLEARLY!
+            std::cerr << "\n================================\n";
+            std::cerr << "MESH GENERATION FAILED!\n";
+            std::cerr << "Pipeline: " << (int)meshPipeline << "\n";
+            std::cerr << "Press G to switch pipeline\n";
+            std::cerr << "================================\n\n";
+            // DO NOT try another method - that way lies madness
         }
     }
     
@@ -567,10 +609,14 @@ void VulkanRenderer::renderGPUMesh() {
         // std::cout << "[renderGPUMesh] DRAW CALL EXECUTED: " << meshIndexCount << " indices (" << meshIndexCount/3 << " triangles)\n";
     }
     
-    static int meshDebugCount = 0;
-    if (meshDebugCount++ % 60 == 0) {
+    // Print only when mesh changes
+    static size_t lastGpuVertexCount = 0;
+    static size_t lastGpuIndexCount = 0;
+    if (meshVertexCount != lastGpuVertexCount || meshIndexCount != lastGpuIndexCount) {
         std::cout << "[GPU MESH] Rendering " << meshVertexCount << " vertices, " 
                   << (meshIndexCount/3) << " triangles\n";
+        lastGpuVertexCount = meshVertexCount;
+        lastGpuIndexCount = meshIndexCount;
     }
 }
 

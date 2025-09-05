@@ -1,0 +1,260 @@
+#version 450
+
+// DEBUG GPU Transvoxel - bypass octree, use simple height-based coloring
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// Input Uniforms
+layout(binding = 0) uniform UBO {
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec3 cameraPos;
+    float planetRadius;
+    vec3 planetCenter;
+    float time;
+    float voxelSize;
+    int gridSize;
+    int maxVertices;
+    int maxIndices;
+} ubo;
+
+// Octree Data Structures (unused but required for binding compatibility)
+struct GPUNode {
+    vec4 centerAndSize;
+    uvec4 childrenAndFlags;
+};
+
+struct GPUVoxel {
+    vec4 colorAndDensity;
+    vec4 extra;
+};
+
+layout(std430, binding = 1) readonly buffer OctreeNodes {
+    GPUNode nodes[];
+} octreeNodes;
+
+layout(std430, binding = 2) readonly buffer OctreeVoxels {
+    GPUVoxel voxels[];
+} octreeVoxels;
+
+// Output Buffers
+layout(std430, binding = 3) writeonly buffer VertexBuffer {
+    float vertices[];
+} vertexBuffer;
+
+layout(std430, binding = 4) writeonly buffer IndexBuffer {
+    uint indices[];
+} indexBuffer;
+
+layout(std430, binding = 5) buffer CounterBuffer {
+    uint vertexCount;
+    uint indexCount;
+    uint processedCells;
+    uint generatedTriangles;
+} counters;
+
+// DEBUG: Simple height-based coloring without octree
+vec4 sampleVoxelData(vec3 worldPos) {
+    float dist = length(worldPos) - ubo.planetRadius;
+    float density = (dist < 0.0) ? 1.0 : 0.0;
+    
+    // Vivid test colors based on elevation
+    vec3 color;
+    if (dist < -5000.0) {
+        color = vec3(0.5, 0.2, 0.1);  // Deep brown
+    } else if (dist < -1000.0) {
+        color = vec3(0.2, 0.8, 0.2);  // Bright green
+    } else if (dist < -100.0) {
+        color = vec3(0.9, 0.9, 0.2);  // Yellow
+    } else if (dist < -10.0) {
+        color = vec3(0.2, 0.6, 0.9);  // Light blue
+    } else if (dist < 0.0) {
+        color = vec3(0.9, 0.2, 0.2);  // Red surface
+    } else {
+        color = vec3(1.0, 1.0, 1.0);  // White (air)
+    }
+    
+    return vec4(color, density);
+}
+
+vec3 vertexInterp(vec3 p1, vec3 p2, float v1, float v2, float isolevel) {
+    if (abs(isolevel - v1) < 0.00001) return p1;
+    if (abs(isolevel - v2) < 0.00001) return p2;
+    if (abs(v1 - v2) < 0.00001) return p1;
+    float mu = (isolevel - v1) / (v2 - v1);
+    return mix(p1, p2, mu);
+}
+
+vec3 colorInterp(vec3 c1, vec3 c2, float v1, float v2, float isolevel) {
+    if (abs(v1 - v2) < 0.00001) return c1;
+    float mu = (isolevel - v1) / (v2 - v1);
+    return mix(c1, c2, mu);
+}
+
+void main() {
+    uvec3 cellCoord = gl_GlobalInvocationID.xyz;
+    
+    if (cellCoord.x >= uint(ubo.gridSize) || 
+        cellCoord.y >= uint(ubo.gridSize) || 
+        cellCoord.z >= uint(ubo.gridSize)) {
+        return;
+    }
+    
+    vec3 cellWorldPos = ubo.planetCenter + 
+                       (vec3(cellCoord) - vec3(ubo.gridSize/2)) * ubo.voxelSize;
+    
+    // Sample corners
+    vec4 voxelData[8];
+    vec3 positions[8];
+    float densities[8];
+    vec3 colors[8];
+    
+    for (int i = 0; i < 8; i++) {
+        vec3 offset = vec3(
+            ((i & 1) != 0) ? ubo.voxelSize : 0.0,
+            ((i & 2) != 0) ? ubo.voxelSize : 0.0,
+            ((i & 4) != 0) ? ubo.voxelSize : 0.0
+        );
+        positions[i] = cellWorldPos + offset;
+        voxelData[i] = sampleVoxelData(positions[i]);
+        colors[i] = voxelData[i].xyz;
+        densities[i] = voxelData[i].w;
+    }
+    
+    // Marching cubes
+    int cubeIndex = 0;
+    float isolevel = 0.5;
+    
+    for (int i = 0; i < 8; i++) {
+        if (densities[i] > isolevel) {
+            cubeIndex |= (1 << i);
+        }
+    }
+    
+    if (cubeIndex == 0 || cubeIndex == 255) {
+        return;
+    }
+    
+    // Simple edge detection
+    int edges = 0;
+    if ((cubeIndex & 1) != (cubeIndex & 2)) edges |= 1;
+    if ((cubeIndex & 2) != (cubeIndex & 4)) edges |= 2;
+    if ((cubeIndex & 4) != (cubeIndex & 8)) edges |= 4;
+    if ((cubeIndex & 8) != (cubeIndex & 1)) edges |= 8;
+    if ((cubeIndex & 16) != (cubeIndex & 32)) edges |= 16;
+    if ((cubeIndex & 32) != (cubeIndex & 64)) edges |= 32;
+    if ((cubeIndex & 64) != (cubeIndex & 128)) edges |= 64;
+    if ((cubeIndex & 128) != (cubeIndex & 16)) edges |= 128;
+    if ((cubeIndex & 1) != (cubeIndex & 16)) edges |= 256;
+    if ((cubeIndex & 2) != (cubeIndex & 32)) edges |= 512;
+    if ((cubeIndex & 4) != (cubeIndex & 64)) edges |= 1024;
+    if ((cubeIndex & 8) != (cubeIndex & 128)) edges |= 2048;
+    
+    if (edges == 0) return;
+    
+    // Generate vertices
+    vec3 vertList[12];
+    vec3 colorList[12];
+    
+    if ((edges & 1) != 0) {
+        vertList[0] = vertexInterp(positions[0], positions[1], densities[0], densities[1], isolevel);
+        colorList[0] = colorInterp(colors[0], colors[1], densities[0], densities[1], isolevel);
+    }
+    if ((edges & 2) != 0) {
+        vertList[1] = vertexInterp(positions[1], positions[2], densities[1], densities[2], isolevel);
+        colorList[1] = colorInterp(colors[1], colors[2], densities[1], densities[2], isolevel);
+    }
+    if ((edges & 4) != 0) {
+        vertList[2] = vertexInterp(positions[2], positions[3], densities[2], densities[3], isolevel);
+        colorList[2] = colorInterp(colors[2], colors[3], densities[2], densities[3], isolevel);
+    }
+    if ((edges & 8) != 0) {
+        vertList[3] = vertexInterp(positions[3], positions[0], densities[3], densities[0], isolevel);
+        colorList[3] = colorInterp(colors[3], colors[0], densities[3], densities[0], isolevel);
+    }
+    if ((edges & 16) != 0) {
+        vertList[4] = vertexInterp(positions[4], positions[5], densities[4], densities[5], isolevel);
+        colorList[4] = colorInterp(colors[4], colors[5], densities[4], densities[5], isolevel);
+    }
+    if ((edges & 32) != 0) {
+        vertList[5] = vertexInterp(positions[5], positions[6], densities[5], densities[6], isolevel);
+        colorList[5] = colorInterp(colors[5], colors[6], densities[5], densities[6], isolevel);
+    }
+    if ((edges & 64) != 0) {
+        vertList[6] = vertexInterp(positions[6], positions[7], densities[6], densities[7], isolevel);
+        colorList[6] = colorInterp(colors[6], colors[7], densities[6], densities[7], isolevel);
+    }
+    if ((edges & 128) != 0) {
+        vertList[7] = vertexInterp(positions[7], positions[4], densities[7], densities[4], isolevel);
+        colorList[7] = colorInterp(colors[7], colors[4], densities[7], densities[4], isolevel);
+    }
+    if ((edges & 256) != 0) {
+        vertList[8] = vertexInterp(positions[0], positions[4], densities[0], densities[4], isolevel);
+        colorList[8] = colorInterp(colors[0], colors[4], densities[0], densities[4], isolevel);
+    }
+    if ((edges & 512) != 0) {
+        vertList[9] = vertexInterp(positions[1], positions[5], densities[1], densities[5], isolevel);
+        colorList[9] = colorInterp(colors[1], colors[5], densities[1], densities[5], isolevel);
+    }
+    if ((edges & 1024) != 0) {
+        vertList[10] = vertexInterp(positions[2], positions[6], densities[2], densities[6], isolevel);
+        colorList[10] = colorInterp(colors[2], colors[6], densities[2], densities[6], isolevel);
+    }
+    if ((edges & 2048) != 0) {
+        vertList[11] = vertexInterp(positions[3], positions[7], densities[3], densities[7], isolevel);
+        colorList[11] = colorInterp(colors[3], colors[7], densities[3], densities[7], isolevel);
+    }
+    
+    // Create triangle
+    uint baseVertex = atomicAdd(counters.vertexCount, 3);
+    uint baseIndex = atomicAdd(counters.indexCount, 3);
+    
+    if (baseVertex + 3 > uint(ubo.maxVertices) || baseIndex + 3 > uint(ubo.maxIndices)) {
+        atomicAdd(counters.vertexCount, -3);
+        atomicAdd(counters.indexCount, -3);
+        return;
+    }
+    
+    // Find vertices and colors
+    vec3 v[3];
+    vec3 c[3];
+    int found = 0;
+    
+    for (int i = 0; i < 12 && found < 3; i++) {
+        if ((edges & (1 << i)) != 0) {
+            v[found] = vertList[i];
+            c[found] = colorList[i];
+            found++;
+        }
+    }
+    
+    if (found < 3) {
+        atomicAdd(counters.vertexCount, -3);
+        atomicAdd(counters.indexCount, -3);
+        return;
+    }
+    
+    vec3 normal = normalize(cross(v[1] - v[0], v[2] - v[0]));
+    
+    for (int i = 0; i < 3; i++) {
+        uint vIdx = (baseVertex + i) * 11;
+        vertexBuffer.vertices[vIdx + 0] = v[i].x;
+        vertexBuffer.vertices[vIdx + 1] = v[i].y;
+        vertexBuffer.vertices[vIdx + 2] = v[i].z;
+        vertexBuffer.vertices[vIdx + 3] = c[i].x;
+        vertexBuffer.vertices[vIdx + 4] = c[i].y;
+        vertexBuffer.vertices[vIdx + 5] = c[i].z;
+        vertexBuffer.vertices[vIdx + 6] = normal.x;
+        vertexBuffer.vertices[vIdx + 7] = normal.y;
+        vertexBuffer.vertices[vIdx + 8] = normal.z;
+        vertexBuffer.vertices[vIdx + 9] = 0.0;
+        vertexBuffer.vertices[vIdx + 10] = 0.0;
+    }
+    
+    indexBuffer.indices[baseIndex + 0] = baseVertex;
+    indexBuffer.indices[baseIndex + 1] = baseVertex + 1;
+    indexBuffer.indices[baseIndex + 2] = baseVertex + 2;
+    
+    atomicAdd(counters.processedCells, 1);
+    atomicAdd(counters.generatedTriangles, 1);
+}

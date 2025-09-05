@@ -1,0 +1,315 @@
+#version 450
+
+// Adaptive sphere mesh generation compute shader
+// Generates an icosphere with dual-detail LOD based on camera facing
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+// Input uniforms
+layout(binding = 0) uniform UBO {
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec3 cameraPos;
+    float planetRadius;
+    vec3 planetCenter;
+    float time;
+    int highDetailLevel;  // Front hemisphere subdivision
+    int lowDetailLevel;   // Back hemisphere subdivision
+    int flipFrontBack;    // 0 or 1, flips front/back determination
+    int maxVertices;
+    int maxIndices;
+} ubo;
+
+// Output buffers
+layout(std430, binding = 1) writeonly buffer VertexBuffer {
+    float vertices[];  // Interleaved: pos(3), color(3), normal(3), uv(2) = 11 floats per vertex
+} vertexBuffer;
+
+layout(std430, binding = 2) writeonly buffer IndexBuffer {
+    uint indices[];
+} indexBuffer;
+
+// Atomic counters for output tracking
+layout(std430, binding = 3) buffer CounterBuffer {
+    uint vertexCount;
+    uint indexCount;
+    uint frontFaceCount;
+    uint backFaceCount;
+} counters;
+
+// Octree data structures
+// GPU octree uses a combined structure: each node is 32 bytes
+struct GPUNode {
+    vec4 centerAndSize;      // xyz = center, w = halfSize
+    uvec4 childrenAndFlags;  // x = childrenIndex, y = voxelIndex, z = flags, w = padding
+};
+
+layout(std430, binding = 4) readonly buffer OctreeNodeBuffer {
+    GPUNode nodes[];  // Combined node data
+} octreeNodes;
+
+// Binding 5 is unused - we were incorrectly binding the same buffer twice
+// Skip binding 5 to avoid confusion
+
+layout(std430, binding = 6) readonly buffer VoxelBuffer {
+    vec4 voxels[];  // x,y,z = color, w = density
+} voxelData;
+
+// Icosahedron base vertices
+const float t = 1.618033988749895; // Golden ratio
+const float s = sqrt(1.0 + t * t); // Normalization factor
+
+const vec3 icosahedronVerts[12] = vec3[12](
+    vec3(-1,  t,  0) / s,
+    vec3( 1,  t,  0) / s,
+    vec3(-1, -t,  0) / s,
+    vec3( 1, -t,  0) / s,
+    vec3( 0, -1,  t) / s,
+    vec3( 0,  1,  t) / s,
+    vec3( 0, -1, -t) / s,
+    vec3( 0,  1, -t) / s,
+    vec3( t,  0, -1) / s,
+    vec3( t,  0,  1) / s,
+    vec3(-t,  0, -1) / s,
+    vec3(-t,  0,  1) / s
+);
+
+// Icosahedron faces (20 triangles)
+const uvec3 icosahedronFaces[20] = uvec3[20](
+    uvec3(0, 11, 5),  uvec3(0, 5, 1),   uvec3(0, 1, 7),   uvec3(0, 7, 10),  uvec3(0, 10, 11),
+    uvec3(1, 5, 9),   uvec3(5, 11, 4),  uvec3(11, 10, 2), uvec3(10, 7, 6),  uvec3(7, 1, 8),
+    uvec3(3, 9, 4),   uvec3(3, 4, 2),   uvec3(3, 2, 6),   uvec3(3, 6, 8),   uvec3(3, 8, 9),
+    uvec3(4, 9, 5),   uvec3(2, 4, 11),  uvec3(6, 2, 10),  uvec3(8, 6, 7),   uvec3(9, 8, 1)
+);
+
+// Sample voxel from octree at world position
+vec4 sampleOctreeVoxel(vec3 worldPos) {
+    // Start at root node (index 0)
+    uint nodeIndex = 0;
+    vec4 errorColor = vec4(1.0, 0.0, 1.0, 1.0); // MAGENTA = ERROR - should never see this
+    
+    // Traverse octree to find leaf containing position
+    const int MAX_DEPTH = 20; // Safety limit
+    for (int depth = 0; depth < MAX_DEPTH; depth++) {
+        // Read the combined node structure
+        GPUNode node = octreeNodes.nodes[nodeIndex];
+        vec3 center = node.centerAndSize.xyz;
+        float halfSize = node.centerAndSize.w;
+        
+        uint childrenIndex = node.childrenAndFlags.x;
+        uint voxelIndex = node.childrenAndFlags.y;
+        uint flags = node.childrenAndFlags.z;
+        
+        // Check if this is a leaf node
+        if ((flags & 1u) != 0u || childrenIndex == 0xFFFFFFFFu) {
+            // Leaf node - sample voxel data
+            if (voxelIndex != 0xFFFFFFFFu) {
+                // We have 8 voxels in a 2x2x2 grid
+                // Find which voxel in the leaf
+                vec3 localPos = (worldPos - center) / halfSize + vec3(0.5);
+                localPos = clamp(localPos, vec3(0.0), vec3(0.999));
+                
+                int vx = int(localPos.x * 2.0);
+                int vy = int(localPos.y * 2.0);
+                int vz = int(localPos.z * 2.0);
+                int voxelOffset = vx + vy * 2 + vz * 4;
+                
+                uint finalVoxelIndex = voxelIndex + uint(voxelOffset);
+                // Trust that the index is valid if voxelIndex was valid
+                return voxelData.voxels[finalVoxelIndex];
+            }
+            return errorColor;
+        }
+        
+        // Find which child contains the position
+        vec3 offset = worldPos - center;
+        int childIdx = 0;
+        if (offset.x > 0) childIdx |= 1;
+        if (offset.y > 0) childIdx |= 2;
+        if (offset.z > 0) childIdx |= 4;
+        
+        // Move to child node
+        nodeIndex = childrenIndex + uint(childIdx);
+        
+        // Safety check disabled - runtime-sized arrays don't support length()
+        // Trust that indices are valid from the octree upload
+    }
+    
+    return errorColor;  // ERROR: Max depth reached without finding leaf
+}
+
+// Get material and displacement based on octree voxel data
+void getMaterialProperties(vec3 normalizedPos, out vec3 color, out float displacement) {
+    // Convert normalized sphere position to world position
+    // DEBUG: Simple color pattern to verify shader is running
+    // This bypasses octree completely - if we still see beige, shader isn't being used
+    if (normalizedPos.y < 0.0) {
+        color = vec3(0.0, 0.0, 1.0); // BLUE for bottom half
+    } else {
+        color = vec3(0.0, 1.0, 0.0); // GREEN for top half
+    }
+    displacement = 100.0; // Fixed displacement for testing
+    return; // Skip the rest of the function
+    
+    // Convert normalized sphere position to world position
+    vec3 worldPos = normalizedPos * ubo.planetRadius;
+    // Sample voxel from octree
+    vec4 voxelColor = sampleOctreeVoxel(worldPos);
+    // Use voxel color directly
+    color = voxelColor.rgb;
+    // Map color to displacement (matching CPU implementation)
+    // Check for water (blueish)
+    if (color.b > 0.5 && color.r < 0.3) {
+        displacement = -100.0; // Water
+    }
+    // Check for sand (yellowish)
+    else if (color.r > 0.8 && color.g > 0.7) {
+        displacement = 10.0; // Sand
+    }
+    // Check for grass (greenish)
+    else if (color.g > 0.5 && color.r < 0.3) {
+        displacement = 50.0; // Grass
+    }
+    // Check for snow (whitish)
+    else if (color.r > 0.9 && color.g > 0.9 && color.b > 0.9) {
+        displacement = 300.0; // Snow
+    }
+    // Rock/default
+    else {
+        displacement = 150.0; // Rock
+    }
+}
+// Helper function to add a vertex
+uint addVertex(vec3 pos, vec3 color, vec3 normal, vec2 uv, uint vOffset) {
+    uint idx = vOffset * 11;
+    vertexBuffer.vertices[idx + 0] = pos.x;
+    vertexBuffer.vertices[idx + 1] = pos.y;
+    vertexBuffer.vertices[idx + 2] = pos.z;
+    vertexBuffer.vertices[idx + 3] = color.r;
+    vertexBuffer.vertices[idx + 4] = color.g;
+    vertexBuffer.vertices[idx + 5] = color.b;
+    vertexBuffer.vertices[idx + 6] = normal.x;
+    vertexBuffer.vertices[idx + 7] = normal.y;
+    vertexBuffer.vertices[idx + 8] = normal.z;
+    vertexBuffer.vertices[idx + 9] = uv.x;
+    vertexBuffer.vertices[idx + 10] = uv.y;
+    return vOffset;
+}
+// Output a single triangle
+void outputTriangle(vec3 v0, vec3 v1, vec3 v2, bool isFront) {
+    // Add vertices
+    uint i0 = atomicAdd(counters.vertexCount, 1);
+    uint i1 = atomicAdd(counters.vertexCount, 1);
+    uint i2 = atomicAdd(counters.vertexCount, 1);
+    // Get material properties for each vertex
+    vec3 col0, col1, col2;
+    float disp0, disp1, disp2;
+    getMaterialProperties(v0, col0, disp0);
+    getMaterialProperties(v1, col1, disp1);
+    getMaterialProperties(v2, col2, disp2);
+    // Apply displacement to positions
+    vec3 p0 = v0 * ubo.planetRadius + v0 * disp0;
+    vec3 p1 = v1 * ubo.planetRadius + v1 * disp1;
+    vec3 p2 = v2 * ubo.planetRadius + v2 * disp2;
+    // Calculate face normal for proper shading
+    vec3 faceNormal = normalize(cross(p1 - p0, p2 - p0));
+    // Add subtle front/back indication for debugging
+    float debugTint = isFront ? 1.05 : 0.95;
+    // Use face normal for all vertices (flat shading for now)
+    addVertex(p0, col0 * debugTint, faceNormal, vec2(0.5 + atan(v0.z, v0.x) / (2.0 * 3.14159265359), 0.5 + asin(v0.y) / 3.14159265359), i0);
+    addVertex(p1, col1 * debugTint, faceNormal, vec2(0.5 + atan(v1.z, v1.x) / (2.0 * 3.14159265359), 0.5 + asin(v1.y) / 3.14159265359), i1);
+    addVertex(p2, col2 * debugTint, faceNormal, vec2(0.5 + atan(v2.z, v2.x) / (2.0 * 3.14159265359), 0.5 + asin(v2.y) / 3.14159265359), i2);
+    // Add indices
+    uint baseIdx = atomicAdd(counters.indexCount, 3);
+    indexBuffer.indices[baseIdx + 0] = i0;
+    indexBuffer.indices[baseIdx + 1] = i1;
+    indexBuffer.indices[baseIdx + 2] = i2;
+    if (isFront) {
+        atomicAdd(counters.frontFaceCount, 1);
+    } else {
+        atomicAdd(counters.backFaceCount, 1);
+    }
+}
+// Subdivide a triangle iteratively
+void subdivideTriangle(vec3 v0, vec3 v1, vec3 v2, int level) {
+    // Clamp level to prevent stack overflow
+    level = min(level, 5);
+    // Stack for iterative subdivision - increased size for higher levels
+    // Level 5 can generate up to 4^5 = 1024 triangles from one base triangle
+    vec3 stack[256*3]; // Increased to handle up to 256 pending triangles
+    int levels[256];
+    int stackPtr = 0;
+    // Push initial triangle
+    stack[0] = v0;
+    stack[1] = v1;
+    stack[2] = v2;
+    levels[0] = level;
+    stackPtr = 1;
+    while (stackPtr > 0) {
+        // Pop triangle
+        stackPtr--;
+        vec3 t0 = stack[stackPtr * 3 + 0];
+        vec3 t1 = stack[stackPtr * 3 + 1];
+        vec3 t2 = stack[stackPtr * 3 + 2];
+        int curLevel = levels[stackPtr];
+        if (curLevel == 0) {
+            // Output the triangle
+            vec3 center = normalize((t0 + t1 + t2) / 3.0);
+            vec3 toCam = normalize(ubo.cameraPos - center * ubo.planetRadius);
+            float dotProduct = dot(center, toCam);
+            bool isFront = (dotProduct > 0.0) != (ubo.flipFrontBack != 0);
+            outputTriangle(t0, t1, t2, isFront);
+        } else if (stackPtr < 250) { // Prevent stack overflow (increased limit)
+            // Subdivide: create midpoints
+            vec3 m0 = normalize((t0 + t1) * 0.5);
+            vec3 m1 = normalize((t1 + t2) * 0.5);
+            vec3 m2 = normalize((t2 + t0) * 0.5);
+            // Push 4 triangles onto stack
+            int newLevel = curLevel - 1;
+            // Triangle 1: v0, m0, m2
+            stack[stackPtr * 3 + 0] = t0;
+            stack[stackPtr * 3 + 1] = m0;
+            stack[stackPtr * 3 + 2] = m2;
+            levels[stackPtr] = newLevel;
+            stackPtr++;
+            // Triangle 2: m0, v1, m1
+            stack[stackPtr * 3 + 0] = m0;
+            stack[stackPtr * 3 + 1] = t1;
+            stack[stackPtr * 3 + 2] = m1;
+            levels[stackPtr] = newLevel;
+            stackPtr++;
+            // Triangle 3: m2, m1, v2
+            stack[stackPtr * 3 + 0] = m2;
+            stack[stackPtr * 3 + 1] = m1;
+            stack[stackPtr * 3 + 2] = t2;
+            levels[stackPtr] = newLevel;
+            stackPtr++;
+            // Triangle 4: m0, m1, m2
+            stack[stackPtr * 3 + 0] = m0;
+            stack[stackPtr * 3 + 1] = m1;
+            stack[stackPtr * 3 + 2] = m2;
+            levels[stackPtr] = newLevel;
+            stackPtr++;
+        }
+    }
+}
+void main() {
+    uint gid = gl_GlobalInvocationID.x;
+    // Each thread processes one base triangle
+    if (gid < 20) {
+        uvec3 face = icosahedronFaces[gid];
+        vec3 v0 = icosahedronVerts[face.x];
+        vec3 v1 = icosahedronVerts[face.y];
+        vec3 v2 = icosahedronVerts[face.z];
+        // For adaptive LOD, determine base triangle's subdivision level
+        // Each subdivided triangle will determine its own front/back status
+        vec3 center = normalize((v0 + v1 + v2) / 3.0);
+        vec3 toCam = normalize(ubo.cameraPos - center * ubo.planetRadius);
+        float dotProduct = dot(center, toCam);
+        bool baseFront = (dotProduct > 0.0) != (ubo.flipFrontBack != 0);
+        // Use adaptive subdivision based on base triangle facing
+        int subdivLevel = baseFront ? ubo.highDetailLevel : ubo.lowDetailLevel;
+        // Subdivide this triangle
+        subdivideTriangle(v0, v1, v2, subdivLevel);
+    }
+}

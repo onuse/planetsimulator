@@ -107,6 +107,9 @@ public:
     
     RenderData prepareRenderData(const glm::vec3& viewPos, const glm::mat4& viewProj);
     
+    // Prepare FULL octree data for GPU (includes entire hierarchy for traversal)
+    RenderData prepareFullOctreeData();
+    
     // Access
     Voxel* getVoxel(const glm::vec3& position);
     const Voxel* getVoxel(const glm::vec3& position) const;

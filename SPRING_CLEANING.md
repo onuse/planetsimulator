@@ -1,48 +1,59 @@
-# Spring Cleaning - Removing Dormant Code Paths
+# Spring Cleaning Summary
 
-## Active Path (KEEP):
-- `updateQuadtreeBuffersCPU` in LODManager
-- `CPUVertexGenerator::generatePatchMesh`
-- QUADTREE_ONLY render mode
-- CPU vertex shader: `quadtree_patch_cpu.vert`
+## What Was Removed
 
-## To Remove:
+### Deprecated Compute Shaders (13 files)
+- `sphere_generator.comp` - Old octree-based sphere generator
+- `mesh_generator.comp` - Old octree mesh generation
+- `mesh_generator_simple.comp` - Unused variant
+- `mesh_generator_simple_sphere.comp` - Unused variant  
+- `mesh_generator_proper.comp` - Unused variant
+- `mesh_generator_fixed.comp` - Unused variant
+- `terrain_sphere.comp` - Old terrain implementation
+- `simple_sphere_single.comp` - Test shader
+- `surface_points.comp` - Point cloud generation
+- `octree_verify.comp` - Debug shader
+- `test_sphere.comp` - Test shader
+- `test_simple.comp` - Test shader
+- `test_triangle.comp` - Test shader
 
-### 1. GPU Compute Mesh Generation
-- [ ] Remove `generateFullPlanetOnGPU()` function
-- [ ] Remove `GPUMeshGeneration` struct  
-- [ ] Remove `createGPUMeshGenerationPipeline()`
-- [ ] Remove `destroyGPUMeshGenerationPipeline()`
-- [ ] Delete all `mesh_generator_compute_*.c` templates except `simple_sphere`
-- [ ] Remove `mesh_generator.comp` shader
+### Deprecated CPU Files
+- `debug_cpu_mesh_reference_fast.cpp` - Old CPU reference (deleted)
+- `gpu_octree_old.cpp.backup` - Backup file (deleted)
 
-### 2. Unused Vertex Generators
-- [ ] Remove `SimpleVertexGenerator` class
-- [ ] Remove `IVertexGenerator` interface
-- [ ] Remove `VertexGeneratorSystem` class
+### Deprecated Shader Templates (4 files)
+- `mesh_generator_compute_template.c`
+- `mesh_generator_compute_simple_sphere.c`
+- `surface_points_compute_template.c`
+- `octree_verify_compute_template.c`
 
-### 3. Transvoxel/Octree Paths (if not using voxel data)
-- [ ] Check if OCTREE_TRANSVOXEL mode is ever used
-- [ ] Remove TransvoxelRenderer if unused
-- [ ] Remove transvoxel shaders if unused
+### Major Code Reduction
+- **vulkan_renderer_mesh_compute.cpp**: Reduced from 360 lines to 32 lines
+  - Removed entire octree-based GPU compute path (330 lines)
+  - Now only routes to adaptive sphere implementation
 
-### 4. Unused Shader Templates
-```
-mesh_generator_compute_altitude.c
-mesh_generator_compute_analyze.c
-mesh_generator_compute_template.c
-mesh_generator_compute_template_debug.c
-mesh_generator_compute_template_fixed.c
-mesh_generator_compute_template_octree.c
-mesh_generator_compute_template_old.c
-```
+## What Was Kept
 
-### 5. Test/Debug Code
-- [ ] Remove TEST GRID generation
-- [ ] Remove debug vertex dumping code
-- [ ] Remove unused debug shaders
+### Active Pipeline Files
+- `adaptive_sphere.comp` - Current GPU compute shader
+- `generate_adaptive_sphere.cpp` - CPU adaptive sphere implementation
+- `vulkan_renderer_cpu_upload.cpp` - Minimal version for mesh upload (restored)
+- `vulkan_renderer_adaptive_gpu.cpp` - GPU adaptive sphere implementation
 
-## After Cleanup:
-- Single clear path: CPU vertex generation for quadtree patches
-- Simplified shader pipeline
-- Easier to debug and optimize
+### Current Pipeline Support
+1. **CPU_ADAPTIVE** - CPU-based adaptive sphere generation
+2. **GPU_COMPUTE** - GPU compute shader using adaptive sphere
+3. **GPU_WITH_CPU_VERIFY** - GPU with CPU verification (both use same shader now)
+
+## Benefits
+
+1. **Code Reduction**: Removed ~500+ lines of deprecated code
+2. **Clarity**: Single clear implementation path (adaptive sphere)
+3. **Consistency**: GPU_COMPUTE and GPU_WITH_CPU_VERIFY now use identical shaders
+4. **Maintainability**: No more confusion between multiple GPU implementations
+5. **Build Speed**: Fewer shaders to compile
+
+## Testing
+- All 25 tests pass after cleanup
+- Build completes successfully
+- All three pipelines (CPU_ADAPTIVE, GPU_COMPUTE, GPU_WITH_CPU_VERIFY) functional

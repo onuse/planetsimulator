@@ -173,6 +173,33 @@ if exist %SRC_COMPUTE%\mesh_generator.comp (
     )
 )
 
+if exist %SRC_COMPUTE%\adaptive_sphere.comp (
+    echo Compiling adaptive_sphere.comp...
+    "%GLSLC%" %SRC_COMPUTE%\adaptive_sphere.comp -o adaptive_sphere.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile adaptive_sphere.comp
+        exit /b 1
+    )
+)
+
+if exist %SRC_COMPUTE%\adaptive_sphere_octree.comp (
+    echo Compiling adaptive_sphere_octree.comp...
+    "%GLSLC%" %SRC_COMPUTE%\adaptive_sphere_octree.comp -o adaptive_sphere_octree.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile adaptive_sphere_octree.comp
+        exit /b 1
+    )
+)
+
+if exist %SRC_COMPUTE%\transvoxel_gpu_proper.comp (
+    echo Compiling transvoxel_gpu_proper.comp as transvoxel_gpu.comp.spv...
+    "%GLSLC%" %SRC_COMPUTE%\transvoxel_gpu_proper.comp -o transvoxel_gpu.comp.spv
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to compile transvoxel_gpu_proper.comp
+        exit /b 1
+    )
+)
+
 if exist %SRC_COMPUTE%\mesh_generator_simple.comp (
     echo Compiling mesh_generator_simple.comp...
     "%GLSLC%" %SRC_COMPUTE%\mesh_generator_simple.comp -o mesh_generator_simple.comp.spv

@@ -80,8 +80,9 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     
     static int viewportDebug = 0;
     if (viewportDebug++ % 60 == 0) {
-        std::cout << "[VIEWPORT] " << viewport.width << "x" << viewport.height 
-                  << " depth: " << viewport.minDepth << "-" << viewport.maxDepth << std::endl;
+        // Commented out to reduce spam
+        // std::cout << "[VIEWPORT] " << viewport.width << "x" << viewport.height 
+        //           << " depth: " << viewport.minDepth << "-" << viewport.maxDepth << std::endl;
     }
     
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -126,7 +127,16 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         
         static int frameCount = 0;
         if (frameCount++ % 60 == 0) {
-            std::cout << "[GPU RENDERING] Using GPU mesh generation pipeline\n";
+            // This message is misleading - renderGPUMesh() is called for BOTH CPU and GPU pipelines
+            // The actual pipeline is determined in VulkanRenderer::render()
+            // Print only when mesh changes
+            static size_t lastVertexCount = 0;
+            static size_t lastIndexCount = 0;
+            if (meshVertexCount != lastVertexCount || meshIndexCount != lastIndexCount) {
+                std::cout << "[RENDER] Drawing mesh (" << meshVertexCount << " verts, " << meshIndexCount/3 << " tris)\n";
+                lastVertexCount = meshVertexCount;
+                lastIndexCount = meshIndexCount;
+            }
         }
     }
     

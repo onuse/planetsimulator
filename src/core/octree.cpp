@@ -4,6 +4,8 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include <queue>
+#include <unordered_map>
 
 namespace octree {
 
@@ -720,6 +722,115 @@ void OctreePlanet::setVoxel(const glm::vec3& position, const Voxel& voxel) {
 
 bool OctreePlanet::isInsidePlanet(const glm::vec3& position) const {
     return glm::length(position) <= radius;
+}
+
+// Prepare FULL octree for GPU traversal - includes entire hierarchy
+OctreePlanet::RenderData OctreePlanet::prepareFullOctreeData() {
+    RenderData data;
+    
+    // LIMIT DEPTH to avoid GPU memory overflow
+    // Full octree at depth 12 can be >1.5GB!
+    const int MAX_GPU_DEPTH = 6;  // Conservative limit for testing (depth 6 = ~50-100MB)
+    
+    // Reserve space for entire octree (estimate based on depth)
+    // For depth D, worst case is 8^D nodes, but typically much less
+    size_t estimatedNodes = 100000;  // Start conservative
+    data.nodes.reserve(estimatedNodes);
+    data.voxels.reserve(estimatedNodes * OctreeNode::LEAF_VOXELS);
+    
+    uint32_t nextNodeIndex = 0;
+    uint32_t nextVoxelIndex = 0;
+    
+    // Map to track node indices for parent-child linking
+    std::unordered_map<OctreeNode*, uint32_t> nodeIndexMap;
+    
+    // BFS traversal to maintain proper indexing
+    std::queue<OctreeNode*> nodeQueue;
+    nodeQueue.push(root.get());
+    
+    while (!nodeQueue.empty()) {
+        OctreeNode* node = nodeQueue.front();
+        nodeQueue.pop();
+        
+        // Record this node's index
+        uint32_t currentNodeIndex = nextNodeIndex++;
+        nodeIndexMap[node] = currentNodeIndex;
+        
+        // Create GPU node
+        OctreeNode::GPUNode gpuNode;
+        gpuNode.center = node->center;
+        gpuNode.halfSize = node->halfSize;
+        gpuNode.level = node->level;
+        gpuNode.flags = 0;
+        
+        if (node->isLeaf() || node->level >= MAX_GPU_DEPTH) {
+            // Leaf node OR depth limit reached
+            gpuNode.flags |= 1;  // Set leaf flag
+            gpuNode.childrenIndex = 0xFFFFFFFF;  // No children
+            gpuNode.voxelIndex = nextVoxelIndex;
+            
+            // Add voxels
+            for (const auto& voxel : node->voxels) {
+                data.voxels.push_back(voxel);
+            }
+            nextVoxelIndex += OctreeNode::LEAF_VOXELS;
+        } else {
+            // Internal node - we'll update childrenIndex after processing children
+            gpuNode.voxelIndex = 0xFFFFFFFF;  // No voxels
+            gpuNode.childrenIndex = nextNodeIndex;  // Children will start here
+            
+            // Queue all children for processing
+            for (int i = 0; i < 8; i++) {
+                if (node->children[i]) {
+                    nodeQueue.push(node->children[i].get());
+                } else {
+                    // Create placeholder for missing child
+                    OctreeNode::GPUNode emptyNode;
+                    emptyNode.center = node->center;  // Use parent center
+                    emptyNode.halfSize = node->halfSize * 0.5f;
+                    emptyNode.level = node->level + 1;
+                    emptyNode.flags = 1;  // Mark as leaf
+                    emptyNode.childrenIndex = 0xFFFFFFFF;
+                    emptyNode.voxelIndex = 0xFFFFFFFF;  // No voxels
+                    data.nodes.push_back(emptyNode);
+                    nextNodeIndex++;
+                }
+            }
+        }
+        
+        // Add the node at its designated index
+        if (currentNodeIndex >= data.nodes.size()) {
+            data.nodes.resize(currentNodeIndex + 1);
+        }
+        data.nodes[currentNodeIndex] = gpuNode;
+    }
+    
+    // Calculate memory usage
+    size_t nodeMemory = data.nodes.size() * sizeof(OctreeNode::GPUNode);
+    size_t voxelMemory = data.voxels.size() * sizeof(Voxel);
+    size_t totalMemory = nodeMemory + voxelMemory;
+    
+    std::cout << "[OctreePlanet] Full octree prepared for GPU (depth limited to " << MAX_GPU_DEPTH << "):\n";
+    std::cout << "  Total nodes: " << data.nodes.size() << "\n";
+    std::cout << "  Total voxels: " << data.voxels.size() << "\n";
+    std::cout << "  Memory usage: " << (totalMemory / (1024.0 * 1024.0)) << " MB\n";
+    std::cout << "    Nodes: " << (nodeMemory / (1024.0 * 1024.0)) << " MB\n";
+    std::cout << "    Voxels: " << (voxelMemory / (1024.0 * 1024.0)) << " MB\n";
+    
+    if (data.nodes.size() > 0) {
+        std::cout << "  Root at origin: center=(" 
+                  << data.nodes[0].center.x << ", " 
+                  << data.nodes[0].center.y << ", " 
+                  << data.nodes[0].center.z << "), halfSize=" 
+                  << data.nodes[0].halfSize << "\n";
+    }
+    
+    // Warn if memory usage is high
+    if (totalMemory > 512 * 1024 * 1024) {  // > 512MB
+        std::cout << "  WARNING: Large GPU memory usage! Consider reducing octree depth.\n";
+    }
+    
+    return data;
 }
 
 float OctreePlanet::getDistanceFromSurface(const glm::vec3& position) const {

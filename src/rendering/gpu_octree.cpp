@@ -122,20 +122,7 @@ void GPUOctree::uploadOctree(octree::OctreePlanet* planet,
                             VkCommandPool commandPool, 
                             VkQueue queue) {
     
-    std::cout << "[SimpleGPUOctree] Starting upload...\n" << std::flush;
-    
-    // Get render data from planet
-    std::cout << "[SimpleGPUOctree] Calling prepareRenderData...\n" << std::flush;
-    auto renderData = planet->prepareRenderData(viewPos, viewProj);
-    std::cout << "[SimpleGPUOctree] prepareRenderData returned\n" << std::flush;
-    std::cout << "  Got " << renderData.nodes.size() << " nodes, " 
-              << renderData.voxels.size() << " voxels\n" << std::flush;
-    
-    // Store counts
-    nodeCount = static_cast<uint32_t>(renderData.nodes.size());
-    uint32_t voxelCount = static_cast<uint32_t>(renderData.voxels.size());
-    
-    // Create simple GPU data structures
+    // Define GPU data structures first
     struct SimpleGPUNode {
         glm::vec4 centerAndSize;
         glm::uvec4 childrenAndFlags;
@@ -146,8 +133,53 @@ void GPUOctree::uploadOctree(octree::OctreePlanet* planet,
         glm::vec4 extra;
     };
     
+    std::cout << "[SimpleGPUOctree] Starting upload...\n" << std::flush;
+    
+    // Get FULL octree data from planet (not just visible nodes)
+    std::cout << "[SimpleGPUOctree] Calling prepareFullOctreeData for complete hierarchy...\n" << std::flush;
+    auto renderData = planet->prepareFullOctreeData();
+    std::cout << "[SimpleGPUOctree] prepareFullOctreeData returned\n" << std::flush;
+    std::cout << "  Got " << renderData.nodes.size() << " nodes, " 
+              << renderData.voxels.size() << " voxels\n" << std::flush;
+    
+    // Debug: Print first few nodes
+    if (renderData.nodes.size() > 0) {
+        const auto& root = renderData.nodes[0];
+        std::cout << "  Root node: center=(" << root.center.x << ", " << root.center.y << ", " << root.center.z 
+                  << "), halfSize=" << root.halfSize 
+                  << ", childrenIndex=" << root.childrenIndex
+                  << ", voxelIndex=" << root.voxelIndex
+                  << ", flags=" << root.flags << "\n";
+    }
+    
+    // Debug: Print first few voxels to see what materials we have
+    if (renderData.voxels.size() > 8) {
+        std::cout << "  First 8 voxels:\n";
+        for (size_t i = 0; i < 8 && i < renderData.voxels.size(); i++) {
+            const auto& voxel = renderData.voxels[i];
+            auto materialID = voxel.getDominantMaterialID();
+            std::cout << "    Voxel[" << i << "]: material=" << static_cast<int>(materialID)
+                      << " (";
+            switch(materialID) {
+                case core::MaterialID::Vacuum: std::cout << "Vacuum"; break;
+                case core::MaterialID::Air: std::cout << "Air"; break;
+                case core::MaterialID::Rock: std::cout << "Rock"; break;
+                case core::MaterialID::Water: std::cout << "Water"; break;
+                case core::MaterialID::Sand: std::cout << "Sand"; break;
+                case core::MaterialID::Grass: std::cout << "Grass"; break;
+                case core::MaterialID::Snow: std::cout << "Snow"; break;
+                default: std::cout << "Unknown"; break;
+            }
+            std::cout << ")\n";
+        }
+    }
+    
+    // Store counts
+    nodeCount = static_cast<uint32_t>(renderData.nodes.size());
+    uint32_t voxelDataCount = static_cast<uint32_t>(renderData.voxels.size());
+    
     std::vector<SimpleGPUNode> gpuNodes(nodeCount);
-    std::vector<SimpleGPUVoxel> gpuVoxels(voxelCount);
+    std::vector<SimpleGPUVoxel> gpuVoxels(voxelDataCount);
     
     // Convert nodes
     for (size_t i = 0; i < nodeCount; i++) {
@@ -165,20 +197,69 @@ void GPUOctree::uploadOctree(octree::OctreePlanet* planet,
         );
     }
     
-    // Convert voxels (simple - just create dummy data for now)
-    for (size_t i = 0; i < voxelCount; i++) {
-        // Since MixedVoxel doesn't have a simple material field,
-        // just create dummy data for testing
-        gpuVoxels[i].colorAndDensity = glm::vec4(1.0f, 0.5f, 0.2f, 1.0f);
-        gpuVoxels[i].extra = glm::vec4(0.0f);
+    // Convert voxels - pack material data for GPU
+    for (size_t i = 0; i < voxelDataCount; i++) {
+        const auto& voxel = renderData.voxels[i];
+        
+        // Get dominant material and its properties
+        auto materialID = voxel.getDominantMaterialID();
+        // Get density as normalized maximum material amount
+        uint8_t maxAmount = 0;
+        for (int j = 0; j < 4; j++) {
+            maxAmount = std::max(maxAmount, voxel.getMaterialAmount(j));
+        }
+        float density = maxAmount / 255.0f;
+        
+        // Map material ID to color (matching CPU implementation)
+        glm::vec3 color;
+        switch(materialID) {
+            case core::MaterialID::Water:
+                color = glm::vec3(0.1f, 0.3f, 0.6f);
+                break;
+            case core::MaterialID::Sand:
+                color = glm::vec3(0.9f, 0.85f, 0.65f);
+                break;
+            case core::MaterialID::Grass:
+                color = glm::vec3(0.2f, 0.6f, 0.2f);
+                break;
+            case core::MaterialID::Rock:
+                color = glm::vec3(0.4f, 0.3f, 0.2f);
+                break;
+            case core::MaterialID::Snow:
+                color = glm::vec3(0.95f, 0.95f, 0.98f);
+                break;
+            default:
+                color = glm::vec3(0.5f, 0.5f, 0.5f);
+                break;
+        }
+        
+        // Pack: xyz = color, w = density
+        gpuVoxels[i].colorAndDensity = glm::vec4(color, density);
+        // Pack: x = material ID, y = temperature, z = pressure, w = reserved
+        gpuVoxels[i].extra = glm::vec4(
+            static_cast<float>(materialID),
+            static_cast<float>(voxel.temperature) / 255.0f,
+            static_cast<float>(voxel.pressure) / 255.0f,
+            0.0f
+        );
     }
     
     // Calculate buffer sizes
     VkDeviceSize nodeBufferSize = sizeof(SimpleGPUNode) * nodeCount;
-    VkDeviceSize voxelBufferSize = sizeof(SimpleGPUVoxel) * voxelCount;
+    VkDeviceSize voxelBufferSize = sizeof(SimpleGPUVoxel) * voxelDataCount;
+    VkDeviceSize totalSize = nodeBufferSize + voxelBufferSize;
     
-    std::cout << "  Node buffer size: " << nodeBufferSize << " bytes\n";
-    std::cout << "  Voxel buffer size: " << voxelBufferSize << " bytes\n";
+    std::cout << "  Node buffer size: " << (nodeBufferSize / (1024.0 * 1024.0)) << " MB\n";
+    std::cout << "  Voxel buffer size: " << (voxelBufferSize / (1024.0 * 1024.0)) << " MB\n";
+    std::cout << "  Total GPU memory needed: " << (totalSize / (1024.0 * 1024.0)) << " MB\n";
+    
+    // Check if allocation is reasonable
+    if (totalSize > 2ULL * 1024 * 1024 * 1024) {  // > 2GB
+        std::cerr << "ERROR: Octree too large for GPU! (" 
+                  << (totalSize / (1024.0 * 1024.0 * 1024.0)) << " GB)\n";
+        std::cerr << "Consider reducing octree depth or using LOD.\n";
+        return;
+    }
     
     // Create device buffers
     createBuffer(nodeBufferSize,
@@ -186,17 +267,36 @@ void GPUOctree::uploadOctree(octree::OctreePlanet* planet,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 nodeBuffer, nodeBufferMemory);
     
+    if (nodeBuffer == VK_NULL_HANDLE) {
+        std::cerr << "ERROR: Failed to create node buffer!\n";
+        return;
+    }
+    
     createBuffer(voxelBufferSize,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 voxelBuffer, voxelBufferMemory);
     
-    std::cout << "  Device buffers created\n";
+    if (voxelBuffer == VK_NULL_HANDLE) {
+        std::cerr << "ERROR: Failed to create voxel buffer!\n";
+        // Clean up node buffer
+        if (nodeBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device, nodeBuffer, nullptr);
+            nodeBuffer = VK_NULL_HANDLE;
+        }
+        if (nodeBufferMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, nodeBufferMemory, nullptr);
+            nodeBufferMemory = VK_NULL_HANDLE;
+        }
+        return;
+    }
+    
+    std::cout << "  Device buffers created successfully\n";
     
     // Create staging buffer for both
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingMemory;
-    VkDeviceSize totalSize = nodeBufferSize + voxelBufferSize;
+    // totalSize already defined above
     
     createBuffer(totalSize,
                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,

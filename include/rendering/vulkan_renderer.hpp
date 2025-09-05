@@ -110,8 +110,16 @@ public:
     }
     int getLODLevel() const { return currentLODLevel; }  // Get current LOD level
     
-    // Public static member for testing dual-detail flip
+    // Public static members for pipeline control
     static bool adaptiveSphereFlipFrontBack;  // Toggle flag for testing dual-detail (flips which hemisphere gets high detail)
+    
+    // MASTER PIPELINE SWITCH - THE ONE BOOL TO RULE THEM ALL
+    enum class MeshPipeline {
+        CPU_ADAPTIVE,    // CPU adaptive sphere (current working implementation)
+        GPU_COMPUTE,     // GPU compute shader (future implementation)
+        GPU_WITH_CPU_VERIFY  // Run both and compare (debugging mode)
+    };
+    static MeshPipeline meshPipeline;  // Default to CPU_ADAPTIVE in .cpp file
     
 private:
     // Window
@@ -240,10 +248,21 @@ private:
     bool generateSeamlessSphere(octree::OctreePlanet* planet);  // Seamless version with vertex deduplication
     bool generateUnifiedSphere(octree::OctreePlanet* planet, core::Camera* camera = nullptr);  // Unified recursive subdivision approach with LOD
     bool generateAdaptiveSphere(octree::OctreePlanet* planet, core::Camera* camera);  // Dual-detail adaptive sphere generation (Phase 1)
+    bool generateGPUAdaptiveSphere(octree::OctreePlanet* planet, core::Camera* camera);  // GPU compute version
+    bool generateGPUAdaptiveSphereWithOctree(octree::OctreePlanet* planet, core::Camera* camera);  // GPU with octree traversal
+    bool generateGPUTransvoxelMesh(octree::OctreePlanet* planet, core::Camera* camera);  // GPU Transvoxel implementation
+    bool createTransvoxelComputePipeline();  // Create Transvoxel compute pipeline
+    void cleanupTransvoxelPipeline();  // Cleanup Transvoxel pipeline
     // Upload CPU-generated mesh to GPU (used by adaptive sphere generation)
     bool uploadCPUReferenceMesh(const void* vertexData, size_t vertexDataSize,
                                 const void* indexData, size_t indexDataSize,
                                 uint32_t vertexCount, uint32_t indexCount);
+    
+    // GPU compute pipeline functions for adaptive sphere
+    bool createAdaptiveSphereComputePipeline();
+    bool allocateGPUMeshBuffers(size_t maxVertices, size_t maxIndices);
+    bool dispatchAdaptiveSphereCompute(const glm::vec3& cameraPos, float planetRadius, 
+                                       int highDetailLevel, int lowDetailLevel, bool flipFrontBack);
 
     
 #ifdef DEBUG_CPU_REFERENCE

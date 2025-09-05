@@ -387,10 +387,10 @@ private:
         
         // Zoom with scroll wheel - only if ImGui doesn't want mouse
         if (!imguiWantsMouse && input.scrollDelta.y != 0) {
-            // Debug output
-            std::cout << "[SCROLL] Delta: " << input.scrollDelta.y 
-                      << ", Altitude: " << altitude 
-                      << ", Radius: " << config.radius << std::endl;
+            // Debug output - commented to reduce spam
+            // std::cout << "[SCROLL] Delta: " << input.scrollDelta.y 
+            //           << ", Altitude: " << altitude 
+            //           << ", Radius: " << config.radius << std::endl;
             
             // Scale zoom speed based on altitude - MUCH slower when closer
             // altitude is already calculated above
@@ -408,7 +408,8 @@ private:
             }
             
             float zoomDelta = input.scrollDelta.y * scaleFactor;
-            std::cout << "[ZOOM] Calling camera.zoom(" << zoomDelta << ")" << std::endl;
+            // Commented to reduce spam
+            // std::cout << "[ZOOM] Calling camera.zoom(" << zoomDelta << ")" << std::endl;
             camera.zoom(zoomDelta);
         }
         
@@ -456,6 +457,23 @@ private:
                     std::cout << "Camera mode: Orbital\n";
                 }
             }
+        }
+        
+        // Switch mesh generation pipeline with G key
+        if (input.keys[GLFW_KEY_G] && !input.prevKeys[GLFW_KEY_G]) {
+            // Cycle through pipeline modes
+            auto& pipeline = rendering::VulkanRenderer::meshPipeline;
+            if (pipeline == rendering::VulkanRenderer::MeshPipeline::CPU_ADAPTIVE) {
+                pipeline = rendering::VulkanRenderer::MeshPipeline::GPU_COMPUTE;
+                std::cout << "[G KEY] Switched to GPU_COMPUTE pipeline\n";
+            } else if (pipeline == rendering::VulkanRenderer::MeshPipeline::GPU_COMPUTE) {
+                pipeline = rendering::VulkanRenderer::MeshPipeline::GPU_WITH_CPU_VERIFY;
+                std::cout << "[G KEY] Switched to GPU_WITH_CPU_VERIFY pipeline (debug mode)\n";
+            } else {
+                pipeline = rendering::VulkanRenderer::MeshPipeline::CPU_ADAPTIVE;
+                std::cout << "[G KEY] Switched to CPU_ADAPTIVE pipeline (safe mode)\n";
+            }
+            std::cout << "NOTE: Move camera or zoom to trigger mesh regeneration with new pipeline\n";
         }
         
         // Flip front/back detail assignment for testing dual-detail LOD

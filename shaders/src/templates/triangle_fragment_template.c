@@ -194,6 +194,19 @@ vec3 atmosphericScattering(vec3 color, float distance) {
 }
 
 void main() {
+    // DEBUG MODE: Show raw vertex colors without any post-processing
+    #if 1  // Set to 0 to re-enable full lighting pipeline
+    
+    // Just output the raw vertex color with minimal lighting
+    vec3 normal = normalize(fragNormal);
+    vec3 sunDir = normalize(vec3(0.5, 0.8, 0.3));
+    float NdotL = max(dot(normal, sunDir), 0.3); // Minimum 0.3 ambient
+    
+    vec3 color = fragColor * NdotL;
+    outColor = vec4(color, 1.0);
+    
+    #else
+    // ORIGINAL LIGHTING PIPELINE
     vec3 normal = normalize(fragNormal);
     vec3 viewDir = normalize(fragViewDir);
     
@@ -239,6 +252,7 @@ void main() {
     color = pow(color, vec3(1.0/2.2));   // Gamma correction
     
     outColor = vec4(color, 1.0);
+    #endif
 }
 // GLSL_END
 
