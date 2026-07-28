@@ -111,6 +111,12 @@ FetchContent_Declare(
 # Make dependencies available
 FetchContent_MakeAvailable(glfw glm FastNoise2 imgui)
 
+# Vulkan's clip space uses a [0, 1] depth range; GLM defaults to OpenGL's
+# [-1, 1]. Without this, glm::perspective() maps the near half of the frustum
+# to negative NDC z, which Vulkan clips away - geometry silently disappears.
+# Applied on the glm interface target so every consumer agrees on the layout.
+target_compile_definitions(glm INTERFACE GLM_FORCE_DEPTH_ZERO_TO_ONE)
+
 # ImGui doesn't provide a CMake target, so we need to add the source files manually
 if(imgui_POPULATED)
     # Core ImGui files

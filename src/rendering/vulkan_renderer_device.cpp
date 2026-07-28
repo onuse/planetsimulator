@@ -157,9 +157,22 @@ void VulkanRenderer::createLogicalDevice() {
         queueCreateInfos.push_back(queueCreateInfo);
     }
     
+    VkPhysicalDeviceFeatures availableFeatures{};
+    vkGetPhysicalDeviceFeatures(physicalDevice, &availableFeatures);
+
     VkPhysicalDeviceFeatures deviceFeatures{};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
     deviceFeatures.fillModeNonSolid = VK_TRUE; // Enable wireframe mode
+
+    // quadtree_patch.vert declares dmat4/dvec3, which compiles to SPIR-V with
+    // the Float64 capability. Using it without enabling shaderFloat64 is
+    // undefined behaviour, so create the pipeline only on hardware that has it.
+    if (availableFeatures.shaderFloat64) {
+        deviceFeatures.shaderFloat64 = VK_TRUE;
+    } else {
+        std::cerr << "WARNING: shaderFloat64 unsupported; double-precision "
+                     "shaders will not work on this device\n";
+    }
     
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

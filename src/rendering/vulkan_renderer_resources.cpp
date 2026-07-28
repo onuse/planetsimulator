@@ -259,8 +259,13 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
         }
     }
     
-    // Use camera's projection matrix directly
+    // Rebuild the projection here so it uses the swap chain's aspect ratio
+    // rather than the camera's. Camera::updateProjection() flips Y for Vulkan
+    // clip space; that flip has to be repeated here, otherwise the uniform
+    // buffer disagrees with the camera, the image renders vertically mirrored
+    // and triangle winding appears reversed.
     glm::mat4 scaledProj = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
+    scaledProj[1][1] *= -1.0f;
     
     // Build ViewProj with the rotation-only view matrix for camera-relative rendering
     glm::mat4 viewProjF = scaledProj * viewRelative;

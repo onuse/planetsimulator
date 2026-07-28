@@ -59,9 +59,13 @@ build*/
 cmake-build-*/
 out/
 
-# Transpiled shaders
-*.frag
-*.vert
+# Transpiled shaders - generated from shaders/src/templates by compile.bat.
+# Ignore the generated output directories only. Do NOT ignore *.vert / *.frag
+# globally: that kept every hand-written GLSL source out of version control,
+# and triangle.vert (the vertex shader for the only pipeline that draws the
+# planet) was lost that way.
+shaders/src/vertex/
+shaders/src/fragment/
 
 # Compiled shaders
 *.spv
