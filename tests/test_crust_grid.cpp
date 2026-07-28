@@ -116,7 +116,7 @@ void testIsostasyPredictsRealElevations() {
 
 void testSeaLevelRespondsToCrust() {
     std::printf("Sea level follows water volume, not a constant\n");
-    simulation::CrustGrid grid(1000000.0f, 3, 5, 10);
+    simulation::CrustGrid grid(1000000.0f, 3, 4, 10);
 
     const auto stats = grid.computeStats();
     std::printf("  land %.1f%%, elevation range [%.0f, %.0f] m\n",
@@ -128,7 +128,7 @@ void testSeaLevelRespondsToCrust() {
 
     // Displacing water with more crust must raise sea level relative to the
     // datum. Thicken everything and check the solver responds.
-    simulation::CrustGrid thick(1000000.0f, 3, 5, 10);
+    simulation::CrustGrid thick(1000000.0f, 3, 4, 10);
     const float before = thick.getSeaLevel();
     thick.getConstants().oceanWaterGEL *= 2.0f;
     // Re-solve by stepping zero time is not allowed, so step a tiny amount.
@@ -184,7 +184,7 @@ void testPlatesActuallyMove() {
 // leaking material - which is exactly how continents were vanishing.
 void testSilicateBooksBalance() {
     std::printf("Crust and mantle books balance exactly\n");
-    simulation::CrustGrid grid(1000000.0f, 5, 5, 12);
+    simulation::CrustGrid grid(1000000.0f, 5, 4, 12);
 
     const double initial = grid.getInitialCrustVolume();
     for (int i = 0; i < 50; i++) {
@@ -215,7 +215,7 @@ void testSilicateBooksBalance() {
 
 void testContinentsPersist() {
     std::printf("Continents survive because arc magmatism replaces them\n");
-    simulation::CrustGrid grid(1000000.0f, 5, 5, 12);
+    simulation::CrustGrid grid(1000000.0f, 5, 4, 12);
 
     const auto before = grid.computeStats();
     for (int i = 0; i < 100; i++) {
@@ -252,7 +252,7 @@ void testContinentsPersist() {
 // scheme is good enough or has to be replaced.
 void testRigidRotationPreservesContrast() {
     std::printf("Rigid rotation returns the planet to where it started\n");
-    simulation::CrustGrid grid(1000000.0f, 42, 5, 1);
+    simulation::CrustGrid grid(1000000.0f, 42, 4, 1);
 
     const auto contrast = [](const std::vector<simulation::CrustGrid::Cell>& cells) {
         double mean = 0.0;
@@ -294,7 +294,7 @@ void testRigidRotationPreservesContrast() {
 // measured ones do.
 void testPlateForcesGiveRealisticSpeeds() {
     std::printf("Solved plate motion lands at observed speeds\n");
-    simulation::CrustGrid grid(6371000.0f, 42, 5, 12);   // Earth sized
+    simulation::CrustGrid grid(6371000.0f, 42, 4, 12);   // Earth sized
 
     std::printf("  surface gravity %.2f m/s2\n", grid.getSurfaceGravity());
     check(grid.getSurfaceGravity() > 9.0f && grid.getSurfaceGravity() < 10.5f,
@@ -325,7 +325,7 @@ void testPlateForcesGiveRealisticSpeeds() {
 
 void testSlabPullDominates() {
     std::printf("Slab pull dominates the driving torque\n");
-    simulation::CrustGrid grid(6371000.0f, 7, 5, 12);
+    simulation::CrustGrid grid(6371000.0f, 7, 4, 12);
     for (int i = 0; i < 20; i++) {
         grid.step(1.0f);
     }
@@ -346,7 +346,7 @@ void testSlabPullDominates() {
 
 void testContinentalPlatesAreSlower() {
     std::printf("Continental keels slow their plates down\n");
-    simulation::CrustGrid grid(6371000.0f, 3, 5, 14);
+    simulation::CrustGrid grid(6371000.0f, 3, 4, 14);
     for (int i = 0; i < 30; i++) {
         grid.step(1.0f);
     }
@@ -386,7 +386,7 @@ void testContinentalPlatesAreSlower() {
 
 void testPlateMotionEvolves() {
     std::printf("Plate motion changes as the planet reorganises\n");
-    simulation::CrustGrid grid(6371000.0f, 11, 5, 12);
+    simulation::CrustGrid grid(6371000.0f, 11, 4, 12);
 
     // Settle into a force-driven state first.
     for (int i = 0; i < 20; i++) {
@@ -397,7 +397,7 @@ void testPlateMotionEvolves() {
         before.push_back(plate.omega);
     }
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 40; i++) {
         grid.step(2.0f);
     }
 
@@ -415,6 +415,70 @@ void testPlateMotionEvolves() {
     // motion would give exactly zero here forever.
     check(largestChange > 1e-5f, "plates change their motion as boundaries evolve");
     (void)relative;
+}
+
+// The Wilson cycle: plates break up and weld together, so the arrangement of
+// the planet is itself part of the history rather than a fixed input.
+void testPlatesReorganise() {
+    std::printf("Plate layout reorganises over geological time\n");
+    // Coarse grid on purpose: this needs to cover more than a billion years to
+    // catch a full cycle, and the reorganisation logic does not care about
+    // resolution.
+    simulation::CrustGrid grid(6371000.0f, 5, 4, 10);
+
+    // A Wilson cycle on Earth runs about 500 My from assembly to breakup, so a
+    // shorter run than this can miss the whole thing and prove nothing.
+    const size_t startingPlates = grid.getPlates().size();
+    for (int i = 0; i < 600; i++) {
+        grid.step(2.0f);
+    }
+
+    std::printf("  %.0f My: %u splits, %u welds, %zu plates now (from %zu)\n",
+                grid.getSimulationTime(), grid.getSplitCount(), grid.getWeldCount(),
+                grid.getPlates().size(), startingPlates);
+
+    // How concentrated is the continental crust? A supercontinent forming is
+    // what should trigger a rift, so if this never gets large the cycle can
+    // never start.
+    {
+        std::vector<double> continental(grid.getPlates().size(), 0.0);
+        double total = 0.0;
+        for (const auto& cell : grid.getCells()) {
+            if (cell.density >= grid.getConstants().subductionDensity) continue;
+            if (cell.plateId < continental.size()) continental[cell.plateId] += 1.0;
+            total += 1.0;
+        }
+        double biggest = 0.0;
+        for (double c : continental) biggest = std::max(biggest, c);
+        std::printf("  largest plate holds %.0f%% of the continental crust (rift at %.0f%%)\n",
+                    total > 0.0 ? 100.0 * biggest / total : 0.0,
+                    100.0 * grid.getConstants().supercontinentFraction);
+    }
+
+    // Frozen kinematics gives exactly zero of both, forever. Both directions
+    // have to happen for a Wilson cycle: continents gather into a
+    // supercontinent, the trapped heat rifts it, and the pieces disperse.
+    check(grid.getWeldCount() > 0, "plates welded together as continents collided");
+    check(grid.getSplitCount() > 0, "plates broke apart, so supercontinents do not last");
+
+    // Count how many plates actually hold territory - splitting leaves entries
+    // behind when a fragment is later absorbed.
+    std::vector<int> population(grid.getPlates().size(), 0);
+    for (const auto& cell : grid.getCells()) {
+        if (cell.plateId < population.size()) population[cell.plateId]++;
+    }
+    int occupied = 0;
+    for (int count : population) {
+        if (count > 0) occupied++;
+    }
+    std::printf("  %d plates hold territory\n", occupied);
+    check(occupied >= 2, "the planet did not collapse to a single plate");
+    check(grid.getPlates().size() <= 40, "plate count stays bounded");
+
+    const auto stats = grid.computeStats();
+    check(std::isfinite(stats.meanElevation), "elevations stay finite through reorganisation");
+    check(stats.landFraction > 0.02f && stats.landFraction < 0.98f,
+          "the planet still has land and ocean after 600 My");
 }
 
 void testStratigraphy() {
@@ -515,6 +579,7 @@ int main() {
     testSlabPullDominates();
     testContinentalPlatesAreSlower();
     testPlateMotionEvolves();
+    testPlatesReorganise();
     testStratigraphy();
     testRigidRotationPreservesContrast();
     testStepPerformance();

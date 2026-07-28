@@ -141,7 +141,9 @@ float DensityField::getMaxElevation() const {
     // actually produced - shading bands must follow the real planet, not a
     // bound derived from noise amplitudes it no longer uses.
     if (crustGrid != nullptr) {
-        return std::max(crustGrid->getMaxElevation(), 1.0f);
+        const float highest = crustSnapshot != nullptr ? crustSnapshot->maxElevation
+                                                       : crustGrid->getMaxElevation();
+        return std::max(highest, 1.0f);
     }
     const TerrainParams& tp = terrainParams;
     const float fraction = std::abs(tp.continentAmplitude)
@@ -152,7 +154,9 @@ float DensityField::getMaxElevation() const {
 
 float DensityField::getMaxOceanDepth() const {
     if (crustGrid != nullptr) {
-        return std::max(-crustGrid->getMinElevation(), 1.0f);
+        const float lowest = crustSnapshot != nullptr ? crustSnapshot->minElevation
+                                                      : crustGrid->getMinElevation();
+        return std::max(-lowest, 1.0f);
     }
     const TerrainParams& tp = terrainParams;
     const float fraction = std::abs(tp.oceanDepth) + std::abs(tp.detailAmplitude);
@@ -200,7 +204,9 @@ bool DensityField::isSeaIce(const glm::vec3& sphereNormal) const {
 
 float DensityField::getLargeScaleElevation(const glm::vec3& sphereNormal) const {
     if (crustGrid != nullptr) {
-        return crustGrid->sampleElevation(glm::normalize(sphereNormal));
+        const glm::vec3 n = glm::normalize(sphereNormal);
+        return crustSnapshot != nullptr ? crustGrid->sampleElevation(*crustSnapshot, n)
+                                        : crustGrid->sampleElevation(n);
     }
     return getTerrainHeight(sphereNormal) - getSeaLevelHeight();
 }
@@ -218,7 +224,9 @@ float DensityField::getTerrainHeight(const glm::vec3& sphereNormal) const {
     // on a small planet the relief is already proportionally larger than
     // Earth's without any help.
     if (crustGrid != nullptr) {
-        const float simulated = crustGrid->sampleElevation(n);
+        const float simulated = crustSnapshot != nullptr
+            ? crustGrid->sampleElevation(*crustSnapshot, n)
+            : crustGrid->sampleElevation(n);
 
         const float detail =
             fbmNoise(n * tp.detailFrequency + glm::vec3(71.7f, 93.2f, 19.4f), 3, 1.0f, 1.0f);

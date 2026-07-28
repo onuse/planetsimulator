@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace simulation {
@@ -119,6 +120,42 @@ public:
         // reorganise; they do not snap to a new velocity the instant the
         // forces change.
         float plateResponseTime = 10.0f;       // My
+
+        // --- Plate reorganisation ------------------------------------------
+        //
+        // Rigid plates that only ever rotate settle into one arrangement and
+        // stay there. Real plates break up and weld together, and that is the
+        // whole Wilson cycle: oceans open, continents drift and collide,
+        // supercontinents assemble and then rift apart again.
+
+        // How often to look for reorganisation. Boundaries do not rearrange
+        // every few hundred thousand years, and the search is not free.
+        float reorganisationInterval = 20.0f;  // My
+
+        // A plate breaks when the forces on one part of it disagree strongly
+        // enough with the forces on another. Expressed relative to the pull
+        // already acting on the plate.
+        float splitDisagreementRatio = 0.35f;
+
+        // Continental crust is a thermal blanket. Gather enough of it into one
+        // plate and the mantle beneath cannot shed its heat, the region domes
+        // up, and the interior goes into tension until it rifts. This is why
+        // supercontinents do not last - Pangaea assembled and broke apart, and
+        // Rodinia before it. Expressed as the share of all the planet's
+        // continental crust that one plate has to hold to become unstable.
+        float supercontinentFraction = 0.40f;
+
+        // Below this many cells a fragment is not worth tracking as its own
+        // plate and gets absorbed by a neighbour.
+        int minPlateCells = 60;
+
+        // Plates whose shared boundary is mostly locked continental collision
+        // have stopped moving relative to each other, so they are one plate.
+        float weldCollisionFraction = 0.6f;
+
+        // A ceiling so a pathological configuration cannot spawn plates
+        // without limit.
+        int maxPlates = 40;
     };
 
     // Surface gravity, derived from radius and mean density rather than
@@ -277,10 +314,37 @@ public:
     // budget their own time should step in slices of this.
     float maxStableTimestep() const;
 
+    // An immutable picture of the surface at one instant.
+    //
+    // The simulation runs on its own thread, so the renderer cannot read the
+    // live grid - it would be sampling a field that is being rewritten
+    // underneath it. Instead each step publishes one of these and the renderer
+    // holds whichever is newest for as long as it needs. Nothing here is ever
+    // modified after publication, so no locking is needed to read it.
+    //
+    // Only the fields change; cell positions and adjacency are fixed at
+    // construction, so a snapshot carries just the elevations.
+    struct Snapshot {
+        std::vector<float> elevation;   // per cell, metres relative to sea level
+        float minElevation = 0.0f;
+        float maxElevation = 0.0f;
+        float seaLevel = 0.0f;
+        float simulationTime = 0.0f;
+        uint64_t version = 0;
+    };
+
+    // Take a picture of the current surface. Called on the simulation thread.
+    std::shared_ptr<const Snapshot> publishSnapshot() const;
+
     // Large-scale elevation at a direction on the sphere, in metres relative
     // to sea level. Resolves down to cell spacing; finer detail is the
     // renderer's business.
     float sampleElevation(const glm::vec3& sphereNormal) const;
+
+    // The same, read from a published snapshot rather than the live grid.
+    // Safe to call from any thread: it touches only the snapshot and the
+    // grid's fixed topology.
+    float sampleElevation(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
 
     // Nearest cell to a direction, via the spatial accelerator.
     int findNearestCell(const glm::vec3& sphereNormal) const;
@@ -314,6 +378,12 @@ public:
 
     // Bumped on every step, so renderers can tell when to rebuild.
     uint64_t getVersion() const { return version; }
+
+    // How many times plates have broken up or welded together. A planet whose
+    // tectonics genuinely evolves accumulates these; one with frozen
+    // kinematics never does.
+    uint32_t getSplitCount() const { return splitCount; }
+    uint32_t getWeldCount() const { return weldCount; }
 
     Constants& getConstants() { return constants; }
     const Constants& getConstants() const { return constants; }
@@ -377,6 +447,12 @@ private:
     std::vector<Plate> plates;
     std::vector<Marker> markers;
 
+    // Cell positions again, held apart from the mutable cell fields. Geometry
+    // is fixed at construction, so keeping a copy that is never written lets
+    // the renderer locate cells while the simulation thread is rewriting
+    // everything else about them.
+    std::vector<glm::vec3> cellPositions;
+
     // Which markers currently land in each cell, rebuilt every projection.
     std::vector<std::vector<int>> cellMarkers;
 
@@ -403,6 +479,8 @@ private:
     double continentalLostToDelamination = 0.0;
     double continentalCreatedByArcs = 0.0;
     double continentalDeltaTransport = 0.0;
+    uint32_t splitCount = 0;
+    uint32_t weldCount = 0;
 
     void buildGeodesicGrid(int subdivisions);
     void buildAccelerator();
@@ -412,6 +490,16 @@ private:
     // Solve each plate's rotation from the forces acting on it. Implemented in
     // plate_dynamics.cpp.
     void updatePlateMotion(float dt);
+
+    // Break up plates whose driving forces disagree, and weld together plates
+    // that have locked in continental collision. Also in plate_dynamics.cpp.
+    void reorganisePlates();
+    bool trySplitPlate(uint16_t plateId);
+    bool riftSupercontinent();
+    void weldLockedPlates();
+    void absorbTinyPlates();
+
+    float sinceReorganisation = 0.0f;   // My
 
     void stepOnce(float millionYears);
     void seedMarkers();

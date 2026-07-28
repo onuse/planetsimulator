@@ -6,6 +6,9 @@
 #include <vector>
 #include <cstdint>
 #include <functional>
+#include <atomic>
+#include <mutex>
+#include <thread>
 #include "mixed_voxel.hpp"
 #include "density_field.hpp"
 #include "simulation/crust_grid.hpp"
@@ -90,7 +93,7 @@ private:
 class OctreePlanet {
 public:
     OctreePlanet(float radius, int maxDepth);
-    ~OctreePlanet() = default;
+    ~OctreePlanet();   // stops the simulation thread
     
     // Generation
     void generate(uint32_t seed);
@@ -177,7 +180,24 @@ private:
     core::DensityField densityField;
 
     // Tectonic simulation. Created in generate(), because it needs the seed.
+    // Once running it is owned by the simulation thread; the main thread must
+    // only touch it through published snapshots.
     std::unique_ptr<simulation::CrustGrid> crust;
+
+    std::thread simulationThread;
+    std::atomic<bool> simulationRunning{false};
+    std::mutex snapshotMutex;
+    std::shared_ptr<const simulation::CrustGrid::Snapshot> publishedSnapshot;
+    std::shared_ptr<const simulation::CrustGrid::Snapshot> renderSnapshot;
+    std::atomic<float> atomicSimulationRate{1.0f};
+    std::atomic<float> atomicAchievedRate{0.0f};
+
+    void startSimulationThread();
+    void stopSimulationThread();
+
+    // Kept for headless use, where stepping inline is simpler than running a
+    // thread nobody is watching.
+    void updateLegacyInline(float deltaTime);
 
     // Geological time is stepped in fixed increments; wall-clock time is
     // banked here until a whole step is due.

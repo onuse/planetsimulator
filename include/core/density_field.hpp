@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 
-namespace simulation { class CrustGrid; }
+#include "simulation/crust_grid.hpp"
 
 namespace core {
 
@@ -50,6 +50,15 @@ public:
     // terrain, which is what the standalone tests and tools use.
     void setCrustGrid(const simulation::CrustGrid* grid) { crustGrid = grid; }
     const simulation::CrustGrid* getCrustGrid() const { return crustGrid; }
+
+    // The surface to sample. The simulation runs on another thread, so this is
+    // a published snapshot rather than the live grid; whoever owns it keeps it
+    // alive for as long as this pointer is set, and swaps it only between
+    // frames. Without one, the grid is sampled directly - which is what the
+    // single-threaded tests do.
+    void setCrustSnapshot(const simulation::CrustGrid::Snapshot* snapshot) {
+        crustSnapshot = snapshot;
+    }
 
     // Configuration
     void setSeed(uint32_t seed);
@@ -142,6 +151,7 @@ private:
     uint32_t seed;
     TerrainParams terrainParams;
     const simulation::CrustGrid* crustGrid = nullptr;
+    const simulation::CrustGrid::Snapshot* crustSnapshot = nullptr;
 
     // Noise functions
     float simplexNoise3D(const glm::vec3& pos) const;

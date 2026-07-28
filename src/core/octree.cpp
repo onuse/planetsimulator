@@ -426,7 +426,18 @@ void OctreePlanet::generate(uint32_t seed) {
         std::cout << "Generated " << nodeCount << " leaf nodes (" << surfaceNodes << " with surface material)" << std::endl;
     }
     
-    std::cout << "Planet generation complete (simplified)" << std::endl;
+    // Publish a first picture before anyone asks for one, then hand the crust
+    // over to its own thread.
+    {
+        std::lock_guard<std::mutex> lock(snapshotMutex);
+        publishedSnapshot = crust->publishSnapshot();
+        renderSnapshot = publishedSnapshot;
+    }
+    densityField.setCrustSnapshot(renderSnapshot.get());
+    startSimulationThread();
+
+    std::cout << "Planet generation complete, tectonics running on its own thread"
+              << std::endl;
     // Materials are already set during simplified generation via setMaterials()
 }
 
@@ -437,11 +448,89 @@ void OctreePlanet::generate(uint32_t seed) {
 // - simulatePhysics(): Too expensive on CPU, needs GPU implementation
 // - simulatePlates(): Not used, plate tectonics simulation
 
+OctreePlanet::~OctreePlanet() {
+    stopSimulationThread();
+}
+
 uint64_t OctreePlanet::getCrustVersion() const {
-    return crust ? crust->getVersion() : 0;
+    // The version of what the renderer is actually looking at, not what the
+    // simulation thread has reached.
+    return renderSnapshot ? renderSnapshot->version : 0;
+}
+
+void OctreePlanet::startSimulationThread() {
+    if (simulationRunning.load() || !crust) {
+        return;
+    }
+    simulationRunning.store(true);
+
+    simulationThread = std::thread([this]() {
+        // The simulation owns the crust while this runs. It advances at
+        // whatever pace the physics allows, publishes a picture of the surface
+        // after each step, and sleeps if it is running ahead of the requested
+        // pace. The renderer never waits for it and never touches the grid.
+        while (simulationRunning.load()) {
+            const auto stepStart = std::chrono::steady_clock::now();
+
+            const float slice = crust->maxStableTimestep();
+            crust->step(slice);
+
+            auto snapshot = crust->publishSnapshot();
+            {
+                std::lock_guard<std::mutex> lock(snapshotMutex);
+                publishedSnapshot = std::move(snapshot);
+            }
+
+            const float spent = std::chrono::duration<float>(
+                std::chrono::steady_clock::now() - stepStart).count();
+            atomicAchievedRate.store(spent > 0.0f ? slice / spent : 0.0f);
+
+            // Sleep only if we are ahead of the requested pace; otherwise run
+            // flat out and let the achieved rate report the shortfall.
+            const float rate = atomicSimulationRate.load();
+            if (rate > 0.0f) {
+                const float wanted = slice / rate;
+                if (wanted > spent) {
+                    std::this_thread::sleep_for(
+                        std::chrono::duration<float>(std::min(wanted - spent, 0.25f)));
+                }
+            } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        }
+    });
+}
+
+void OctreePlanet::stopSimulationThread() {
+    simulationRunning.store(false);
+    if (simulationThread.joinable()) {
+        simulationThread.join();
+    }
 }
 
 void OctreePlanet::update(float deltaTime) {
+    (void)deltaTime;
+    if (!crust) {
+        return;
+    }
+
+    // The simulation runs on its own thread now, so all this does is pick up
+    // whatever picture of the surface is newest. Cheap, never blocks, and the
+    // snapshot it hands to the density field stays alive and unmodified for as
+    // long as the renderer holds it.
+    atomicSimulationRate.store(simulationRate);
+    achievedRate = atomicAchievedRate.load();
+
+    {
+        std::lock_guard<std::mutex> lock(snapshotMutex);
+        if (publishedSnapshot && publishedSnapshot != renderSnapshot) {
+            renderSnapshot = publishedSnapshot;
+        }
+    }
+    densityField.setCrustSnapshot(renderSnapshot.get());
+}
+
+void OctreePlanet::updateLegacyInline(float deltaTime) {
     if (!crust || deltaTime <= 0.0f) {
         return;
     }

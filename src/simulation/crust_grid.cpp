@@ -258,8 +258,10 @@ void CrustGrid::buildGeodesicGrid(int subdivisions) {
     }
 
     cells.resize(verts.size());
+    cellPositions.resize(verts.size());
     for (size_t i = 0; i < verts.size(); i++) {
         cells[i].position = verts[i];
+        cellPositions[i] = verts[i];
     }
 
     // Adjacency from the triangle edges, deduplicated.
@@ -308,7 +310,7 @@ void CrustGrid::buildAccelerator() {
 }
 
 int CrustGrid::findNearestCell(const glm::vec3& sphereNormal) const {
-    if (cells.empty()) {
+    if (cellPositions.empty()) {
         return -1;
     }
     const glm::vec3 n = glm::normalize(sphereNormal);
@@ -332,7 +334,7 @@ int CrustGrid::findNearestCell(const glm::vec3& sphereNormal) const {
                 if (radius > 0 && std::abs(di) != radius && std::abs(dj) != radius) continue;
                 const int j = ((cj + dj) % BIN_LON + BIN_LON) % BIN_LON;
                 for (int index : bins[i * BIN_LON + j]) {
-                    const float d = glm::dot(cells[index].position, n);
+                    const float d = glm::dot(cellPositions[index], n);
                     if (d > currentDot) {
                         currentDot = d;
                         current = index;
@@ -343,7 +345,7 @@ int CrustGrid::findNearestCell(const glm::vec3& sphereNormal) const {
     }
     if (current < 0) {
         current = 0;
-        currentDot = glm::dot(cells[0].position, n);
+        currentDot = glm::dot(cellPositions[0], n);
     }
 
     // Step 2: greedy descent over the adjacency graph. Hop to whichever
@@ -356,7 +358,7 @@ int CrustGrid::findNearestCell(const glm::vec3& sphereNormal) const {
         float bestDot = currentDot;
         for (int k = 0; k < neighbourCount(current); k++) {
             const int j = neighbourAt(current, k);
-            const float d = glm::dot(cells[j].position, n);
+            const float d = glm::dot(cellPositions[j], n);
             if (d > bestDot) {
                 bestDot = d;
                 best = j;
@@ -983,6 +985,15 @@ void CrustGrid::stepOnce(float millionYears) {
     // Solve what the forces want the plates to be doing before moving anything.
     updatePlateMotion(millionYears);
 
+    // Every so often, ask whether the plate layout itself should change.
+    // Boundaries do not rearrange every few hundred thousand years, and the
+    // search costs more than a step does.
+    sinceReorganisation += millionYears;
+    if (sinceReorganisation >= constants.reorganisationInterval) {
+        sinceReorganisation = 0.0f;
+        reorganisePlates();
+    }
+
     // Crust is carried by the parcels; the grid is rebuilt from them each step
     // rather than being evolved in place, so transport error cannot accumulate.
     advectMarkers(millionYears);
@@ -1001,6 +1012,53 @@ void CrustGrid::stepOnce(float millionYears) {
 // ============================================================================
 // Sampling and diagnostics
 // ============================================================================
+
+std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
+    auto snapshot = std::make_shared<Snapshot>();
+    snapshot->elevation.resize(cells.size());
+    for (size_t i = 0; i < cells.size(); i++) {
+        snapshot->elevation[i] = cells[i].elevation - seaLevel;
+    }
+    snapshot->minElevation = minElevation;
+    snapshot->maxElevation = maxElevation;
+    snapshot->seaLevel = seaLevel;
+    snapshot->simulationTime = simulationTime;
+    snapshot->version = version;
+    return snapshot;
+}
+
+float CrustGrid::sampleElevation(const Snapshot& snapshot, const glm::vec3& sphereNormal) const {
+    const glm::vec3 n = glm::normalize(sphereNormal);
+    const int centre = findNearestCell(n);
+    if (centre < 0 || snapshot.elevation.empty()) {
+        return 0.0f;
+    }
+
+    // Same inverse-square interpolation as the live sampler, but reading the
+    // published elevations instead of the grid. Touches only the snapshot and
+    // the fixed geometry, so the simulation thread can be mid-step.
+    double weightSum = 0.0;
+    double valueSum = 0.0;
+
+    auto accumulate = [&](int index) {
+        if (index < 0 || index >= static_cast<int>(snapshot.elevation.size())) {
+            return;
+        }
+        const float cosAngle = glm::clamp(glm::dot(cellPositions[index], n), -1.0f, 1.0f);
+        const float angle = std::acos(cosAngle);
+        const double weight = 1.0 / (static_cast<double>(angle) * angle + 1e-9);
+        weightSum += weight;
+        valueSum += weight * snapshot.elevation[index];
+    };
+
+    accumulate(centre);
+    for (int k = 0; k < neighbourCount(centre); k++) {
+        accumulate(neighbourAt(centre, k));
+    }
+
+    return weightSum > 0.0 ? static_cast<float>(valueSum / weightSum)
+                           : snapshot.elevation[centre];
+}
 
 float CrustGrid::sampleElevation(const glm::vec3& sphereNormal) const {
     const glm::vec3 n = glm::normalize(sphereNormal);
