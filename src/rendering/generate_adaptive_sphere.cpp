@@ -10,6 +10,7 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <chrono>
 
 namespace rendering {
 
@@ -223,7 +224,7 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
     // terraced contour rings that made continents look like a topographic map.
     // Sampling the height field directly gives continuous terrain, and it is
     // the same field the octree voxels were filled from.
-    std::cout << "Displacing mesh from density field...\n";
+    const auto displaceStart = std::chrono::steady_clock::now();
 
     const core::DensityField& field = planet->getDensityField();
     const float seaLevelHeight = field.getSeaLevelHeight();
@@ -253,8 +254,11 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
         glm::vec3 color;
         core::MaterialID materialID;
         if (submerged) {
-            // Deeper water reads darker and bluer
-            const float depth = glm::clamp(-elevation / maxOceanDepth, 0.0f, 1.0f);
+            // Colour by the resolved seafloor depth, not by the roughened
+            // height: sub-grid relief is invisible under kilometres of water,
+            // and letting it through mottles the whole ocean.
+            const float smoothDepth = -field.getLargeScaleElevation(normal);
+            const float depth = glm::clamp(smoothDepth / maxOceanDepth, 0.0f, 1.0f);
             const glm::vec3 water = glm::mix(glm::vec3(0.18f, 0.45f, 0.65f),
                                              glm::vec3(0.02f, 0.10f, 0.30f), std::sqrt(depth));
 
@@ -303,9 +307,13 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
         vertex.color = color;
     }
 
+    const float displaceMs = std::chrono::duration<float, std::milli>(
+        std::chrono::steady_clock::now() - displaceStart).count();
+
     std::cout << "Terrain height range: [" << minHeight << ", " << maxHeight
               << "] m (max elevation " << maxElevation
-              << " m, max ocean depth " << maxOceanDepth << " m)\n";
+              << " m, max ocean depth " << maxOceanDepth << " m)"
+              << " [displace " << displaceMs << " ms]\n";
 
     // Print material distribution
     std::cout << "Material distribution:\n";

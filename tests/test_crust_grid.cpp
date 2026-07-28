@@ -1,0 +1,233 @@
+// Tests for the plate tectonics simulation.
+//
+// These check mechanism, not appearance: that isostasy predicts the right
+// continent/ocean elevation difference, that crust is conserved, that plates
+// actually move, and that the planet evolves rather than sitting still.
+
+#include "simulation/crust_grid.hpp"
+
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+
+namespace {
+
+int failures = 0;
+
+void check(bool condition, const char* what) {
+    if (!condition) {
+        std::printf("  FAIL: %s\n", what);
+        ++failures;
+    } else {
+        std::printf("  ok:   %s\n", what);
+    }
+}
+
+void testGridTopology() {
+    std::printf("Geodesic grid is well formed\n");
+    simulation::CrustGrid grid(1000000.0f, 42, 5, 10);
+
+    // An icosphere at level n has 10*4^n + 2 vertices.
+    const size_t expected = 10 * 1024 + 2;
+    check(grid.getCells().size() == expected, "cell count matches icosphere formula");
+
+    // Every cell has 5 or 6 neighbours; exactly twelve have 5, the original
+    // icosahedron corners.
+    int pentagons = 0;
+    bool validDegrees = true;
+    for (size_t i = 0; i < grid.getCells().size(); i++) {
+        const int degree = grid.neighbourCount(static_cast<int>(i));
+        if (degree == 5) pentagons++;
+        else if (degree != 6) validDegrees = false;
+    }
+    check(validDegrees, "every cell has 5 or 6 neighbours");
+    check(pentagons == 12, "exactly twelve pentagonal cells");
+
+    // Adjacency must be symmetric or the strain calculation is meaningless.
+    bool symmetric = true;
+    for (size_t i = 0; i < grid.getCells().size() && symmetric; i++) {
+        for (int n = 0; n < grid.neighbourCount(static_cast<int>(i)); n++) {
+            const int j = grid.neighbourAt(static_cast<int>(i), n);
+            bool found = false;
+            for (int m = 0; m < grid.neighbourCount(j); m++) {
+                if (grid.neighbourAt(j, m) == static_cast<int>(i)) { found = true; break; }
+            }
+            if (!found) { symmetric = false; break; }
+        }
+    }
+    check(symmetric, "adjacency is symmetric");
+}
+
+void testNearestCellLookup() {
+    std::printf("Spatial accelerator agrees with brute force\n");
+    simulation::CrustGrid grid(1000000.0f, 7, 4, 8);
+    const auto& cells = grid.getCells();
+
+    bool allMatch = true;
+    // Include the poles, where the lat/long bins are degenerate.
+    const glm::vec3 probes[] = {
+        glm::vec3(0, 1, 0), glm::vec3(0, -1, 0), glm::vec3(1, 0, 0),
+        glm::vec3(0.3f, 0.9f, 0.1f), glm::vec3(-0.5f, -0.8f, 0.3f),
+        glm::vec3(0.01f, 0.999f, 0.01f), glm::vec3(-0.02f, -0.998f, 0.05f)
+    };
+    for (const glm::vec3& probe : probes) {
+        const glm::vec3 n = glm::normalize(probe);
+        int brute = 0;
+        float bestDot = -2.0f;
+        for (size_t i = 0; i < cells.size(); i++) {
+            const float d = glm::dot(cells[i].position, n);
+            if (d > bestDot) { bestDot = d; brute = static_cast<int>(i); }
+        }
+        const int fast = grid.findNearestCell(n);
+        // Ties are possible; compare by distance rather than by index.
+        if (std::fabs(glm::dot(cells[fast].position, n) - bestDot) > 1e-6f) {
+            allMatch = false;
+        }
+    }
+    check(allMatch, "accelerated lookup matches brute force, poles included");
+}
+
+void testIsostasyPredictsRealElevations() {
+    std::printf("Airy isostasy reproduces measured crustal elevations\n");
+    simulation::CrustGrid grid(1000000.0f, 1, 4, 8);
+    const auto& k = grid.getConstants();
+
+    // Height above the compensation datum for the two standard column types.
+    const float continental = k.continentalThickness * (1.0f - k.continentalDensity / k.mantleDensity);
+    const float oceanic = k.oceanicThickness * (1.0f - k.oceanicDensity / k.mantleDensity);
+    const float difference = continental - oceanic;
+
+    std::printf("  continental column stands %.0f m, oceanic %.0f m, difference %.0f m\n",
+                continental, oceanic, difference);
+
+    // Earth's continents average ~840 m above sea level and its abyssal plains
+    // ~3700 m below, so real crust shows a 4-5 km step. This falls out of the
+    // densities and thicknesses; nothing here was fitted to it.
+    check(difference > 3500.0f && difference < 6500.0f,
+          "continent/ocean step is 3.5-6.5 km, as measured on Earth");
+
+    // Thermal subsidence should account for the ridge-to-abyssal-plain drop.
+    const float subsidence = k.thermalSubsidenceRate * std::sqrt(k.thermalSubsidenceMaxAge);
+    std::printf("  seafloor subsides %.0f m from ridge to %.0f My\n",
+                subsidence, k.thermalSubsidenceMaxAge);
+    check(subsidence > 2000.0f && subsidence < 4500.0f,
+          "sqrt(age) subsidence matches observed seafloor depth");
+}
+
+void testSeaLevelRespondsToCrust() {
+    std::printf("Sea level follows water volume, not a constant\n");
+    simulation::CrustGrid grid(1000000.0f, 3, 5, 10);
+
+    const auto stats = grid.computeStats();
+    std::printf("  land %.1f%%, elevation range [%.0f, %.0f] m\n",
+                stats.landFraction * 100.0f, stats.minElevation, stats.maxElevation);
+
+    check(stats.landFraction > 0.02f && stats.landFraction < 0.95f,
+          "planet has both land and ocean");
+    check(stats.maxElevation > stats.minElevation, "elevation varies across the planet");
+
+    // Displacing water with more crust must raise sea level relative to the
+    // datum. Thicken everything and check the solver responds.
+    simulation::CrustGrid thick(1000000.0f, 3, 5, 10);
+    const float before = thick.getSeaLevel();
+    thick.getConstants().oceanWaterGEL *= 2.0f;
+    // Re-solve by stepping zero time is not allowed, so step a tiny amount.
+    thick.step(0.01f);
+    const float after = thick.getSeaLevel();
+    std::printf("  doubling water raises sea level %.0f m -> %.0f m\n", before, after);
+    check(after > before, "more water means higher sea level");
+}
+
+void testPlatesActuallyMove() {
+    std::printf("Plates move and the planet evolves\n");
+    simulation::CrustGrid grid(1000000.0f, 11, 5, 12);
+
+    // Record the plate layout and elevations, then run for some geological time.
+    std::vector<uint16_t> before;
+    std::vector<float> elevationBefore;
+    for (const auto& cell : grid.getCells()) {
+        before.push_back(cell.plateId);
+        elevationBefore.push_back(cell.elevation);
+    }
+
+    for (int i = 0; i < 25; i++) {
+        grid.step(2.0f);
+    }
+
+    int reassigned = 0;
+    float elevationChange = 0.0f;
+    const auto& cells = grid.getCells();
+    for (size_t i = 0; i < cells.size(); i++) {
+        if (cells[i].plateId != before[i]) reassigned++;
+        elevationChange = std::max(elevationChange, std::fabs(cells[i].elevation - elevationBefore[i]));
+    }
+
+    const float movedPct = 100.0f * reassigned / static_cast<float>(cells.size());
+    std::printf("  after %.0f My: %.1f%% of cells changed plate, max elevation change %.0f m\n",
+                grid.getSimulationTime(), movedPct, elevationChange);
+
+    check(reassigned > 0, "plate boundaries migrated");
+    check(elevationChange > 100.0f, "terrain changed height as a result");
+    check(grid.getVersion() == 25, "version tracks steps taken");
+}
+
+void testCrustIsRoughlyConserved() {
+    std::printf("Crust volume stays bounded under long simulation\n");
+    simulation::CrustGrid grid(1000000.0f, 5, 5, 12);
+
+    const float initial = grid.computeStats().crustVolume;
+    for (int i = 0; i < 50; i++) {
+        grid.step(2.0f);
+    }
+    const float final = grid.computeStats().crustVolume;
+
+    const float ratio = final / initial;
+    std::printf("  crust volume %.3e -> %.3e m^3 (ratio %.3f)\n", initial, final, ratio);
+
+    // Crust is created at ridges and destroyed at trenches, so this is not
+    // exactly conserved - but it must not run away in either direction.
+    check(ratio > 0.5f && ratio < 2.0f, "crust volume neither collapses nor explodes");
+
+    const auto stats = grid.computeStats();
+    std::printf("  land %.1f%%, mean oceanic age %.1f My\n",
+                stats.landFraction * 100.0f, stats.meanOceanicAge);
+    check(stats.landFraction > 0.01f && stats.landFraction < 0.99f,
+          "planet still has both land and ocean after 100 My");
+    check(std::isfinite(stats.meanElevation), "elevations stay finite");
+}
+
+void testStepPerformance() {
+    std::printf("A step is fast enough to run interactively\n");
+    simulation::CrustGrid grid(1000000.0f, 42, 6, 12);
+    std::printf("  grid has %zu cells\n", grid.getCells().size());
+
+    const auto start = std::chrono::steady_clock::now();
+    grid.step(2.0f);
+    const auto elapsed = std::chrono::duration<float, std::milli>(
+        std::chrono::steady_clock::now() - start).count();
+
+    std::printf("  one 2 My step took %.1f ms\n", elapsed);
+    check(elapsed < 2000.0f, "a step completes in under two seconds");
+}
+
+} // namespace
+
+int main() {
+    std::printf("=== CrustGrid tectonics tests ===\n\n");
+
+    testGridTopology();
+    testNearestCellLookup();
+    testIsostasyPredictsRealElevations();
+    testSeaLevelRespondsToCrust();
+    testPlatesActuallyMove();
+    testCrustIsRoughlyConserved();
+    testStepPerformance();
+
+    std::printf("\n");
+    if (failures == 0) {
+        std::printf("All CrustGrid tests passed.\n");
+        return 0;
+    }
+    std::printf("%d CrustGrid check(s) failed.\n", failures);
+    return 1;
+}

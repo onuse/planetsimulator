@@ -231,6 +231,8 @@ enable_testing()
 add_executable(test_octree_core
     tests/test_octree_core.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_octree_core PRIVATE
@@ -262,6 +264,8 @@ add_test(NAME MaterialTable COMMAND test_material_table)
 add_executable(test_materials
     tests/test_materials.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/camera.cpp
     src/core/material_table.cpp
 )
@@ -279,6 +283,8 @@ add_test(NAME Materials COMMAND test_materials)
 add_executable(test_gpu_rendering
     tests/test_gpu_rendering.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_gpu_rendering PRIVATE
@@ -295,6 +301,8 @@ add_test(NAME GPURendering COMMAND test_gpu_rendering)
 add_executable(test_instance_count
     tests/test_instance_count.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_instance_count PRIVATE
@@ -311,6 +319,8 @@ add_test(NAME InstanceCount COMMAND test_instance_count)
 add_executable(test_rendering_pipeline
     tests/test_rendering_pipeline.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_rendering_pipeline PRIVATE
@@ -369,6 +379,8 @@ add_test(NAME DrawCalls COMMAND test_draw_calls)
 add_executable(test_shader_material_lookup
     tests/test_shader_material_lookup.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/material_table.cpp
 )
 target_include_directories(test_shader_material_lookup PRIVATE
@@ -411,6 +423,8 @@ message(STATUS "")
 add_executable(test_material_pipeline
     tests/pipeline/test_material_pipeline.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
 )
 
 target_include_directories(test_material_pipeline PRIVATE
@@ -488,6 +502,8 @@ add_test(NAME LODSelection COMMAND test_lod_selection)
 add_executable(test_material_tracking
     tests/pipeline/test_material_tracking.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/rendering/instance_buffer_manager.cpp
     src/rendering/gpu_octree.cpp
     src/core/material_table.cpp
@@ -526,6 +542,8 @@ add_test(NAME MixedVoxel COMMAND test_mixed_voxel)
 add_executable(test_mixed_voxel_integration
     tests/test_mixed_voxel_integration.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/rendering/instance_buffer_manager.cpp
     src/core/material_table.cpp
 )
@@ -597,6 +615,8 @@ add_test(NAME GPUAttributes COMMAND test_gpu_attributes)
 add_executable(test_full_pipeline
     tests/test_full_pipeline.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_full_pipeline PRIVATE
@@ -655,6 +675,8 @@ add_test(NAME FullPipeline COMMAND test_full_pipeline)
 add_executable(test_mesh_connectivity
     tests/test_mesh_connectivity.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/material_table.cpp
 )
 target_include_directories(test_mesh_connectivity PRIVATE
@@ -671,6 +693,8 @@ add_test(NAME MeshConnectivity COMMAND test_mesh_connectivity)
 add_executable(test_chunk_boundaries
     tests/test_chunk_boundaries.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/material_table.cpp
     src/core/camera.cpp
 )
@@ -689,6 +713,8 @@ add_executable(test_transvoxel_algorithm
     tests/test_transvoxel_algorithm.cpp
     src/algorithms/mesh_generation.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/material_table.cpp
 )
 target_include_directories(test_transvoxel_algorithm PRIVATE
@@ -706,6 +732,8 @@ add_executable(test_transvoxel_debug
     tests/test_transvoxel_debug.cpp
     src/algorithms/mesh_generation.cpp
     src/core/octree.cpp
+    src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
     src/core/material_table.cpp
 )
 target_include_directories(test_transvoxel_debug PRIVATE
@@ -736,6 +764,7 @@ add_test(NAME PlanetMath COMMAND test_planet_math)
 add_executable(test_density_field
     tests/test_density_field.cpp
     src/core/density_field.cpp
+    src/simulation/crust_grid.cpp
 )
 target_include_directories(test_density_field PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -746,6 +775,21 @@ set_target_properties(test_density_field PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
 add_test(NAME DensityField COMMAND test_density_field)
+
+# Plate tectonics simulation
+add_executable(test_crust_grid
+    tests/test_crust_grid.cpp
+    src/simulation/crust_grid.cpp
+)
+target_include_directories(test_crust_grid PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_crust_grid PRIVATE glm::glm)
+set_target_properties(test_crust_grid PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME CrustGrid COMMAND test_crust_grid)
 
 # Test: Face boundary alignment
 # FIXED: The test now uses correct UV parameterization for shared edges

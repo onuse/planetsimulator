@@ -8,6 +8,7 @@
 #include <functional>
 #include "mixed_voxel.hpp"
 #include "density_field.hpp"
+#include "simulation/crust_grid.hpp"
 
 namespace octree {
 
@@ -127,6 +128,18 @@ public:
     // field so mesh geometry and voxel materials cannot drift apart.
     core::DensityField& getDensityField() { return densityField; }
     const core::DensityField& getDensityField() const { return densityField; }
+
+    // The tectonic simulation driving that field.
+    simulation::CrustGrid* getCrustGrid() { return crust.get(); }
+    const simulation::CrustGrid* getCrustGrid() const { return crust.get(); }
+
+    // Bumped whenever tectonics changes the surface, so renderers know to
+    // rebuild their meshes.
+    uint64_t getCrustVersion() const;
+
+    // How much geological time passes per second of wall clock.
+    void setSimulationRate(float millionYearsPerSecond) { simulationRate = millionYearsPerSecond; }
+    float getSimulationRate() const { return simulationRate; }
     
 private:
     float radius;
@@ -152,6 +165,15 @@ private:
 
     uint32_t seed = 42;
     core::DensityField densityField;
+
+    // Tectonic simulation. Created in generate(), because it needs the seed.
+    std::unique_ptr<simulation::CrustGrid> crust;
+
+    // Geological time is stepped in fixed increments; wall-clock time is
+    // banked here until a whole step is due.
+    float simulationRate = 1.0f;        // My per second of wall clock
+    float pendingMillionYears = 0.0f;
+    static constexpr float SIMULATION_STEP_MY = 2.0f;
 };
 
 } // namespace octree

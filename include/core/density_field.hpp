@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cstdint>
 
+namespace simulation { class CrustGrid; }
+
 namespace core {
 
 // Signed distance field foundation for terrain generation.
@@ -27,12 +29,27 @@ public:
     // point on the unit sphere. Positive is above sea level.
     float getTerrainHeight(const glm::vec3& sphereNormal) const;
 
+    // Elevation without the sub-grid roughness - the shape the simulation
+    // actually resolves. Use this where the fine detail is not observable,
+    // notably ocean colour: seafloor roughness is real but you cannot see it
+    // through four kilometres of water, and letting it through paints a
+    // mottled pattern across every ocean.
+    float getLargeScaleElevation(const glm::vec3& sphereNormal) const;
+
     // Gradient of the density field, for surface normals.
     glm::vec3 getGradient(const glm::vec3& worldPos, float epsilon = 1.0f) const;
 
     // Material queries
     uint8_t getMaterialAt(const glm::vec3& worldPos) const;
     float getMaterialWeight(const glm::vec3& worldPos, uint8_t material) const;
+
+    // Attach the tectonic simulation. Once set, large-scale elevation comes
+    // from simulated crust - thickness, density and age under isostasy - and
+    // noise is demoted to sub-grid roughness below the simulation's cell
+    // spacing. With no grid attached the field falls back to pure procedural
+    // terrain, which is what the standalone tests and tools use.
+    void setCrustGrid(const simulation::CrustGrid* grid) { crustGrid = grid; }
+    const simulation::CrustGrid* getCrustGrid() const { return crustGrid; }
 
     // Configuration
     void setSeed(uint32_t seed);
@@ -124,6 +141,7 @@ private:
     float planetRadius;
     uint32_t seed;
     TerrainParams terrainParams;
+    const simulation::CrustGrid* crustGrid = nullptr;
 
     // Noise functions
     float simplexNoise3D(const glm::vec3& pos) const;

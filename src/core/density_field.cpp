@@ -1,4 +1,5 @@
 #include "core/density_field.hpp"
+#include "simulation/crust_grid.hpp"
 #include <random>
 #include <numeric>
 #include <algorithm>
@@ -136,6 +137,12 @@ float DensityField::getMaxRelief() const {
 }
 
 float DensityField::getMaxElevation() const {
+    // When tectonics is driving, the range is whatever the simulation has
+    // actually produced - shading bands must follow the real planet, not a
+    // bound derived from noise amplitudes it no longer uses.
+    if (crustGrid != nullptr) {
+        return std::max(crustGrid->getMaxElevation(), 1.0f);
+    }
     const TerrainParams& tp = terrainParams;
     const float fraction = std::abs(tp.continentAmplitude)
                          + std::abs(tp.mountainAmplitude)
@@ -144,12 +151,20 @@ float DensityField::getMaxElevation() const {
 }
 
 float DensityField::getMaxOceanDepth() const {
+    if (crustGrid != nullptr) {
+        return std::max(-crustGrid->getMinElevation(), 1.0f);
+    }
     const TerrainParams& tp = terrainParams;
     const float fraction = std::abs(tp.oceanDepth) + std::abs(tp.detailAmplitude);
     return fraction * planetRadius * tp.reliefExaggeration;
 }
 
 float DensityField::getSeaLevelHeight() const {
+    // The simulation reports elevation relative to its own solved sea level,
+    // so from this side sea level is simply zero.
+    if (crustGrid != nullptr) {
+        return 0.0f;
+    }
     return terrainParams.seaLevel * planetRadius * terrainParams.reliefExaggeration;
 }
 
@@ -183,12 +198,38 @@ bool DensityField::isSeaIce(const glm::vec3& sphereNormal) const {
     return getSeaIceCoverage(sphereNormal) > 0.5f;
 }
 
+float DensityField::getLargeScaleElevation(const glm::vec3& sphereNormal) const {
+    if (crustGrid != nullptr) {
+        return crustGrid->sampleElevation(glm::normalize(sphereNormal));
+    }
+    return getTerrainHeight(sphereNormal) - getSeaLevelHeight();
+}
+
 float DensityField::getTerrainHeight(const glm::vec3& sphereNormal) const {
     const TerrainParams& tp = terrainParams;
 
     // Sample on the unit sphere. Frequencies are cycles per radius, so the
     // feature scale is tied to the planet rather than to absolute metres.
     const glm::vec3 n = glm::normalize(sphereNormal);
+
+    // With tectonics attached, large-scale shape is simulated and this
+    // function only adds the roughness the simulation cannot resolve. No
+    // relief exaggeration is applied: crustal thicknesses are real metres, so
+    // on a small planet the relief is already proportionally larger than
+    // Earth's without any help.
+    if (crustGrid != nullptr) {
+        const float simulated = crustGrid->sampleElevation(n);
+
+        const float detail =
+            fbmNoise(n * tp.detailFrequency + glm::vec3(71.7f, 93.2f, 19.4f), 3, 1.0f, 1.0f);
+
+        // Roughness is damped below sea level so ocean basins stay smooth, and
+        // scaled to the simulation's cell spacing rather than to the planet.
+        const float subGrid = crustGrid->cellSpacing() * 0.035f;
+        const float wetness = simulated < 0.0f ? 0.25f : 1.0f;
+
+        return simulated + detail * subGrid * wetness;
+    }
 
     // Offsets decorrelate the layers; without them every octave lines up.
     // Few octaves and a low gain keep continents coherent - piling on octaves

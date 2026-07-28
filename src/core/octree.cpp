@@ -377,10 +377,13 @@ void OctreePlanet::generate(uint32_t seed) {
     // Store seed for terrain generation
     this->seed = seed;
 
-    // The density field defines the terrain; reseeding it reshuffles the
-    // noise permutation table and so regenerates the whole planet.
+    // Build the tectonic simulation first: it is what decides where continents
+    // and ocean basins are. The density field reads from it, and the voxel
+    // octree is then filled from the density field, so all three agree.
+    crust = std::make_unique<simulation::CrustGrid>(radius, seed);
     densityField.setPlanetRadius(radius);
     densityField.setSeed(seed);
+    densityField.setCrustGrid(crust.get());
 
     // Initialize random number generator with seed
     srand(seed);
@@ -434,11 +437,31 @@ void OctreePlanet::generate(uint32_t seed) {
 // - simulatePhysics(): Too expensive on CPU, needs GPU implementation
 // - simulatePlates(): Not used, plate tectonics simulation
 
+uint64_t OctreePlanet::getCrustVersion() const {
+    return crust ? crust->getVersion() : 0;
+}
+
 void OctreePlanet::update(float deltaTime) {
-    // Physics simulation currently disabled for performance
-    // With millions of nodes, traversing every frame is too expensive
-    // Future: Move physics to GPU compute shaders
-    return;
+    if (!crust || deltaTime <= 0.0f) {
+        return;
+    }
+
+    // Bank wall-clock time as geological time and spend it in fixed steps.
+    // Stepping by the frame time directly would make the simulation's
+    // behaviour depend on frame rate, and at several thousand FPS the
+    // per-step motion would round to nothing.
+    pendingMillionYears += deltaTime * simulationRate;
+
+    // Don't let a stall turn into a burst of catch-up steps.
+    const float maxCatchUp = SIMULATION_STEP_MY * 4.0f;
+    if (pendingMillionYears > maxCatchUp) {
+        pendingMillionYears = maxCatchUp;
+    }
+
+    while (pendingMillionYears >= SIMULATION_STEP_MY) {
+        crust->step(SIMULATION_STEP_MY);
+        pendingMillionYears -= SIMULATION_STEP_MY;
+    }
 }
 
 // REMOVED: simulatePhysics() - Too expensive on CPU, needs GPU implementation

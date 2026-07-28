@@ -141,9 +141,16 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     float distanceToCenter = glm::length(currentCameraPos);
     bool significantCameraMove = (cameraMoveDistance > distanceToCenter * 0.1f);
     
+    // The surface itself changes as tectonics runs, so the mesh has to be
+    // rebuilt when the simulation advances, not only when the LOD changes.
+    static uint64_t lastCrustVersion = 0;
+    const uint64_t crustVersion = planet ? planet->getCrustVersion() : 0;
+    const bool crustChanged = (crustVersion != lastCrustVersion);
+
     // TEMPORARILY disable camera movement trigger to test dual-detail
-    if (planet && camera && (currentLODLevel != lastLODLevel /* || significantCameraMove */)) {
-        // LOD changed or camera moved significantly - regenerate mesh
+    if (planet && camera && (currentLODLevel != lastLODLevel || crustChanged /* || significantCameraMove */)) {
+        // LOD changed, tectonics moved, or camera moved significantly
+        lastCrustVersion = crustVersion;
         if (currentLODLevel != lastLODLevel) {
             std::cout << "[LOD] Level changed from " << lastLODLevel << " to " << currentLODLevel << " - regenerating mesh\n";
         } else if (significantCameraMove) {
