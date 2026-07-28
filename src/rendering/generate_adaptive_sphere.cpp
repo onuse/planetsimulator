@@ -227,6 +227,26 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
     const auto displaceStart = std::chrono::steady_clock::now();
 
     const core::DensityField& field = planet->getDensityField();
+    const simulation::CrustGrid* crust = field.getCrustGrid();
+    const simulation::CrustGrid::Snapshot* snapshot = field.getCrustSnapshot();
+    const bool diagnosticView = surfaceView != SurfaceView::Terrain &&
+                                crust != nullptr && snapshot != nullptr;
+
+    // Distinct hues so neighbouring plates never read as the same one.
+    const auto plateColour = [](uint16_t id) {
+        const float hue = std::fmod(static_cast<float>(id) * 0.618034f, 1.0f) * 6.0f;
+        const int sector = static_cast<int>(hue);
+        const float f = hue - sector;
+        switch (sector) {
+            case 0:  return glm::vec3(1.0f, f, 0.0f);
+            case 1:  return glm::vec3(1.0f - f, 1.0f, 0.0f);
+            case 2:  return glm::vec3(0.0f, 1.0f, f);
+            case 3:  return glm::vec3(0.0f, 1.0f - f, 1.0f);
+            case 4:  return glm::vec3(f, 0.0f, 1.0f);
+            default: return glm::vec3(1.0f, 0.0f, 1.0f - f);
+        }
+    };
+
     const float seaLevelHeight = field.getSeaLevelHeight();
     const float maxElevation = std::max(field.getMaxElevation(), 1e-6f);
     const float maxOceanDepth = std::max(field.getMaxOceanDepth(), 1e-6f);
@@ -250,6 +270,53 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
 
         // Colour follows the same field, so shading cannot disagree with shape.
         const float elevation = terrainHeight - seaLevelHeight;
+
+        // Diagnostic views colour by what the simulation holds rather than by
+        // what the surface would look like, and skip the terrain palette
+        // entirely.
+        if (diagnosticView) {
+            const int cell = crust->findNearestCell(normal);
+            glm::vec3 colour(0.5f);
+            if (cell >= 0) {
+                switch (surfaceView) {
+                    case SurfaceView::Plates:
+                        colour = plateColour(snapshot->plateId[cell]);
+                        // Darken the sea so plate outlines still read against it.
+                        if (submerged) colour *= 0.45f;
+                        break;
+                    case SurfaceView::CrustAge: {
+                        const float t = glm::clamp(snapshot->crustAge[cell] / 200.0f, 0.0f, 1.0f);
+                        colour = glm::mix(glm::vec3(1.0f, 0.25f, 0.1f),   // young, at ridges
+                                          glm::vec3(0.1f, 0.15f, 0.5f),   // old, at trenches
+                                          t);
+                        break;
+                    }
+                    case SurfaceView::RockType:
+                        switch (static_cast<simulation::CrustGrid::RockType>(snapshot->surfaceRock[cell])) {
+                            case simulation::CrustGrid::RockType::Basalt:
+                                colour = glm::vec3(0.25f, 0.25f, 0.30f); break;
+                            case simulation::CrustGrid::RockType::Granite:
+                                colour = glm::vec3(0.85f, 0.55f, 0.50f); break;
+                            case simulation::CrustGrid::RockType::Andesite:
+                                colour = glm::vec3(0.55f, 0.70f, 0.45f); break;
+                            case simulation::CrustGrid::RockType::Sediment:
+                                colour = glm::vec3(0.90f, 0.85f, 0.55f); break;
+                            default: break;
+                        }
+                        break;
+                    case SurfaceView::Thickness: {
+                        const float t = glm::clamp(snapshot->crustThickness[cell] / 70000.0f,
+                                                   0.0f, 1.0f);
+                        colour = glm::mix(glm::vec3(0.05f, 0.10f, 0.35f),
+                                          glm::vec3(1.0f, 0.95f, 0.75f), std::sqrt(t));
+                        break;
+                    }
+                    default: break;
+                }
+            }
+            vertex.color = colour;
+            continue;
+        }
 
         glm::vec3 color;
         core::MaterialID materialID;

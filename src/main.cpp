@@ -39,6 +39,7 @@ struct Config {
     bool autoZoom = false;       // Enable automatic zoom during screenshots
     bool usePresetView = false;  // Use preset camera position
     bool disableCulling = false; // Disable face culling for debugging
+    int surfaceView = 0;         // 0 terrain, 1 plates, 2 age, 3 rock, 4 thickness
     // Hierarchical GPU octree is always enabled - no config option
 };
 
@@ -72,6 +73,8 @@ Config parseArgs(int argc, char** argv) {
             config.usePresetView = true;
         } else if (arg == "-no-culling") {
             config.disableCulling = true;
+        } else if (arg == "-view" && i + 1 < argc) {
+            config.surfaceView = std::stoi(argv[++i]);
         } else if (arg == "-gpu-octree" || arg == "-no-gpu-octree") {
             std::cout << "Warning: GPU octree flags are deprecated. Hierarchical GPU octree is always enabled.\n";
         } else if (arg == "-help" || arg == "-h") {
@@ -270,6 +273,10 @@ private:
             throw;
         }
         
+        renderer.setSurfaceView(static_cast<rendering::VulkanRenderer::SurfaceView>(
+            glm::clamp(config.surfaceView, 0,
+                       static_cast<int>(rendering::VulkanRenderer::SurfaceView::Count) - 1)));
+
         // Set initial camera position
         if (config.usePresetView) {
             // Set to the nice continent view from the screenshot
@@ -430,16 +437,19 @@ private:
             takeScreenshot(elapsed, 0);
         }
         
-        // Visualization modes (1-8 keys)
-        for (int i = 0; i < 8; i++) {
+        // Surface views. These used to advertise eight modes for data that did
+        // not exist - stress, velocity, plate IDs - and did nothing. Now they
+        // show what the simulation actually holds, which is the only way to
+        // tell a docking terrane from a rendering artefact.
+        const int viewCount = static_cast<int>(rendering::VulkanRenderer::SurfaceView::Count);
+        for (int i = 0; i < viewCount; i++) {
             if (input.keys[GLFW_KEY_1 + i] && !input.prevKeys[GLFW_KEY_1 + i]) {
-                renderer.setRenderMode(i);
+                const auto view = static_cast<rendering::VulkanRenderer::SurfaceView>(i);
+                renderer.setSurfaceView(view);
+                renderer.forceMeshRebuild();
                 if (!config.quiet) {
-                    const char* modes[] = {
-                        "Material", "Temperature", "Velocity", "Age",
-                        "Plate IDs", "Stress", "Density", "Elevation"
-                    };
-                    std::cout << "Visualization mode: " << modes[i] << "\n";
+                    std::cout << "Surface view: "
+                              << rendering::VulkanRenderer::surfaceViewName(view) << "\n";
                 }
             }
         }

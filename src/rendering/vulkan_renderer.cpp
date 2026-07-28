@@ -146,7 +146,9 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     const auto nowForRebuild = std::chrono::steady_clock::now();
     const float sinceRebuild =
         std::chrono::duration<float>(nowForRebuild - lastCrustRebuild).count();
-    const bool crustChanged = (crustVersion != lastCrustVersion) && (sinceRebuild > 1.0f);
+    const bool crustChanged =
+        ((crustVersion != lastCrustVersion) && (sinceRebuild > 1.0f)) || meshRebuildRequested;
+    meshRebuildRequested = false;
     if (crustChanged) {
         lastCrustRebuild = nowForRebuild;
     }

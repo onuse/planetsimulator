@@ -184,6 +184,74 @@ CrustGrid::CrustGrid(float planetRadius, uint32_t seed, int subdivisions, int pl
 // writes to directly, and summing that instead gave an imbalance that looked
 // like a leak but was only the difference between the rock and the picture
 // we draw of it.
+CrustGrid::Diagnostics CrustGrid::computeDiagnostics() const {
+    Diagnostics d;
+    if (cells.empty()) {
+        return d;
+    }
+
+    // Which plate holds how much crust in each cell. Real plates do not
+    // overlap: at a convergent margin one of them goes down. Crust sitting on
+    // a cell that another plate dominates is either a margin one cell wide -
+    // which is expected - or two plates occupying the same ground, which is
+    // not, and which looks exactly like a landmass sliding across another one.
+    std::vector<std::vector<std::pair<uint16_t, double>>> perCell(cells.size());
+    for (const Marker& marker : markers) {
+        const int cell = findNearestCell(marker.position);
+        if (cell < 0) continue;
+        auto& list = perCell[cell];
+        auto it = std::find_if(list.begin(), list.end(),
+                               [&](const auto& e) { return e.first == marker.plateId; });
+        if (it == list.end()) {
+            list.emplace_back(marker.plateId, marker.volume);
+        } else {
+            it->second += marker.volume;
+        }
+    }
+
+    double totalVolume = 0.0;
+    double minorityVolume = 0.0;
+    for (const auto& list : perCell) {
+        if (list.empty()) {
+            d.emptyCells++;
+            continue;
+        }
+        d.maxPlatesInOneCell = std::max(d.maxPlatesInOneCell, static_cast<int>(list.size()));
+
+        double largest = 0.0;
+        double sum = 0.0;
+        for (const auto& [plate, volume] : list) {
+            (void)plate;
+            sum += volume;
+            largest = std::max(largest, volume);
+        }
+        totalVolume += sum;
+        minorityVolume += sum - largest;
+    }
+    d.overlapFraction = totalVolume > 0.0
+        ? static_cast<float>(minorityVolume / totalVolume) : 0.0f;
+
+    d.maxElevationJump = largestElevationJump;
+    d.cellOfLargestJump = largestJumpCell;
+
+    std::vector<int> population(plates.size(), 0);
+    for (const Cell& cell : cells) {
+        if (cell.plateId < population.size()) {
+            population[cell.plateId]++;
+        }
+    }
+    for (size_t p = 0; p < plates.size(); p++) {
+        if (population[p] > 0 && population[p] < constants.minPlateCells) {
+            d.microPlates++;
+        }
+        d.fastestPlateCmPerYear = std::max(
+            d.fastestPlateCmPerYear,
+            plates[p].angularVelocity() * planetRadius * 1e-4f);
+    }
+
+    return d;
+}
+
 double CrustGrid::computeCrustVolume() const {
     double volume = 0.0;
     for (const Marker& marker : markers) {
@@ -810,7 +878,19 @@ void CrustGrid::reconcileCrust(float dt) {
         // How much crust this column can support. Dense ocean floor founders
         // rather than stacking, which is why trenches stay deep; buoyant crust
         // cannot be pulled under and piles into an orogen instead.
-        const float capacity = buoyant ? k.maxCrustThickness : k.oceanicThickness * 1.6f;
+        //
+        // This has to vary smoothly with composition. A hard switch at the
+        // subduction density means a column whose density drifts a hair across
+        // the threshold has its capacity collapse from 70 km to 11 km, and the
+        // crust above that is removed in a single step - a five kilometre
+        // change in surface height, which is the isostatic difference between
+        // continent and ocean floor appearing all at once. Watching the planet
+        // it reads as landmasses flickering in and out of existence.
+        const float buoyancy = glm::clamp(
+            (k.oceanicDensity - cell.density) / (k.oceanicDensity - k.continentalDensity),
+            0.0f, 1.0f);
+        const float capacity = glm::mix(k.oceanicThickness * 1.6f, k.maxCrustThickness,
+                                        buoyancy * buoyancy);
         if (cell.thickness <= capacity) {
             continue;
         }
@@ -878,6 +958,110 @@ void CrustGrid::reconcileCrust(float dt) {
     }
 
     mantleReservoir += toMantle - fromMantle;
+}
+
+void CrustGrid::resolvePlateOverlap(float dt) {
+    // Two plates cannot occupy the same ground.
+    //
+    // Rigid plates rotating independently have nothing stopping them from
+    // being carried onto each other, and the thickness cap alone does not
+    // help: two thirty-five kilometre continents overlapping come to seventy,
+    // which is exactly the limit, so they pass straight through one another.
+    // On screen that reads as a landmass sliding across another one.
+    //
+    // What actually happens at a convergent margin is that the relative motion
+    // is taken up. The denser slab descends and is consumed; buoyant crust
+    // cannot be pulled under, so it docks onto the plate that holds the ground
+    // and travels with it from then on. That second case is terrane accretion,
+    // and it is how most continents grew their margins.
+    const Constants& k = constants;
+    const int n = static_cast<int>(cells.size());
+    const float cellArea = getCellArea();
+    const float rate = glm::clamp(dt / std::max(0.01f, k.overlapResolutionTime), 0.0f, 1.0f);
+
+    double subducted = 0.0;
+    std::vector<float> arcPending(cells.size(), 0.0f);
+
+    for (int i = 0; i < n; i++) {
+        if (cellMarkers[i].size() < 2) {
+            continue;
+        }
+
+        // Who holds this ground, by volume.
+        std::vector<std::pair<uint16_t, double>> byPlate;
+        for (int index : cellMarkers[i]) {
+            const Marker& marker = markers[index];
+            auto it = std::find_if(byPlate.begin(), byPlate.end(),
+                                   [&](const auto& e) { return e.first == marker.plateId; });
+            if (it == byPlate.end()) {
+                byPlate.emplace_back(marker.plateId, marker.volume);
+            } else {
+                it->second += marker.volume;
+            }
+        }
+        if (byPlate.size() < 2) {
+            continue;
+        }
+
+        uint16_t owner = byPlate.front().first;
+        double largest = byPlate.front().second;
+        for (const auto& [plate, volume] : byPlate) {
+            if (volume > largest) {
+                largest = volume;
+                owner = plate;
+            }
+        }
+
+        // Mean density of the crust that holds this ground, to decide which
+        // side of the margin goes down.
+        double ownerMass = 0.0, ownerVolume = 0.0;
+        for (int index : cellMarkers[i]) {
+            if (markers[index].plateId == owner) {
+                ownerMass += markers[index].volume * markers[index].density;
+                ownerVolume += markers[index].volume;
+            }
+        }
+        const double ownerDensity = ownerVolume > 0.0 ? ownerMass / ownerVolume
+                                                      : k.oceanicDensity;
+
+        for (int index : cellMarkers[i]) {
+            Marker& marker = markers[index];
+            if (marker.plateId == owner) {
+                continue;
+            }
+
+            if (marker.density > ownerDensity + 1.0f) {
+                // Denser: this is the down-going side. Consume it gradually -
+                // a slab takes time to descend, and removing it all at once
+                // drops the surface by the whole continent-ocean step in a
+                // single frame.
+                const double consumed = marker.consumeProportionally(marker.volume * rate);
+                subducted += consumed;
+                arcPending[i] += static_cast<float>(consumed * k.arcProductionRatio);
+            } else {
+                // Buoyant: it cannot subduct, so it docks. The ground is now
+                // part of the plate that was already here.
+                marker.plateId = owner;
+            }
+        }
+    }
+
+    double fromMantle = 0.0;
+    for (int i = 0; i < n; i++) {
+        if (arcPending[i] <= 0.0f) {
+            continue;
+        }
+        Marker arc;
+        arc.position = cellPositions[i];
+        arc.plateId = cells[i].plateId;
+        arc.deposit(RockType::Andesite, static_cast<double>(arcPending[i]), 0.0f);
+        markers.push_back(arc);
+        fromMantle += arc.volume;
+        continentalCreatedByArcs += arc.volume;
+    }
+
+    mantleReservoir += subducted - fromMantle;
+    (void)cellArea;
 }
 
 void CrustGrid::rebalanceMarkers() {
@@ -1001,6 +1185,7 @@ void CrustGrid::stepOnce(float millionYears) {
     continentalDeltaTransport += computeContinentalVolume() - continentalBefore;
 
     reconcileCrust(millionYears);
+    resolvePlateOverlap(millionYears);
 
     // Isostasy before erosion, because rivers need to know which way is
     // downhill, and that is decided by how the columns float.
@@ -1010,6 +1195,22 @@ void CrustGrid::stepOnce(float millionYears) {
 
     rebalanceMarkers();
     updateIsostasy();
+
+    // Watch for the surface moving faster than any process should move it.
+    if (previousElevation.size() == cells.size()) {
+        for (size_t i = 0; i < cells.size(); i++) {
+            const float jump = std::fabs(cells[i].elevation - previousElevation[i]);
+            if (jump > largestElevationJump) {
+                largestElevationJump = jump;
+                largestJumpCell = static_cast<int>(i);
+            }
+        }
+    }
+    previousElevation.resize(cells.size());
+    for (size_t i = 0; i < cells.size(); i++) {
+        previousElevation[i] = cells[i].elevation;
+    }
+
     solveSeaLevel();
 
     simulationTime += millionYears;
@@ -1023,8 +1224,30 @@ void CrustGrid::stepOnce(float millionYears) {
 std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
     auto snapshot = std::make_shared<Snapshot>();
     snapshot->elevation.resize(cells.size());
+    snapshot->plateId.resize(cells.size());
+    snapshot->crustAge.resize(cells.size());
+    snapshot->crustThickness.resize(cells.size());
+    snapshot->surfaceRock.resize(cells.size());
+
     for (size_t i = 0; i < cells.size(); i++) {
         snapshot->elevation[i] = cells[i].elevation - seaLevel;
+        snapshot->plateId[i] = cells[i].plateId;
+        snapshot->crustAge[i] = cells[i].age;
+        snapshot->crustThickness[i] = cells[i].thickness;
+
+        // Whatever rock is exposed at the top of the biggest parcel here.
+        uint8_t rock = static_cast<uint8_t>(RockType::Basalt);
+        double best = 0.0;
+        if (i < cellMarkers.size()) {
+            for (int index : cellMarkers[i]) {
+                const Marker& marker = markers[index];
+                if (marker.layerCount > 0 && marker.volume > best) {
+                    best = marker.volume;
+                    rock = static_cast<uint8_t>(marker.layers[marker.layerCount - 1].rock);
+                }
+            }
+        }
+        snapshot->surfaceRock[i] = rock;
     }
     snapshot->minElevation = minElevation;
     snapshot->maxElevation = maxElevation;

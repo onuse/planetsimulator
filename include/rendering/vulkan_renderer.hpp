@@ -87,6 +87,34 @@ public:
     GLFWwindow* getWindow() const { return window; }
     
     // Settings
+    // What the surface is coloured by. Terrain is what the planet looks like;
+    // the rest show what the simulation is doing, which is the only way to
+    // tell a docking terrane from a rendering artefact.
+    enum class SurfaceView {
+        Terrain = 0,   // altitude and biome, the normal view
+        Plates,        // one colour per plate, so boundaries are visible
+        CrustAge,      // young at ridges, old at trenches
+        RockType,      // basalt, granite, andesite, sediment
+        Thickness,     // thin ocean floor against thick orogens
+        Count
+    };
+    void setSurfaceView(SurfaceView view) { surfaceView = view; }
+
+    // Rebuild the mesh on the next frame regardless of the usual throttle, so
+    // switching view is immediate rather than waiting a second.
+    void forceMeshRebuild() { meshRebuildRequested = true; }
+    SurfaceView getSurfaceView() const { return surfaceView; }
+    static const char* surfaceViewName(SurfaceView view) {
+        switch (view) {
+            case SurfaceView::Terrain:   return "Terrain";
+            case SurfaceView::Plates:    return "Plates";
+            case SurfaceView::CrustAge:  return "Crust age";
+            case SurfaceView::RockType:  return "Rock type";
+            case SurfaceView::Thickness: return "Crust thickness";
+            default:                     return "?";
+        }
+    }
+
     void setRenderMode(int mode) { renderMode = mode; }
     void setWireframe(bool enabled) { wireframeEnabled = enabled; }
     void setVSync(bool enabled);
@@ -195,7 +223,9 @@ private:
     uint32_t lastRenderedImageIndex = 0; // Track which swap chain image was last rendered
     
     // Rendering state
-    int renderMode = 0; // 0: material, 1: temperature, 2: elevation, etc.
+    int renderMode = 0;
+    SurfaceView surfaceView = SurfaceView::Terrain;
+    bool meshRebuildRequested = false;
     bool wireframeEnabled = false;
     // Removed parallel rendering paths
     uint32_t visibleNodeCount = 0;

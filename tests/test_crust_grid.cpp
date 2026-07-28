@@ -591,6 +591,38 @@ void testErosionLimitsMountains() {
                 pristine.getContinentalLostToDelamination());
 }
 
+// Plate tectonics has few closed-form answers to check against, so the way to
+// know it is behaving is to name what must never happen and watch for it.
+void testNothingImpossibleHappens() {
+    std::printf("Nothing physically impossible is going on\n");
+    simulation::CrustGrid grid(6371000.0f, 17, 4, 10);
+
+    for (int i = 0; i < 150; i++) {
+        grid.step(2.0f);
+    }
+
+    const auto d = grid.computeDiagnostics();
+    std::printf("  overlap %.2f%% of crust, up to %d plates sharing a cell\n",
+                d.overlapFraction * 100.0f, d.maxPlatesInOneCell);
+    std::printf("  largest single-step elevation jump %.0f m\n", d.maxElevationJump);
+    std::printf("  %d empty cells, %d microplates, fastest plate %.1f cm/yr\n",
+                d.emptyCells, d.microPlates, d.fastestPlateCmPerYear);
+
+    // Two plates cannot be in the same place. Some overlap is expected at
+    // margins, which are a cell wide and where subduction is actually
+    // happening, but it should be a few percent - not a landmass sliding
+    // across another one.
+    check(d.overlapFraction < 0.15f, "plates are not passing through each other");
+
+    // Tectonics and erosion are slow. A cell jumping kilometres between steps
+    // is a discretisation artefact, not geology.
+    check(d.maxElevationJump < 3000.0f, "the surface never jumps implausibly far");
+
+    check(d.emptyCells < static_cast<int>(grid.getCells().size()) / 20,
+          "transport is not losing track of the crust");
+    check(d.fastestPlateCmPerYear < 60.0f, "no plate is running away");
+}
+
 void testStratigraphy() {
     std::printf("Columns record their history in order\n");
     using Grid = simulation::CrustGrid;
@@ -690,6 +722,7 @@ int main() {
     testContinentalPlatesAreSlower();
     testPlateMotionEvolves();
     testPlatesReorganise();
+    testNothingImpossibleHappens();
     testErosionConservesRock();
     testErosionMovesRockDownhill();
     testErosionLimitsMountains();

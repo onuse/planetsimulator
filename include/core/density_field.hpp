@@ -59,6 +59,7 @@ public:
     void setCrustSnapshot(const simulation::CrustGrid::Snapshot* snapshot) {
         crustSnapshot = snapshot;
     }
+    const simulation::CrustGrid::Snapshot* getCrustSnapshot() const { return crustSnapshot; }
 
     // Configuration
     void setSeed(uint32_t seed);

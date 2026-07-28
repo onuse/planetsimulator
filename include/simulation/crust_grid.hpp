@@ -200,6 +200,12 @@ public:
         // Multiplies erosion everywhere. This is where climate plugs in: it
         // should become a precipitation field rather than one number.
         float precipitation = 1.0f;
+
+        // How quickly ground held by two plates at once is resolved - the
+        // dense side descending, the buoyant side docking. Not instant,
+        // because a slab takes time to go down, but fast enough that plates
+        // never visibly occupy the same place.
+        float overlapResolutionTime = 2.0f;    // My
     };
 
     // Surface gravity, derived from radius and mean density rather than
@@ -384,6 +390,16 @@ public:
     // construction, so a snapshot carries just the elevations.
     struct Snapshot {
         std::vector<float> elevation;   // per cell, metres relative to sea level
+
+        // Carried so the renderer can show what the simulation is thinking,
+        // not just what the surface looks like. Being able to colour the
+        // planet by plate is the difference between "that island looks odd"
+        // and "that terrane is docking".
+        std::vector<uint16_t> plateId;
+        std::vector<float> crustAge;      // My
+        std::vector<float> crustThickness;// m
+        std::vector<uint8_t> surfaceRock; // RockType at the top of the column
+
         float minElevation = 0.0f;
         float maxElevation = 0.0f;
         float seaLevel = 0.0f;
@@ -489,6 +505,36 @@ public:
     };
     Stats computeStats() const;
 
+    // Things that should not be true of a sane planet.
+    //
+    // Plate tectonics has few closed-form answers to check against, so the way
+    // to know it is behaving is to name the things that must never happen and
+    // watch for them. Every field here is a violation count or magnitude:
+    // small or zero is healthy.
+    struct Diagnostics {
+        // Crust sitting in a cell whose majority belongs to a different plate.
+        // Real plates cannot overlap - one of them subducts - so a persistent
+        // non-zero value means two plates are passing through each other.
+        float overlapFraction = 0.0f;
+        int maxPlatesInOneCell = 0;
+
+        // Largest single-step change in surface height. Tectonics and erosion
+        // are slow; a cell jumping kilometres in one step is a discretisation
+        // artefact, not geology.
+        float maxElevationJump = 0.0f;
+        int cellOfLargestJump = -1;
+
+        // Cells that no parcel landed in. A few is normal at a spreading
+        // ridge; many means transport is losing track of the material.
+        int emptyCells = 0;
+
+        // Plates too small to be meaningful, and the largest speed on the
+        // planet in cm/yr.
+        int microPlates = 0;
+        float fastestPlateCmPerYear = 0.0f;
+    };
+    Diagnostics computeDiagnostics() const;
+
     // Total crustal volume in m^3.
     double computeCrustVolume() const;
 
@@ -547,6 +593,11 @@ private:
     double erodedVolume = 0.0;
     double depositedVolume = 0.0;
 
+    // Previous step's surface, so a jump can be spotted.
+    std::vector<float> previousElevation;
+    float largestElevationJump = 0.0f;
+    int largestJumpCell = -1;
+
     void buildGeodesicGrid(int subdivisions);
     void buildAccelerator();
     void assignPlates(int plateCount);
@@ -574,6 +625,7 @@ private:
     void advectMarkers(float dt);
     void projectMarkersToGrid();
     void reconcileCrust(float dt);
+    void resolvePlateOverlap(float dt);
     void rebalanceMarkers();
     void updateIsostasy();
     void solveSeaLevel();
