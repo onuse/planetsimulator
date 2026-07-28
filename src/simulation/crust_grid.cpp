@@ -65,6 +65,108 @@ float smoothSphereNoise(const glm::vec3& n, uint32_t seed, float frequency) {
 
 } // namespace
 
+// ============================================================================
+// The rock record
+// ============================================================================
+
+void CrustGrid::Marker::deposit(RockType rock, double addedVolume, float atAge) {
+    if (addedVolume <= 0.0) {
+        return;
+    }
+
+    // Rock of the same type arriving on top of itself is one episode, not two.
+    if (layerCount > 0 && layers[layerCount - 1].rock == rock) {
+        Layer& top = layers[layerCount - 1];
+        const double total = top.volume + addedVolume;
+        top.age = static_cast<float>((top.age * top.volume + atAge * addedVolume) / total);
+        top.volume = total;
+        refresh();
+        return;
+    }
+
+    if (layerCount >= MAX_LAYERS) {
+        // Out of room. Merge the two deepest episodes: that rock is buried far
+        // enough to be metamorphosed, and its individual history is the least
+        // worth keeping.
+        Layer& deepest = layers[0];
+        const Layer& next = layers[1];
+        const double total = deepest.volume + next.volume;
+        if (total > 0.0) {
+            deepest.age = static_cast<float>(
+                (deepest.age * deepest.volume + next.age * next.volume) / total);
+            // The merged rock takes the identity of whichever dominates.
+            if (next.volume > deepest.volume) {
+                deepest.rock = next.rock;
+            }
+            deepest.volume = total;
+        }
+        for (int i = 1; i < layerCount - 1; i++) {
+            layers[i] = layers[i + 1];
+        }
+        layerCount--;
+    }
+
+    layers[layerCount].rock = rock;
+    layers[layerCount].volume = addedVolume;
+    layers[layerCount].age = atAge;
+    layerCount++;
+    refresh();
+}
+
+double CrustGrid::Marker::erodeFromTop(double wanted) {
+    double removed = 0.0;
+    while (wanted > 0.0 && layerCount > 0) {
+        Layer& top = layers[layerCount - 1];
+        if (top.volume > wanted) {
+            top.volume -= wanted;
+            removed += wanted;
+            wanted = 0.0;
+        } else {
+            removed += top.volume;
+            wanted -= top.volume;
+            layerCount--;
+        }
+    }
+    refresh();
+    return removed;
+}
+
+double CrustGrid::Marker::removeFromBottom(double wanted) {
+    double removed = 0.0;
+    while (wanted > 0.0 && layerCount > 0) {
+        Layer& bottom = layers[0];
+        if (bottom.volume > wanted) {
+            bottom.volume -= wanted;
+            removed += wanted;
+            wanted = 0.0;
+        } else {
+            removed += bottom.volume;
+            wanted -= bottom.volume;
+            for (int i = 0; i < layerCount - 1; i++) {
+                layers[i] = layers[i + 1];
+            }
+            layerCount--;
+        }
+    }
+    refresh();
+    return removed;
+}
+
+double CrustGrid::Marker::consumeProportionally(double wanted) {
+    if (wanted <= 0.0 || volume <= 0.0) {
+        return 0.0;
+    }
+    const double fraction = std::min(1.0, wanted / volume);
+    double removed = 0.0;
+    for (int i = 0; i < layerCount; i++) {
+        const double take = layers[i].volume * fraction;
+        layers[i].volume -= take;
+        removed += take;
+    }
+    refresh();
+    return removed;
+}
+
 CrustGrid::CrustGrid(float planetRadius, uint32_t seed, int subdivisions, int plateCount)
     : planetRadius(planetRadius), seed(seed) {
     buildGeodesicGrid(subdivisions);
@@ -496,14 +598,19 @@ void CrustGrid::seedMarkers() {
         tangent = glm::normalize(tangent);
         const glm::vec3 bitangent = glm::cross(n, tangent);
 
+        // The primordial column is one episode: basalt where the young crust
+        // was thin, granite where it was thick enough to have differentiated.
+        const RockType primordial = cell.density < k.subductionDensity
+            ? RockType::Granite : RockType::Basalt;
+
         for (int m = 0; m < perCell; m++) {
             Marker marker;
             marker.position = glm::normalize(
                 n + tangent * (unit(rng) * jitter) + bitangent * (unit(rng) * jitter));
             marker.plateId = cell.plateId;
-            marker.volume = cell.thickness * cellArea / static_cast<float>(perCell);
-            marker.density = cell.density;
-            marker.age = cell.age;
+            marker.deposit(primordial,
+                           static_cast<double>(cell.thickness) * cellArea / perCell,
+                           cell.age);
             markers.push_back(marker);
         }
     }
@@ -519,7 +626,14 @@ void CrustGrid::advectMarkers(float dt) {
         const Plate& plate = plates[marker.plateId];
         marker.position = glm::normalize(
             rotateAbout(marker.position, plate.eulerPole, plate.angularVelocity * dt));
-        marker.age += dt;
+
+        // Every episode in the record ages, not just the column average -
+        // otherwise a freshly deposited layer would inherit the mean age of
+        // rock beneath it and the stratigraphy would stop meaning anything.
+        for (int i = 0; i < marker.layerCount; i++) {
+            marker.layers[i].age += dt;
+        }
+        marker.refresh();
     }
 }
 
@@ -655,9 +769,8 @@ void CrustGrid::reconcileCrust(float dt) {
             Marker fresh;
             fresh.position = cell.position;
             fresh.plateId = cell.plateId;
-            fresh.volume = k.oceanicThickness * cellArea;
-            fresh.density = k.oceanicDensity;
-            fresh.age = 0.0f;
+            fresh.deposit(RockType::Basalt,
+                          static_cast<double>(k.oceanicThickness) * cellArea, 0.0f);
             markers.push_back(fresh);
 
             fromMantle += static_cast<double>(fresh.volume);
@@ -679,9 +792,7 @@ void CrustGrid::reconcileCrust(float dt) {
             Marker fresh;
             fresh.position = cell.position;
             fresh.plateId = cell.plateId;
-            fresh.volume = deficit * cellArea;
-            fresh.density = k.oceanicDensity;
-            fresh.age = 0.0f;
+            fresh.deposit(RockType::Basalt, static_cast<double>(deficit) * cellArea, 0.0f);
             markers.push_back(fresh);
 
             fromMantle += static_cast<double>(fresh.volume);
@@ -713,9 +824,13 @@ void CrustGrid::reconcileCrust(float dt) {
                 break;
             }
             Marker& marker = markers[markerIndex];
-            const double take = std::min(static_cast<double>(marker.volume), remaining);
-            marker.volume -= static_cast<float>(take);
-            remaining -= take;
+            // Which end of the record goes matters. An over-thickened orogen
+            // sheds its root: the deepest rock turns to eclogite and founders,
+            // leaving the young rock at the surface untouched. A subducting
+            // slab descends entire, so it is consumed through its whole
+            // thickness at once.
+            remaining -= buoyant ? marker.removeFromBottom(remaining)
+                                 : marker.consumeProportionally(remaining);
         }
 
         const double consumed = excessVolume - std::max(0.0, remaining);
@@ -747,9 +862,7 @@ void CrustGrid::reconcileCrust(float dt) {
         Marker arc;
         arc.position = cells[target].position;
         arc.plateId = cells[target].plateId;
-        arc.volume = arcPending[i];
-        arc.density = k.continentalDensity;
-        arc.age = 0.0f;
+        arc.deposit(RockType::Andesite, static_cast<double>(arcPending[i]), 0.0f);
         markers.push_back(arc);
 
         fromMantle += static_cast<double>(arc.volume);
@@ -795,14 +908,16 @@ void CrustGrid::rebalanceMarkers() {
             }
             Marker& source = markers[from];
             Marker& sink = markers[into];
-            const float total = source.volume + sink.volume;
-            if (total <= 0.0f) {
+            if (source.volume + sink.volume <= 0.0) {
                 continue;
             }
-            // Volume-weighted, so merging conserves crust and mass exactly.
-            sink.density = (sink.density * sink.volume + source.density * source.volume) / total;
-            sink.age = (sink.age * sink.volume + source.age * source.volume) / total;
-            sink.volume = total;
+            // Pour the source's record onto the sink, oldest episode first, so
+            // the merged column keeps its rock types and stacking order rather
+            // than dissolving into an average.
+            for (int layerIndex = 0; layerIndex < source.layerCount; layerIndex++) {
+                const Layer& layer = source.layers[layerIndex];
+                sink.deposit(layer.rock, layer.volume, layer.age);
+            }
             consumed[from] = true;
         }
     }

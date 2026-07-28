@@ -278,6 +278,78 @@ void testRigidRotationPreservesContrast() {
     check(retained > 0.5, "a full rotation keeps most of the crustal contrast");
 }
 
+// The rock record is what makes the planet remember. These check that layers
+// keep their order and their identity, and that the three ways crust is
+// removed take it from the right end - which is the whole point of having a
+// record rather than a single averaged number.
+void testStratigraphy() {
+    std::printf("Columns record their history in order\n");
+    using Grid = simulation::CrustGrid;
+
+    Grid::Marker marker;
+    marker.deposit(Grid::RockType::Granite, 1000.0, 500.0f);
+    marker.deposit(Grid::RockType::Sediment, 400.0, 200.0f);
+    marker.deposit(Grid::RockType::Basalt, 200.0, 50.0f);
+
+    check(marker.layerCount == 3, "three distinct episodes are kept separate");
+    check(marker.layers[0].rock == Grid::RockType::Granite, "oldest rock is at the bottom");
+    check(marker.layers[2].rock == Grid::RockType::Basalt, "youngest rock is on top");
+    check(std::fabs(marker.volume - 1600.0) < 1e-9, "volume is the sum of the record");
+
+    // Density is the volume weighted mix, so a sediment basin really is more
+    // buoyant than the basalt under it.
+    const double expected = (1000.0 * Grid::rockDensity(Grid::RockType::Granite) +
+                             400.0 * Grid::rockDensity(Grid::RockType::Sediment) +
+                             200.0 * Grid::rockDensity(Grid::RockType::Basalt)) / 1600.0;
+    std::printf("  column density %.1f kg/m3, expected %.1f\n", marker.density, expected);
+    check(std::fabs(marker.density - expected) < 0.5, "density is the mass weighted mix");
+
+    // Erosion strips the youngest rock first.
+    Grid::Marker eroding = marker;
+    const double stripped = eroding.erodeFromTop(250.0);
+    check(std::fabs(stripped - 250.0) < 1e-9, "erosion removes what was asked for");
+    check(eroding.layers[eroding.layerCount - 1].rock == Grid::RockType::Sediment,
+          "erosion cut through the basalt into the sediment below");
+    check(eroding.layers[0].rock == Grid::RockType::Granite,
+          "erosion left the basement untouched");
+
+    // Delamination takes the root instead.
+    Grid::Marker foundering = marker;
+    const double shed = foundering.removeFromBottom(1000.0);
+    check(std::fabs(shed - 1000.0) < 1e-9, "delamination removes what was asked for");
+    check(foundering.layers[0].rock == Grid::RockType::Sediment,
+          "delamination removed the deep basement, not the surface");
+    check(foundering.layers[foundering.layerCount - 1].rock == Grid::RockType::Basalt,
+          "the youngest rock survived delamination");
+
+    // A subducting slab goes down entire.
+    Grid::Marker slab = marker;
+    const double consumed = slab.consumeProportionally(800.0);
+    check(std::fabs(consumed - 800.0) < 1e-9, "subduction consumes what was asked for");
+    check(slab.layerCount == 3, "subduction thins every episode rather than peeling any");
+    check(std::fabs(slab.layers[0].volume - 500.0) < 1e-6,
+          "each episode lost the same fraction");
+
+    // Same rock arriving on top of itself is one episode, not two.
+    Grid::Marker merging;
+    merging.deposit(Grid::RockType::Sediment, 100.0, 10.0f);
+    merging.deposit(Grid::RockType::Sediment, 100.0, 20.0f);
+    check(merging.layerCount == 1, "successive deposits of one rock type coalesce");
+
+    // Overflowing the record must not lose rock.
+    Grid::Marker deep;
+    double placed = 0.0;
+    for (int i = 0; i < 40; i++) {
+        const auto rock = (i % 2) ? Grid::RockType::Sediment : Grid::RockType::Basalt;
+        deep.deposit(rock, 10.0, static_cast<float>(i));
+        placed += 10.0;
+    }
+    std::printf("  %d episodes recorded after 40 deposits, volume %.1f of %.1f\n",
+                deep.layerCount, deep.volume, placed);
+    check(deep.layerCount <= simulation::CrustGrid::MAX_LAYERS, "the record stays bounded");
+    check(std::fabs(deep.volume - placed) < 1e-6, "merging deep episodes loses no rock");
+}
+
 void testStepPerformance() {
     std::printf("A step is fast enough to run interactively\n");
     simulation::CrustGrid grid(1000000.0f, 42, 6, 12);
@@ -304,6 +376,7 @@ int main() {
     testPlatesActuallyMove();
     testSilicateBooksBalance();
     testContinentsPersist();
+    testStratigraphy();
     testRigidRotationPreservesContrast();
     testStepPerformance();
 

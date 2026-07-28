@@ -91,6 +91,43 @@ public:
         float elevation = 0.0f;    // m above the isostatic datum, derived
     };
 
+    // What a layer of rock is made of. Densities are the measured values for
+    // each rock type and are what isostasy floats the column on, so a basin
+    // full of sediment really is more buoyant than the basalt beneath it.
+    enum class RockType : uint8_t {
+        Basalt   = 0,   // oceanic crust, erupted at ridges
+        Granite  = 1,   // ancient continental crust
+        Andesite = 2,   // arc crust, built above subduction zones
+        Sediment = 3,   // eroded rock, transported and redeposited
+        Count    = 4
+    };
+
+    static float rockDensity(RockType rock) {
+        switch (rock) {
+            case RockType::Basalt:   return 2950.0f;
+            case RockType::Granite:  return 2750.0f;
+            case RockType::Andesite: return 2800.0f;
+            case RockType::Sediment: return 2400.0f;
+            default:                 return 2900.0f;
+        }
+    }
+
+    // One episode in a column's history: rock of a given type, emplaced at a
+    // given time. Layers are what makes the planet remember - dig into an
+    // orogen and the marine sediment that was once a seabed is still there,
+    // because it was recorded rather than reconstructed.
+    struct Layer {
+        double volume = 0.0;                 // m^3 of rock in this layer
+        float age = 0.0f;                    // My since it was emplaced
+        RockType rock = RockType::Basalt;
+    };
+
+    // How many episodes a parcel remembers before the deepest ones are merged.
+    // Bounded so the store stays flat and GPU-friendly; merging the deepest
+    // pair is geologically honest, since rock that far down is metamorphosed
+    // and homogenised anyway.
+    static constexpr int MAX_LAYERS = 8;
+
     // A parcel of crust. Markers are the material; the grid is only where we
     // look at it.
     //
@@ -105,13 +142,52 @@ public:
     struct Marker {
         glm::vec3 position{0.0f, 0.0f, 1.0f}; // unit vector
         uint16_t plateId = 0;
+
+        // The rock record, oldest at [0]. Volume, density and age below are
+        // derived from it, cached so the hot loops do not have to walk the
+        // stack.
+        Layer layers[MAX_LAYERS];
+        uint8_t layerCount = 0;
+
         // Double, because this is the conserved quantity. A parcel holds
         // ~1e11 m^3 and is repeatedly added to and subtracted from; in single
         // precision the rounding accumulates into a visible imbalance in the
         // silicate budget over a few hundred steps.
         double volume = 0.0;                  // m^3 of crust in this parcel
-        float density = 2950.0f;              // kg/m^3
-        float age = 0.0f;                     // My since this rock formed
+        float density = 2950.0f;              // kg/m^3, volume weighted
+        float age = 0.0f;                     // My, volume weighted
+
+        // Recompute the cached totals from the layers.
+        void refresh() {
+            double total = 0.0;
+            double mass = 0.0;
+            double ageVolume = 0.0;
+            for (int i = 0; i < layerCount; i++) {
+                total += layers[i].volume;
+                mass += layers[i].volume * rockDensity(layers[i].rock);
+                ageVolume += layers[i].volume * layers[i].age;
+            }
+            volume = total;
+            density = total > 0.0 ? static_cast<float>(mass / total) : 2950.0f;
+            age = total > 0.0 ? static_cast<float>(ageVolume / total) : 0.0f;
+        }
+
+        // Lay new rock down on top. If the record is full the two deepest
+        // episodes are merged to make room, which is where a real column loses
+        // its detail too.
+        void deposit(RockType rock, double addedVolume, float atAge);
+
+        // Strip rock from the top, youngest first - what erosion does.
+        // Returns how much was actually removed.
+        double erodeFromTop(double wanted);
+
+        // Remove rock from the bottom - what delamination does when an
+        // over-thickened root turns to eclogite and founders.
+        double removeFromBottom(double wanted);
+
+        // Take a fraction out of every layer at once - what subduction does,
+        // since the whole slab descends rather than being peeled.
+        double consumeProportionally(double wanted);
     };
 
     // subdivisions: icosphere level. 6 gives 40,962 cells, ~17 km apart on a
@@ -132,6 +208,7 @@ public:
 
     const std::vector<Cell>& getCells() const { return cells; }
     const std::vector<Plate>& getPlates() const { return plates; }
+    const std::vector<Marker>& getMarkers() const { return markers; }
 
     // Adjacency, as an allocation-free range. Geodesic cells have 5 or 6
     // neighbours - the twelve pentagons are the icosahedron's original corners.
