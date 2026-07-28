@@ -143,9 +143,22 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     
     // The surface itself changes as tectonics runs, so the mesh has to be
     // rebuilt when the simulation advances, not only when the LOD changes.
+    //
+    // Throttled, because the simulation takes as many sub-steps per frame as
+    // plate speed demands and each one bumps the version. Rebuilding on every
+    // one costs ~50 ms a time and locks the window solid; the surface does not
+    // visibly change over a fraction of a million years anyway.
     static uint64_t lastCrustVersion = 0;
+    static std::chrono::steady_clock::time_point lastCrustRebuild{};
     const uint64_t crustVersion = planet ? planet->getCrustVersion() : 0;
-    const bool crustChanged = (crustVersion != lastCrustVersion);
+
+    const auto nowForRebuild = std::chrono::steady_clock::now();
+    const float sinceRebuild =
+        std::chrono::duration<float>(nowForRebuild - lastCrustRebuild).count();
+    const bool crustChanged = (crustVersion != lastCrustVersion) && (sinceRebuild > 1.0f);
+    if (crustChanged) {
+        lastCrustRebuild = nowForRebuild;
+    }
 
     // TEMPORARILY disable camera movement trigger to test dual-detail
     if (planet && camera && (currentLODLevel != lastLODLevel || crustChanged /* || significantCameraMove */)) {

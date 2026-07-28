@@ -137,9 +137,19 @@ public:
     // rebuild their meshes.
     uint64_t getCrustVersion() const;
 
-    // How much geological time passes per second of wall clock.
+    // How much geological time we would like per second of wall clock.
     void setSimulationRate(float millionYearsPerSecond) { simulationRate = millionYearsPerSecond; }
     float getSimulationRate() const { return simulationRate; }
+
+    // How much we are actually managing, in My per second of wall clock. The
+    // simulation takes whatever timestep plate speed allows, so on a fast
+    // planet it can fall behind what was asked for; better to report that than
+    // to quietly drop geological time.
+    float getAchievedSimulationRate() const { return achievedRate; }
+
+    // Wall-clock time per frame the simulation may spend. Everything left over
+    // is carried to the next frame rather than stalling the renderer.
+    void setSimulationBudgetMs(float ms) { simulationBudgetMs = ms; }
     
 private:
     float radius;
@@ -171,9 +181,12 @@ private:
 
     // Geological time is stepped in fixed increments; wall-clock time is
     // banked here until a whole step is due.
-    float simulationRate = 1.0f;        // My per second of wall clock
+    float simulationRate = 1.0f;        // My per second of wall clock, wanted
+    float achievedRate = 0.0f;          // My per second of wall clock, actual
+    float simulationBudgetMs = 4.0f;    // per frame
     float pendingMillionYears = 0.0f;
-    static constexpr float SIMULATION_STEP_MY = 2.0f;
+    float budgetBankSeconds = 0.0f;
+    float lastStepCostSeconds = 0.02f;  // seeded with a guess, measured after
 };
 
 } // namespace octree

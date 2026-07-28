@@ -446,22 +446,56 @@ void OctreePlanet::update(float deltaTime) {
         return;
     }
 
-    // Bank wall-clock time as geological time and spend it in fixed steps.
-    // Stepping by the frame time directly would make the simulation's
-    // behaviour depend on frame rate, and at several thousand FPS the
-    // per-step motion would round to nothing.
+    // Bank wall-clock time as geological time. Stepping by the frame time
+    // directly would make the simulation's behaviour depend on frame rate.
     pendingMillionYears += deltaTime * simulationRate;
 
-    // Don't let a stall turn into a burst of catch-up steps.
-    const float maxCatchUp = SIMULATION_STEP_MY * 4.0f;
-    if (pendingMillionYears > maxCatchUp) {
-        pendingMillionYears = maxCatchUp;
+    // Spend at most a slice of each frame on the simulation, and carry the
+    // rest over. The step size the physics needs is set by how fast the plates
+    // are moving, not by us, so on a fast planet a single frame's worth of
+    // geological time can be dozens of sub-steps - running them all inline
+    // freezes the window for seconds at a time even though the frame counter
+    // in between still reads in the thousands.
+    // A step cannot be interrupted once started, and one costs tens of
+    // milliseconds, so checking a time budget after running it is useless -
+    // that is a frame already lost. Instead bank the budget across frames and
+    // only start a step when there is enough banked to pay for one.
+    //
+    // This amortises rather than eliminates the cost: the step still lands
+    // inside a single frame and stalls it. The real fix is to run the
+    // simulation off the render thread entirely and have the renderer read a
+    // published snapshot; until then this at least keeps the average frame
+    // cheap instead of every frame carrying a whole step.
+    budgetBankSeconds += deltaTime * (simulationBudgetMs * 0.001f / 0.016f);
+    budgetBankSeconds = std::min(budgetBankSeconds, 0.5f);
+
+    float simulated = 0.0f;
+    float spentTotal = 0.0f;
+    while (pendingMillionYears > 0.0f && budgetBankSeconds >= lastStepCostSeconds) {
+        const auto stepStart = std::chrono::steady_clock::now();
+
+        const float slice = std::min(pendingMillionYears, crust->maxStableTimestep());
+        crust->step(slice);
+
+        const float cost = std::chrono::duration<float>(
+            std::chrono::steady_clock::now() - stepStart).count();
+
+        // Remember what a step costs so the next one is only started when it
+        // can be afforded.
+        lastStepCostSeconds = lastStepCostSeconds * 0.5f + cost * 0.5f;
+        budgetBankSeconds -= cost;
+        pendingMillionYears -= slice;
+        simulated += slice;
+        spentTotal += cost;
     }
 
-    while (pendingMillionYears >= SIMULATION_STEP_MY) {
-        crust->step(SIMULATION_STEP_MY);
-        pendingMillionYears -= SIMULATION_STEP_MY;
+    if (spentTotal > 0.0f) {
+        achievedRate = simulated / spentTotal;
     }
+
+    // If the machine simply cannot keep up, cap the backlog rather than
+    // accumulating a debt that can never be paid off.
+    pendingMillionYears = std::min(pendingMillionYears, simulationRate * 2.0f);
 }
 
 // REMOVED: simulatePhysics() - Too expensive on CPU, needs GPU implementation

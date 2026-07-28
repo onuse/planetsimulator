@@ -67,19 +67,91 @@ public:
         // detail and a smoother projection, at linear cost.
         int markersPerCell = 6;
         int maxMarkersPerCell = 16;
+
+        // --- What actually moves the plates -------------------------------
+        //
+        // Plate motion is not prescribed. Each plate is in instantaneous
+        // torque balance - inertia is meaningless at these viscosities - so
+        // the driving torques are summed over its boundaries and the drag
+        // tensor is inverted to get its rotation. Everything below is a
+        // measured quantity or a standard estimate, not a dial.
+
+        // Mean density of the whole body, used to derive surface gravity.
+        // Earth's is 5515 kg/m^3.
+        float bodyDensity = 5500.0f;           // kg/m^3
+
+        // A cooling slab is denser than the mantle it sinks through, by about
+        // rho * alpha * dT averaged over the thermal boundary layer.
+        float slabDensityContrast = 64.0f;     // kg/m^3
+
+        // Half-space cooling gives a lithosphere thickness of 2.32*sqrt(kappa t),
+        // which is ~116 km at 80 Ma - close to what seismology sees.
+        float lithosphereThicknessCoeff = 13034.0f;  // m per sqrt(My)
+
+        // How far a slab descends before the transition zone supports it and
+        // it stops pulling any harder.
+        float slabMaxLength = 600000.0f;       // m
+
+        // Ridge push is the integrated buoyancy of the cooling column, so it
+        // grows with the age of the lithosphere being pushed. This coefficient
+        // gives ~3e12 N/m at 80 Ma, an order of magnitude below slab pull,
+        // which is the observed ratio.
+        float ridgePushPerMy = 3.75e10f;       // N/m per My
+
+        // Asthenosphere viscosity over channel thickness sets the basal drag.
+        // Observational estimates span 1e19 to 1e21 Pa s; this sits inside
+        // that range and is the one number here fixed by calibration - it is
+        // chosen so that Earth-sized plates under Earth-sized forces come out
+        // moving at the few cm/yr we actually measure.
+        float asthenosphereViscosity = 3.0e20f;   // Pa s
+        float asthenosphereThickness = 150000.0f; // m
+
+        // Continental lithosphere has deep roots that grip the mantle harder,
+        // which is why continent-heavy plates are the slow ones.
+        float keelDragFactor = 2.5f;
+
+        // Continental crust arriving at a trench cannot subduct, so the
+        // boundary locks and convergence has to stop. This is what ends an
+        // orogeny.
+        float collisionDragFactor = 12.0f;
+
+        // Plates take time to respond as slabs detach and boundaries
+        // reorganise; they do not snap to a new velocity the instant the
+        // forces change.
+        float plateResponseTime = 10.0f;       // My
     };
 
+    // Surface gravity, derived from radius and mean density rather than
+    // assumed. A smaller world pulls its slabs down more weakly, so its
+    // tectonics really are slower in absolute force - this falls out instead
+    // of being asserted.
+    float getSurfaceGravity() const;
+
     struct Plate {
-        glm::vec3 eulerPole{0.0f, 1.0f, 0.0f}; // unit rotation axis
-        float angularVelocity = 0.0f;          // radians per million years
+        // Angular velocity as a single vector, radians per million years:
+        // direction is the Euler pole, magnitude the rotation rate. Stored
+        // this way because it is what the torque balance solves for - keeping
+        // an axis and a rate separately would mean renormalising a quantity
+        // that has no reason to stay unit length.
+        glm::vec3 omega{0.0f};
         bool oceanic = true;
 
-        // Rotation banked but not yet applied to plate membership. Thickness
-        // and density can move a fraction of a cell because they are
-        // continuous; plate identity cannot, because a column belongs to one
-        // plate or to another and never to a blend. So the boundary has to
-        // jump, and the motion is banked until jumping it is justified.
-        float pendingRotation = 0.0f;          // radians
+        // Diagnostics from the last solve, so the forces driving a plate can
+        // be inspected rather than inferred. Torques in N m, and in double
+        // because they run to 1e28 and beyond - the same range problem that
+        // made the solve itself silently fail.
+        glm::dvec3 slabPullTorque{0.0};
+        glm::dvec3 ridgePushTorque{0.0};
+        float area = 0.0f;                     // m^2
+        float subductingLength = 0.0f;         // m of trench
+        float ridgeLength = 0.0f;              // m of spreading centre
+        float collidingLength = 0.0f;          // m of continental collision
+
+        glm::vec3 eulerPole() const {
+            const float rate = glm::length(omega);
+            return rate > 1e-12f ? omega / rate : glm::vec3(0.0f, 1.0f, 0.0f);
+        }
+        float angularVelocity() const { return glm::length(omega); }
     };
 
     struct Cell {
@@ -194,9 +266,16 @@ public:
     // 1000 km planet. plateCount: number of rigid plates.
     CrustGrid(float planetRadius, uint32_t seed, int subdivisions = 6, int plateCount = 12);
 
-    // Advance the simulation. Deliberately takes a fixed geological timestep;
-    // callers accumulate wall-clock time and call this when enough has passed.
+    // Advance the simulation. A request larger than the stable step is split
+    // internally, so callers can ask for any interval.
     void step(float millionYears);
+
+    // Largest timestep that keeps plate motion resolved against the grid, in
+    // My. Transport itself is exact at any step, but the boundary processes
+    // are not: a plate that crosses several cells at once has its trenches and
+    // ridges sampled only where it happens to land. Callers that want to
+    // budget their own time should step in slices of this.
+    float maxStableTimestep() const;
 
     // Large-scale elevation at a direction on the sphere, in metres relative
     // to sea level. Resolves down to cell spacing; finer detail is the
@@ -330,6 +409,11 @@ private:
     void assignPlates(int plateCount);
     void seedInitialCrust();
 
+    // Solve each plate's rotation from the forces acting on it. Implemented in
+    // plate_dynamics.cpp.
+    void updatePlateMotion(float dt);
+
+    void stepOnce(float millionYears);
     void seedMarkers();
     void advectMarkers(float dt);
     void projectMarkersToGrid();

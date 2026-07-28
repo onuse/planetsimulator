@@ -168,7 +168,14 @@ void testPlatesActuallyMove() {
 
     check(reassigned > 0, "plate boundaries migrated");
     check(elevationChange > 100.0f, "terrain changed height as a result");
-    check(grid.getVersion() == 25, "version tracks steps taken");
+    // step() splits a request into as many sub-steps as plate speed requires,
+    // so version counts sub-steps rather than calls. What matters is that it
+    // advances, and that the requested geological time was actually simulated.
+    check(grid.getVersion() >= 25, "version advances with every sub-step taken");
+    std::printf("  %llu sub-steps for 25 calls, %.0f My simulated\n",
+                static_cast<unsigned long long>(grid.getVersion()), grid.getSimulationTime());
+    check(std::fabs(grid.getSimulationTime() - 50.0f) < 0.5f,
+          "the requested geological time was simulated exactly once");
 }
 
 // Every gram of crust must be accounted for. Crust is created from mantle melt
@@ -261,7 +268,7 @@ void testRigidRotationPreservesContrast() {
 
     const double before = contrast(grid.getCells());
 
-    const float omega = grid.getPlates()[0].angularVelocity;
+    const float omega = grid.getPlates()[0].angularVelocity();
     const float period = 2.0f * 3.14159265f / std::fabs(omega);
     const int steps = static_cast<int>(std::ceil(period / 2.0f));
     std::printf("  one full rotation is %.0f My, %d steps of 2 My\n", period, steps);
@@ -282,6 +289,134 @@ void testRigidRotationPreservesContrast() {
 // keep their order and their identity, and that the three ways crust is
 // removed take it from the right end - which is the whole point of having a
 // record rather than a single averaged number.
+// Plate motion is solved from forces, not prescribed. These check the solve
+// lands in the right physical regime and that the forces behave the way the
+// measured ones do.
+void testPlateForcesGiveRealisticSpeeds() {
+    std::printf("Solved plate motion lands at observed speeds\n");
+    simulation::CrustGrid grid(6371000.0f, 42, 5, 12);   // Earth sized
+
+    std::printf("  surface gravity %.2f m/s2\n", grid.getSurfaceGravity());
+    check(grid.getSurfaceGravity() > 9.0f && grid.getSurfaceGravity() < 10.5f,
+          "gravity derived from radius and density matches Earth's");
+
+    // Let the torque balance take over from the initial nudge.
+    for (int i = 0; i < 30; i++) {
+        grid.step(1.0f);
+    }
+
+    float fastest = 0.0f;
+    double totalSpeed = 0.0;
+    for (const auto& plate : grid.getPlates()) {
+        // Surface speed in cm/yr: omega is rad/My, so omega*R is m/My.
+        const float cmPerYear = plate.angularVelocity() * grid.getPlanetRadius() * 1e-4f;
+        fastest = std::max(fastest, cmPerYear);
+        totalSpeed += cmPerYear;
+    }
+    const double mean = totalSpeed / grid.getPlates().size();
+    std::printf("  mean plate speed %.2f cm/yr, fastest %.2f cm/yr\n", mean, fastest);
+
+    // Earth's plates run from under 1 to about 10 cm/yr. Landing in that band
+    // from measured forces and a viscosity inside the observed range is the
+    // real check that the force balance is set up correctly.
+    check(mean > 0.2 && mean < 20.0, "mean plate speed is geologically plausible");
+    check(fastest < 50.0f, "no plate runs away");
+}
+
+void testSlabPullDominates() {
+    std::printf("Slab pull dominates the driving torque\n");
+    simulation::CrustGrid grid(6371000.0f, 7, 5, 12);
+    for (int i = 0; i < 20; i++) {
+        grid.step(1.0f);
+    }
+
+    double slab = 0.0;
+    double ridge = 0.0;
+    for (const auto& plate : grid.getPlates()) {
+        slab += glm::length(plate.slabPullTorque);
+        ridge += glm::length(plate.ridgePushTorque);
+    }
+    std::printf("  slab pull torque %.3e, ridge push torque %.3e, ratio %.1f\n",
+                slab, ridge, ridge > 0.0 ? slab / ridge : 0.0);
+
+    // On Earth slab pull is roughly an order of magnitude above ridge push,
+    // and it is why plates with long trenches are the fast ones.
+    check(slab > ridge, "slab pull is the larger driving force");
+}
+
+void testContinentalPlatesAreSlower() {
+    std::printf("Continental keels slow their plates down\n");
+    simulation::CrustGrid grid(6371000.0f, 3, 5, 14);
+    for (int i = 0; i < 30; i++) {
+        grid.step(1.0f);
+    }
+
+    // Work out how continental each plate is, and compare speeds.
+    const auto& cells = grid.getCells();
+    std::vector<double> buoyantArea(grid.getPlates().size(), 0.0);
+    std::vector<double> totalArea(grid.getPlates().size(), 0.0);
+    for (const auto& cell : cells) {
+        if (cell.plateId >= totalArea.size()) continue;
+        totalArea[cell.plateId] += 1.0;
+        if (cell.density < grid.getConstants().subductionDensity) {
+            buoyantArea[cell.plateId] += 1.0;
+        }
+    }
+
+    double continentalSpeed = 0.0, continentalCount = 0.0;
+    double oceanicSpeed = 0.0, oceanicCount = 0.0;
+    for (size_t p = 0; p < grid.getPlates().size(); p++) {
+        if (totalArea[p] < 20.0) continue;
+        const double fraction = buoyantArea[p] / totalArea[p];
+        const double speed = grid.getPlates()[p].angularVelocity() * grid.getPlanetRadius() * 1e-4;
+        if (fraction > 0.5) { continentalSpeed += speed; continentalCount += 1.0; }
+        else                { oceanicSpeed += speed;     oceanicCount += 1.0; }
+    }
+
+    if (continentalCount > 0.0 && oceanicCount > 0.0) {
+        const double continental = continentalSpeed / continentalCount;
+        const double oceanic = oceanicSpeed / oceanicCount;
+        std::printf("  continent-dominated %.2f cm/yr, ocean-dominated %.2f cm/yr\n",
+                    continental, oceanic);
+        check(continental < oceanic, "continent-heavy plates move slower, as on Earth");
+    } else {
+        std::printf("  (no clean split of plate types in this configuration)\n");
+    }
+}
+
+void testPlateMotionEvolves() {
+    std::printf("Plate motion changes as the planet reorganises\n");
+    simulation::CrustGrid grid(6371000.0f, 11, 5, 12);
+
+    // Settle into a force-driven state first.
+    for (int i = 0; i < 20; i++) {
+        grid.step(1.0f);
+    }
+    std::vector<glm::vec3> before;
+    for (const auto& plate : grid.getPlates()) {
+        before.push_back(plate.omega);
+    }
+
+    for (int i = 0; i < 100; i++) {
+        grid.step(2.0f);
+    }
+
+    float largestChange = 0.0f;
+    for (size_t p = 0; p < before.size(); p++) {
+        largestChange = std::max(largestChange,
+                                 glm::length(grid.getPlates()[p].omega - before[p]));
+    }
+    const float relative = largestChange /
+        std::max(1e-9f, glm::length(before.empty() ? glm::vec3(1.0f) : before[0]));
+    std::printf("  largest change in angular velocity %.3e rad/My over 200 My\n", largestChange);
+
+    // This is the whole point of solving rather than prescribing: as trenches
+    // open and close the forces change, and the plates respond. Prescribed
+    // motion would give exactly zero here forever.
+    check(largestChange > 1e-5f, "plates change their motion as boundaries evolve");
+    (void)relative;
+}
+
 void testStratigraphy() {
     std::printf("Columns record their history in order\n");
     using Grid = simulation::CrustGrid;
@@ -376,6 +511,10 @@ int main() {
     testPlatesActuallyMove();
     testSilicateBooksBalance();
     testContinentsPersist();
+    testPlateForcesGiveRealisticSpeeds();
+    testSlabPullDominates();
+    testContinentalPlatesAreSlower();
+    testPlateMotionEvolves();
     testStratigraphy();
     testRigidRotationPreservesContrast();
     testStepPerformance();

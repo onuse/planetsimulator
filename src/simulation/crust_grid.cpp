@@ -397,16 +397,20 @@ void CrustGrid::assignPlates(int plateCount) {
         const float r = std::sqrt(std::max(0.0f, 1.0f - z * z));
         seeds.push_back(glm::vec3(r * std::cos(phi), z, r * std::sin(phi)));
 
+        // A small random nudge, only to break the symmetry. Plate motion is
+        // not prescribed - within a few steps the torque balance has taken
+        // over entirely and this initial guess is forgotten. It exists because
+        // slab pull needs some convergence to already be happening before it
+        // can identify which side of a boundary goes down.
         const float pz = unit(rng);
         const float pphi = angle(rng);
         const float pr = std::sqrt(std::max(0.0f, 1.0f - pz * pz));
-        plates[p].eulerPole = glm::normalize(glm::vec3(pr * std::cos(pphi), pz, pr * std::sin(pphi)));
+        const glm::vec3 axis =
+            glm::normalize(glm::vec3(pr * std::cos(pphi), pz, pr * std::sin(pphi)));
 
-        // Earth's plates move a few cm/yr, which is a few tens of km per My.
-        // As an angular rate that is ~5e-3 rad/My and is radius-independent.
-        std::uniform_real_distribution<float> rate(2.0e-3f, 9.0e-3f);
+        std::uniform_real_distribution<float> rate(1.0e-3f, 4.0e-3f);
         std::uniform_real_distribution<float> sign(-1.0f, 1.0f);
-        plates[p].angularVelocity = rate(rng) * (sign(rng) < 0.0f ? -1.0f : 1.0f);
+        plates[p].omega = axis * (rate(rng) * (sign(rng) < 0.0f ? -1.0f : 1.0f));
     }
 
     for (Cell& cell : cells) {
@@ -562,10 +566,8 @@ glm::vec3 CrustGrid::plateVelocityAt(const glm::vec3& sphereNormal, uint16_t pla
     if (plateId >= plates.size()) {
         return glm::vec3(0.0f);
     }
-    const Plate& plate = plates[plateId];
     // v = omega x r, with r on the planet surface. Units: metres per My.
-    const glm::vec3 omega = plate.eulerPole * plate.angularVelocity;
-    return glm::cross(omega, glm::normalize(sphereNormal) * planetRadius);
+    return glm::cross(plates[plateId].omega, glm::normalize(sphereNormal) * planetRadius);
 }
 
 float CrustGrid::cellSpacing() const {
@@ -624,8 +626,11 @@ void CrustGrid::advectMarkers(float dt) {
     // is no categorical field to quantise either.
     for (Marker& marker : markers) {
         const Plate& plate = plates[marker.plateId];
-        marker.position = glm::normalize(
-            rotateAbout(marker.position, plate.eulerPole, plate.angularVelocity * dt));
+        const float rate = plate.angularVelocity();
+        if (rate > 1e-12f) {
+            marker.position = glm::normalize(
+                rotateAbout(marker.position, plate.omega / rate, rate * dt));
+        }
 
         // Every episode in the record ages, not just the column average -
         // otherwise a freshly deposited layer would inherit the mean age of
@@ -947,7 +952,36 @@ void CrustGrid::step(float millionYears) {
         return;
     }
 
+    // Transport itself is exact at any timestep, but the boundary processes
+    // are not: a plate crossing several cells in one go has its trenches and
+    // ridges sampled only where it happens to land. Split the request into
+    // sub-steps that keep plates to half a cell each.
+    //
+    // Note this bites hardest on small planets. Plate speed in metres per year
+    // is set by mantle properties and barely depends on planet size, so a
+    // thousand-kilometre world crosses its own circumference far faster than
+    // Earth does and needs proportionally finer steps.
+    const float stable = maxStableTimestep();
+    int subSteps = 1;
+    if (stable > 0.0f && millionYears > stable) {
+        subSteps = std::min(32, static_cast<int>(std::ceil(millionYears / stable)));
+    }
+    if (subSteps > 1) {
+        const float slice = millionYears / static_cast<float>(subSteps);
+        for (int s = 0; s < subSteps; s++) {
+            stepOnce(slice);
+        }
+        return;
+    }
+
+    stepOnce(millionYears);
+}
+
+void CrustGrid::stepOnce(float millionYears) {
     const double continentalBefore = computeContinentalVolume();
+
+    // Solve what the forces want the plates to be doing before moving anything.
+    updatePlateMotion(millionYears);
 
     // Crust is carried by the parcels; the grid is rebuilt from them each step
     // rather than being evolved in place, so transport error cannot accumulate.

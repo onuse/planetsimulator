@@ -233,6 +233,7 @@ add_executable(test_octree_core
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_octree_core PRIVATE
@@ -266,6 +267,7 @@ add_executable(test_materials
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/camera.cpp
     src/core/material_table.cpp
 )
@@ -285,6 +287,7 @@ add_executable(test_gpu_rendering
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_gpu_rendering PRIVATE
@@ -303,6 +306,7 @@ add_executable(test_instance_count
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_instance_count PRIVATE
@@ -321,6 +325,7 @@ add_executable(test_rendering_pipeline
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_rendering_pipeline PRIVATE
@@ -381,6 +386,7 @@ add_executable(test_shader_material_lookup
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/material_table.cpp
 )
 target_include_directories(test_shader_material_lookup PRIVATE
@@ -425,6 +431,7 @@ add_executable(test_material_pipeline
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
 )
 
 target_include_directories(test_material_pipeline PRIVATE
@@ -504,6 +511,7 @@ add_executable(test_material_tracking
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/rendering/instance_buffer_manager.cpp
     src/rendering/gpu_octree.cpp
     src/core/material_table.cpp
@@ -544,6 +552,7 @@ add_executable(test_mixed_voxel_integration
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/rendering/instance_buffer_manager.cpp
     src/core/material_table.cpp
 )
@@ -617,6 +626,7 @@ add_executable(test_full_pipeline
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/camera.cpp
 )
 target_include_directories(test_full_pipeline PRIVATE
@@ -677,6 +687,7 @@ add_executable(test_mesh_connectivity
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/material_table.cpp
 )
 target_include_directories(test_mesh_connectivity PRIVATE
@@ -695,6 +706,7 @@ add_executable(test_chunk_boundaries
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/material_table.cpp
     src/core/camera.cpp
 )
@@ -715,6 +727,7 @@ add_executable(test_transvoxel_algorithm
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/material_table.cpp
 )
 target_include_directories(test_transvoxel_algorithm PRIVATE
@@ -734,6 +747,7 @@ add_executable(test_transvoxel_debug
     src/core/octree.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
     src/core/material_table.cpp
 )
 target_include_directories(test_transvoxel_debug PRIVATE
@@ -765,6 +779,7 @@ add_executable(test_density_field
     tests/test_density_field.cpp
     src/core/density_field.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
 )
 target_include_directories(test_density_field PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -780,6 +795,7 @@ add_test(NAME DensityField COMMAND test_density_field)
 add_executable(test_crust_grid
     tests/test_crust_grid.cpp
     src/simulation/crust_grid.cpp
+    src/simulation/plate_dynamics.cpp
 )
 target_include_directories(test_crust_grid PRIVATE
     ${CMAKE_SOURCE_DIR}/include

@@ -207,7 +207,7 @@ public:
             // Frame counter
             frameCount++;
             // PERFORMANCE: Less frequent frame stats (was every 300, now every 3000 frames)
-            if (!config.quiet && frameCount % 3000 == 0) {  // Every 3000 frames (~100 seconds at 30fps)
+            if (!config.quiet && frameCount % 500 == 0) {
                 std::cout << "Frame " << frameCount 
                           << ", Time: " << elapsed << "s"
                           << ", Sim: " << simulationTime / 1000000.0f << " My"
