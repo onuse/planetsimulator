@@ -1,0 +1,341 @@
+#include "rendering/vulkan_renderer.hpp"
+#include "utils/log.hpp"
+
+#include <algorithm>
+#include <cstring>
+#include <vector>
+
+// Drawing the surface as a quadtree of patches.
+//
+// The old path built one mesh for the whole planet at a detail level picked
+// from camera distance, and rebuilt all of it whenever that level changed.
+// Here, each patch is built once and kept; moving the camera changes which
+// patches are drawn, not what has to be built. The triangle count depends on
+// how much surface is visible rather than on how close the camera is, so
+// flying down to the ground costs no more than looking at the planet from
+// orbit - it just spends the budget on a smaller area.
+//
+// Two rules decide how this feels to use.
+//
+// A patch is never taken away before its replacement exists. Tectonics moves
+// the surface several times a second, and rebuilding everything each time - or
+// worse, dropping everything and refilling over the following frames - makes
+// the planet strobe.
+//
+// All patches share one pair of buffers. Every patch is the same fixed grid,
+// so they are interchangeable slots, and a slot is an offset rather than an
+// allocation. A buffer pair per patch meant nearly four thousand device
+// allocations at a couple of thousand patches, which is up against the limit
+// most drivers expose, plus a rebind per draw.
+
+namespace rendering {
+
+namespace {
+
+constexpr VkDeviceSize kVertexStride = sizeof(algorithms::MeshVertex);
+constexpr VkDeviceSize kIndexStride = sizeof(uint32_t);
+
+} // namespace
+
+uint64_t VulkanRenderer::packPatchKey(const PatchTree::PatchKey& key) {
+    return (static_cast<uint64_t>(key.face) << 60) |
+           (static_cast<uint64_t>(key.level) << 56) |
+           (static_cast<uint64_t>(key.x) << 28) |
+           static_cast<uint64_t>(key.y);
+}
+
+void VulkanRenderer::createPatchPools() {
+    if (patchVertexPool != VK_NULL_HANDLE) {
+        return;
+    }
+
+    const VkDeviceSize vertexBytes =
+        static_cast<VkDeviceSize>(MAX_PATCHES) * PATCH_VERTEX_COUNT * kVertexStride;
+    const VkDeviceSize indexBytes =
+        static_cast<VkDeviceSize>(MAX_PATCHES) * PATCH_INDEX_COUNT * kIndexStride;
+
+    // Host-visible and permanently mapped. The GPU reads these across PCIe
+    // rather than from its own memory, which costs bandwidth but avoids a
+    // staging copy and a queue wait on the render thread for every patch
+    // built. Worth revisiting if patch counts grow much further.
+    createBuffer(vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 patchVertexPool, patchVertexPoolMemory);
+    createBuffer(indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 patchIndexPool, patchIndexPoolMemory);
+
+    vkMapMemory(device, patchVertexPoolMemory, 0, vertexBytes, 0, &patchVertexPoolMapped);
+    vkMapMemory(device, patchIndexPoolMemory, 0, indexBytes, 0, &patchIndexPoolMapped);
+
+    freePatchSlots.resize(MAX_PATCHES);
+    for (uint32_t i = 0; i < MAX_PATCHES; i++) {
+        freePatchSlots[i] = MAX_PATCHES - 1 - i;   // hand out low slots first
+    }
+
+    util::vlog() << "[patches] pool: " << MAX_PATCHES << " slots, "
+                 << (vertexBytes + indexBytes) / (1024 * 1024) << " MB\n";
+}
+
+void VulkanRenderer::releasePatchSlot(uint32_t slot) {
+    pendingPatchSlots.push_back({slot, patchFrameCounter});
+}
+
+void VulkanRenderer::reclaimPendingSlots() {
+    // Once no in-flight frame can still be drawing it, the slot is reusable.
+    constexpr uint64_t FRAMES_TO_WAIT = MAX_FRAMES_IN_FLIGHT + 1;
+    auto it = pendingPatchSlots.begin();
+    while (it != pendingPatchSlots.end()) {
+        if (patchFrameCounter - it->freedOnFrame >= FRAMES_TO_WAIT) {
+            freePatchSlots.push_back(it->slot);
+            it = pendingPatchSlots.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+uint32_t VulkanRenderer::acquirePatchSlot() {
+    if (freePatchSlots.empty()) {
+        // Pool exhausted: give up whichever cached patch has gone longest
+        // without being drawn. It goes through the pending list like any other
+        // release, so it is not reused until the frames that referenced it
+        // have finished.
+        auto oldest = patchCache.end();
+        for (auto it = patchCache.begin(); it != patchCache.end(); ++it) {
+            if (patchFrameCounter - it->second.lastUsedFrame <= MAX_FRAMES_IN_FLIGHT) {
+                continue;   // possibly still being drawn
+            }
+            if (oldest == patchCache.end() ||
+                it->second.lastUsedFrame < oldest->second.lastUsedFrame) {
+                oldest = it;
+            }
+        }
+        if (oldest == patchCache.end()) {
+            return UINT32_MAX;
+        }
+        releasePatchSlot(oldest->second.slot);
+        patchCache.erase(oldest);
+        return UINT32_MAX;   // available in a few frames, not now
+    }
+
+    const uint32_t slot = freePatchSlots.back();
+    freePatchSlots.pop_back();
+    return slot;
+}
+
+void VulkanRenderer::destroyAllPatches() {
+    vkDeviceWaitIdle(device);
+    patchCache.clear();
+    freePatchSlots.clear();
+    pendingPatchSlots.clear();
+
+    if (patchVertexPool != VK_NULL_HANDLE) {
+        vkUnmapMemory(device, patchVertexPoolMemory);
+        vkDestroyBuffer(device, patchVertexPool, nullptr);
+        vkFreeMemory(device, patchVertexPoolMemory, nullptr);
+        patchVertexPool = VK_NULL_HANDLE;
+        patchVertexPoolMemory = VK_NULL_HANDLE;
+        patchVertexPoolMapped = nullptr;
+    }
+    if (patchIndexPool != VK_NULL_HANDLE) {
+        vkUnmapMemory(device, patchIndexPoolMemory);
+        vkDestroyBuffer(device, patchIndexPool, nullptr);
+        vkFreeMemory(device, patchIndexPoolMemory, nullptr);
+        patchIndexPool = VK_NULL_HANDLE;
+        patchIndexPoolMemory = VK_NULL_HANDLE;
+        patchIndexPoolMapped = nullptr;
+    }
+}
+
+void VulkanRenderer::uploadPatch(const PatchTree::Patch& patch, GpuPatch& gpu) {
+    if (gpu.slot == UINT32_MAX || patch.vertices.empty() || patch.indices.empty()) {
+        return;
+    }
+
+    // Slots are only interchangeable if every patch really is the same size.
+    // If build() ever changes shape, this is where it must be noticed.
+    if (patch.vertices.size() != PATCH_VERTEX_COUNT ||
+        patch.indices.size() != PATCH_INDEX_COUNT) {
+        util::vlog() << "[patches] unexpected patch size " << patch.vertices.size()
+                     << "/" << patch.indices.size() << ", skipped\n";
+        return;
+    }
+
+    auto* vertexDst = static_cast<algorithms::MeshVertex*>(patchVertexPoolMapped) +
+                      static_cast<size_t>(gpu.slot) * PATCH_VERTEX_COUNT;
+    auto* indexDst = static_cast<uint32_t*>(patchIndexPoolMapped) +
+                     static_cast<size_t>(gpu.slot) * PATCH_INDEX_COUNT;
+
+    std::memcpy(vertexDst, patch.vertices.data(), PATCH_VERTEX_COUNT * kVertexStride);
+    // Indices are patch-local; the draw supplies the slot's vertex offset.
+    std::memcpy(indexDst, patch.indices.data(), PATCH_INDEX_COUNT * kIndexStride);
+
+    gpu.indexCount = PATCH_INDEX_COUNT;
+    gpu.centre = patch.centre;
+}
+
+void VulkanRenderer::evictUnusedPatches() {
+    // Patches the camera has turned away from are worth keeping - turning back
+    // should not mean rebuilding - so they are only dropped once the pool is
+    // under real pressure, which acquirePatchSlot() handles. This is the
+    // gentler pass: release anything not looked at for a long time.
+    constexpr uint64_t GRACE_FRAMES = 1800;
+
+    if (freePatchSlots.size() > MAX_PATCHES / 4) {
+        return;
+    }
+    for (auto it = patchCache.begin(); it != patchCache.end();) {
+        if (patchFrameCounter - it->second.lastUsedFrame > GRACE_FRAMES) {
+            releasePatchSlot(it->second.slot);
+            it = patchCache.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* camera) {
+    if (!planet || !camera) {
+        return;
+    }
+
+    createPatchPools();
+    patchFrameCounter++;
+    reclaimPendingSlots();
+
+    const float planetRadius = planet->getRadius();
+    const glm::dvec3 cameraPosition(camera->getPosition());
+    const uint64_t crustVersion = planet->getCrustVersion();
+
+    if (meshRebuildRequested) {
+        meshRebuildRequested = false;
+        patchStyleVersion++;    // colouring changed, so every patch is stale
+    }
+
+    // Selection draws only from what exists, and reports what it would need in
+    // order to go finer. Nothing here can produce a hole or a level mismatch:
+    // the worst case is that the surface stays coarse for a few more frames.
+    const auto isReady = [this](const PatchTree::PatchKey& key) {
+        auto it = patchCache.find(packPatchKey(key));
+        return it != patchCache.end() && it->second.indexCount > 0;
+    };
+    patchTree.select(cameraPosition, planetRadius, isReady, visiblePatches, wantedPatches);
+
+    const core::DensityField& field = planet->getDensityField();
+
+    const auto buildInto = [&](const PatchTree::PatchKey& key, GpuPatch& gpu) {
+        PatchTree::Patch patch;
+        patch.key = key;
+        PatchTree::build(patch, field, planetRadius);
+        uploadPatch(patch, gpu);
+        gpu.lastUsedFrame = patchFrameCounter;
+        gpu.builtAtCrustVersion = crustVersion;
+        gpu.builtAtStyle = patchStyleVersion;
+    };
+
+    // Two budgets, and the split matters.
+    //
+    // Wanted patches are what the camera is waiting on to sharpen, so they get
+    // the larger share. Stale patches already draw correctly - they just show
+    // the surface as it was a moment ago - so they are refreshed slowly in the
+    // background. Treating those as the same thing is what makes a planet
+    // strobe: the simulation bumps its version several times a second, and if
+    // that invalidates everything at once there is nothing left to draw.
+    constexpr int NEW_BUDGET = 24;
+    constexpr int REFRESH_BUDGET = 4;
+    int built = 0;
+
+    for (const PatchTree::PatchKey& key : wantedPatches) {
+        if (built >= NEW_BUDGET) {
+            break;
+        }
+        const uint64_t packed = packPatchKey(key);
+        if (patchCache.count(packed)) {
+            continue;   // queued more than once this frame
+        }
+        GpuPatch gpu;
+        gpu.slot = acquirePatchSlot();
+        if (gpu.slot == UINT32_MAX) {
+            break;      // pool under pressure; slots free up in a few frames
+        }
+        buildInto(key, gpu);
+        patchCache.emplace(packed, gpu);
+        built++;
+    }
+
+    int refreshed = 0;
+    for (const PatchTree::PatchKey& key : visiblePatches) {
+        auto it = patchCache.find(packPatchKey(key));
+        if (it == patchCache.end()) {
+            continue;
+        }
+        it->second.lastUsedFrame = patchFrameCounter;
+
+        const bool stale = it->second.builtAtCrustVersion != crustVersion ||
+                           it->second.builtAtStyle != patchStyleVersion;
+        if (stale && refreshed < REFRESH_BUDGET) {
+            // Written in place, into the slot already being drawn from. That
+            // is safe in a way slot reuse is not: the patch keeps its
+            // position, so the worst a frame in flight can see is one frame of
+            // terrain that is half a tectonic step out of date, in the right
+            // place.
+            buildInto(key, it->second);
+            refreshed++;
+        }
+    }
+
+    evictUnusedPatches();
+}
+
+void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
+    if (!currentCommandBuffer || trianglePipeline == VK_NULL_HANDLE ||
+        hierarchicalDescriptorSets.empty() || patchVertexPool == VK_NULL_HANDLE) {
+        return;
+    }
+
+    vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+    vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            hierarchicalPipelineLayout, 0, 1,
+                            &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
+
+    // Bound once for every patch in the frame.
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, &patchVertexPool, offsets);
+    vkCmdBindIndexBuffer(currentCommandBuffer, patchIndexPool, 0, VK_INDEX_TYPE_UINT32);
+
+    uint32_t drawn = 0;
+
+    for (const PatchTree::PatchKey& key : visiblePatches) {
+        auto it = patchCache.find(packPatchKey(key));
+        if (it == patchCache.end() || it->second.indexCount == 0) {
+            continue;   // not built yet
+        }
+        const GpuPatch& gpu = it->second;
+
+        // The one place the planet's absolute scale is handled, and it is done
+        // in double before anything reaches the shader.
+        PatchPushConstants push;
+        push.patchOffset = glm::vec3(gpu.centre - cameraPosition);
+
+        vkCmdPushConstants(currentCommandBuffer, hierarchicalPipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PatchPushConstants), &push);
+
+        vkCmdDrawIndexed(currentCommandBuffer, gpu.indexCount, 1,
+                         gpu.slot * PATCH_INDEX_COUNT,
+                         static_cast<int32_t>(gpu.slot * PATCH_VERTEX_COUNT), 0);
+        drawn++;
+    }
+
+    meshIndexCount = drawn * PATCH_INDEX_COUNT;   // so the stats overlay stays honest
+
+    static uint64_t lastReport = 0;
+    if (patchFrameCounter - lastReport > 600) {
+        lastReport = patchFrameCounter;
+        util::vlog() << "[patches] " << drawn << " drawn of " << visiblePatches.size()
+                     << " visible, " << patchCache.size() << " cached, "
+                     << (drawn * PATCH_INDEX_COUNT / 3) << " triangles\n";
+    }
+}
+
+} // namespace rendering

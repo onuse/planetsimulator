@@ -10,9 +10,12 @@
 #include <optional>
 #include <chrono>
 
+#include <unordered_map>
+
 #include "core/octree.hpp"
 #include "core/camera.hpp"
 #include "rendering/imgui_manager.hpp"
+#include "rendering/patch_tree.hpp"
 // REMOVED: CPU-based renderers - using GPU mesh generation only
 
 namespace rendering {
@@ -137,8 +140,6 @@ public:
     }
     int getLODLevel() const { return currentLODLevel; }  // Get current LOD level
     
-    // Public static members for pipeline control
-    static bool adaptiveSphereFlipFrontBack;  // Toggle flag for testing dual-detail (flips which hemisphere gets high detail)
     
     // MASTER PIPELINE SWITCH - THE ONE BOOL TO RULE THEM ALL
 private:
@@ -226,6 +227,85 @@ private:
     int renderMode = 0;
     SurfaceView surfaceView = SurfaceView::Terrain;
     bool meshRebuildRequested = false;
+
+    // ------------------------------------------------------------------
+    // Surface patches
+    // ------------------------------------------------------------------
+    //
+    // One quadtree over the planet, and a cache of the patches that have been
+    // built. Patches persist across frames: moving the camera changes which
+    // are drawn, not what has to be rebuilt.
+    // Every patch has the same vertex and index count, because every patch is
+    // the same fixed grid. That makes them interchangeable slots in one big
+    // buffer rather than a buffer each.
+    //
+    // This is not a micro-optimisation. A buffer pair per patch meant nearly
+    // four thousand device memory allocations at a couple of thousand patches,
+    // which is up against the limit most drivers expose, and forty more
+    // allocations every frame as patches were built. Pooling also drops the
+    // per-patch buffer binds: the pool is bound once for the whole frame and
+    // each patch is a draw with an offset into it.
+    static constexpr uint32_t PATCH_VERTEX_COUNT =
+        PatchTree::VERTS * PatchTree::VERTS + 4 * PatchTree::VERTS;
+    static constexpr uint32_t PATCH_INDEX_COUNT =
+        PatchTree::GRID * PatchTree::GRID * 6 + 4 * PatchTree::GRID * 12;
+    static constexpr uint32_t MAX_PATCHES = 2048;
+
+    struct GpuPatch {
+        uint32_t slot = UINT32_MAX;
+        uint32_t indexCount = 0;
+        glm::dvec3 centre{0.0};
+        uint64_t lastUsedFrame = 0;
+
+        // What the surface looked like when this was built. When the
+        // simulation moves on, the patch is stale but still perfectly drawable
+        // - so it keeps being drawn until its replacement is ready.
+        uint64_t builtAtCrustVersion = 0;
+        uint32_t builtAtStyle = 0;
+    };
+
+    // What the vertex shader needs to place a patch: its centre relative to
+    // the camera, worked out in double on this side.
+    struct PatchPushConstants {
+        glm::vec3 patchOffset;
+        float padding = 0.0f;
+    };
+
+    PatchTree patchTree;
+    std::unordered_map<uint64_t, GpuPatch> patchCache;
+    std::vector<PatchTree::PatchKey> visiblePatches;
+    uint64_t patchFrameCounter = 0;
+    uint32_t patchStyleVersion = 0;
+
+    VkBuffer patchVertexPool = VK_NULL_HANDLE;
+    VkDeviceMemory patchVertexPoolMemory = VK_NULL_HANDLE;
+    void* patchVertexPoolMapped = nullptr;
+    VkBuffer patchIndexPool = VK_NULL_HANDLE;
+    VkDeviceMemory patchIndexPoolMemory = VK_NULL_HANDLE;
+    void* patchIndexPoolMapped = nullptr;
+    std::vector<uint32_t> freePatchSlots;
+    std::vector<PatchTree::PatchKey> wantedPatches;
+
+    // A slot cannot be handed to a different patch the moment its old owner is
+    // dropped: a command buffer still in flight may be drawing that slot, and
+    // it was recorded with the old patch's position. Overwriting the geometry
+    // underneath it draws one patch's terrain at another patch's location.
+    struct PendingSlot {
+        uint32_t slot = 0;
+        uint64_t freedOnFrame = 0;
+    };
+    std::vector<PendingSlot> pendingPatchSlots;
+
+    static uint64_t packPatchKey(const PatchTree::PatchKey& key);
+    void createPatchPools();
+    uint32_t acquirePatchSlot();
+    void releasePatchSlot(uint32_t slot);
+    void reclaimPendingSlots();
+    void updatePatches(octree::OctreePlanet* planet, core::Camera* camera);
+    void uploadPatch(const PatchTree::Patch& patch, GpuPatch& gpu);
+    void evictUnusedPatches();
+    void renderPatches(const glm::dvec3& cameraPosition);
+    void destroyAllPatches();
     bool wireframeEnabled = false;
     // Removed parallel rendering paths
     uint32_t visibleNodeCount = 0;
@@ -260,7 +340,6 @@ private:
     int currentLODLevel = 5;  // Track current LOD level for display
     
     // GPU mesh generation
-    void renderGPUMesh();                                                       // Render the generated mesh
     
     // Sphere mesh generation with proper cube-to-sphere mapping
     bool generateSphereMesh(octree::OctreePlanet* planet);

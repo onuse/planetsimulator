@@ -1,5 +1,6 @@
 #include "rendering/vulkan_renderer.hpp"
 #include "utils/log.hpp"
+#include "algorithms/mesh_generation.hpp"
 #include <iostream>
 #include <cmath>
 #include <cstddef>
@@ -60,11 +61,19 @@ std::array<VkDescriptorSetLayoutBinding, 4> layoutBindings{};
     }
     
     // Create pipeline layout
+    // Each patch is drawn with its own offset from the camera, worked out on
+    // the CPU in double precision and handed over as a push constant.
+    VkPushConstantRange patchRange{};
+    patchRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    patchRange.offset = 0;
+    patchRange.size = sizeof(PatchPushConstants);
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &hierarchicalDescriptorSetLayout;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &patchRange;
     
     if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &hierarchicalPipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create Transvoxel pipeline layout!");
@@ -199,39 +208,33 @@ void VulkanRenderer::createTrianglePipeline() {
     
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     
-    // Vertex input state - GPU generates vertices with this format:
-    // vec3 position, vec3 color, vec3 normal, vec2 texCoord
+    // Vertex layout, matching algorithms::MeshVertex exactly: position,
+    // normal, colour, three vec3s and nothing else. The old path built a
+    // separate float array in a different order and the pipeline described
+    // that instead, so uploading the struct directly produced geometry made of
+    // colour values.
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(glm::vec3) * 3 + sizeof(glm::vec2); // pos + color + normal + texCoord
+    bindingDescription.stride = sizeof(algorithms::MeshVertex);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    
-    std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
-    
-    // Position attribute - location 0
+
+    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+
     attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].location = 0;   // inPosition
     attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = 0;
-    
-    // Color attribute - location 1
+    attributeDescriptions[0].offset = offsetof(algorithms::MeshVertex, position);
+
     attributeDescriptions[1].binding = 0;
-    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].location = 1;   // inColor
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = sizeof(glm::vec3);
-    
-    // Normal attribute - location 2
+    attributeDescriptions[1].offset = offsetof(algorithms::MeshVertex, color);
+
     attributeDescriptions[2].binding = 0;
-    attributeDescriptions[2].location = 2;
+    attributeDescriptions[2].location = 2;   // inNormal
     attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[2].offset = sizeof(glm::vec3) * 2;
-    
-    // Texture coordinate attribute - location 3
-    attributeDescriptions[3].binding = 0;
-    attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[3].offset = sizeof(glm::vec3) * 3;
-    
+    attributeDescriptions[2].offset = offsetof(algorithms::MeshVertex, normal);
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;

@@ -76,13 +76,14 @@ endif()
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
-    src/rendering/generate_adaptive_sphere.cpp
     src/rendering/imgui_manager.cpp
+    src/rendering/patch_tree.cpp
     src/rendering/vulkan_renderer.cpp
     src/rendering/vulkan_renderer_commands.cpp
     src/rendering/vulkan_renderer_cpu_upload.cpp
     src/rendering/vulkan_renderer_device.cpp
     src/rendering/vulkan_renderer_material.cpp
+    src/rendering/vulkan_renderer_patches.cpp
     src/rendering/vulkan_renderer_pipeline.cpp
     src/rendering/vulkan_renderer_resources.cpp
     src/rendering/vulkan_renderer_screenshot_impl.cpp

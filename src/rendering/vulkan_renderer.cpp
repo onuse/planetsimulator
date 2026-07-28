@@ -90,116 +90,14 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     frameTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
     lastFrameTime = currentTime;
     
-    // Update LOD level based on camera distance every frame
-    if (camera && planet) {
-        float distanceToOrigin = glm::length(camera->getPosition());
-        float planetRadius = planet->getRadius();
-        float distanceToSurface = distanceToOrigin - planetRadius;
-        
-        // More granular LOD levels based on distance
-        // Each level roughly doubles triangle count
-        if (distanceToSurface > planetRadius * 100.0f) {
-            currentLODLevel = 1; // Extreme distance: 20 triangles
-        } else if (distanceToSurface > planetRadius * 50.0f) {
-            currentLODLevel = 2; // Very far: 80 triangles
-        } else if (distanceToSurface > planetRadius * 20.0f) {
-            currentLODLevel = 3; // Far: 320 triangles
-        } else if (distanceToSurface > planetRadius * 10.0f) {
-            currentLODLevel = 4; // Medium-far: 1,280 triangles
-        } else if (distanceToSurface > planetRadius * 5.0f) {
-            currentLODLevel = 5; // Medium: 5,120 triangles
-        } else if (distanceToSurface > planetRadius * 2.0f) {
-            currentLODLevel = 6; // Medium-close: 20,480 triangles
-        } else if (distanceToSurface > planetRadius * 1.0f) {
-            currentLODLevel = 7; // Close: 81,920 triangles
-        } else if (distanceToSurface > planetRadius * 0.5f) {
-            currentLODLevel = 8; // Very close: 327,680 triangles
-        } else if (distanceToSurface > planetRadius * 0.1f) {
-            currentLODLevel = 9; // Extremely close: 1,310,720 triangles
-        } else if (distanceToSurface > planetRadius * 0.01f) {
-            currentLODLevel = 10; // Surface level: 5,242,880 triangles
-        } else {
-            currentLODLevel = 11; // Below surface: maximum detail
-        }
-    }
-    
-    // Regenerate mesh when LOD changes OR camera moves significantly (for dual-detail adaptation)
-    static int lastLODLevel = -1;
-    static glm::vec3 lastCameraPos = glm::vec3(0, 0, 0);
-    
-    // Check if camera moved significantly (more than 10% of its distance to planet)
-    glm::vec3 currentCameraPos = camera->getPosition();
-    float cameraMoveDistance = glm::length(currentCameraPos - lastCameraPos);
-    float distanceToCenter = glm::length(currentCameraPos);
-    bool significantCameraMove = (cameraMoveDistance > distanceToCenter * 0.1f);
-    
-    // The surface itself changes as tectonics runs, so the mesh has to be
-    // rebuilt when the simulation advances, not only when the LOD changes.
+    // Choose which patches of surface to draw, and build any that are new.
     //
-    // Throttled, because the simulation takes as many sub-steps per frame as
-    // plate speed demands and each one bumps the version. Rebuilding on every
-    // one costs ~50 ms a time and locks the window solid; the surface does not
-    // visibly change over a fraction of a million years anyway.
-    static uint64_t lastCrustVersion = 0;
-    static std::chrono::steady_clock::time_point lastCrustRebuild{};
-    const uint64_t crustVersion = planet ? planet->getCrustVersion() : 0;
+    // There is no global level of detail any more. Every patch decides for
+    // itself whether it is close enough to be worth splitting, so triangles go
+    // where the camera is looking rather than being spread evenly over a whole
+    // planet most of which is behind you or over the horizon.
+    updatePatches(planet, camera);
 
-    const auto nowForRebuild = std::chrono::steady_clock::now();
-    const float sinceRebuild =
-        std::chrono::duration<float>(nowForRebuild - lastCrustRebuild).count();
-    const bool crustChanged =
-        ((crustVersion != lastCrustVersion) && (sinceRebuild > 1.0f)) || meshRebuildRequested;
-    meshRebuildRequested = false;
-    if (crustChanged) {
-        lastCrustRebuild = nowForRebuild;
-    }
-
-    // Rebuilding on every LOD change means a zoom crosses several thresholds
-    // and pays for a full mesh rebuild at each one, which is why the frame
-    // rate collapses while zooming and recovers once you stop. Wait for the
-    // level to hold still before acting on it: flying through a detail band is
-    // not a reason to rebuild for it.
-    static int pendingLODLevel = -1;
-    static std::chrono::steady_clock::time_point lodSettledAt{};
-    if (currentLODLevel != pendingLODLevel) {
-        pendingLODLevel = currentLODLevel;
-        lodSettledAt = nowForRebuild;
-    }
-    const float lodHeldFor = std::chrono::duration<float>(nowForRebuild - lodSettledAt).count();
-    const bool lodChanged = (currentLODLevel != lastLODLevel) && (lodHeldFor > 0.35f);
-
-    if (planet && camera && (lodChanged || crustChanged)) {
-        lastCrustVersion = crustVersion;
-        if (currentLODLevel != lastLODLevel) {
-            util::vlog() << "[LOD] Level changed from " << lastLODLevel << " to " << currentLODLevel << " - regenerating mesh\n";
-        } else if (significantCameraMove) {
-            util::vlog() << "[CAMERA] Significant camera movement detected (moved " 
-                      << cameraMoveDistance / planet->getRadius() << " radii) - regenerating mesh for dual-detail adaptation\n";
-        }
-        lastLODLevel = currentLODLevel;
-        lastCameraPos = currentCameraPos;
-        
-        // Build the surface mesh from the density field, which the tectonic
-        // simulation drives. There used to be a switch here selecting between
-        // this and two GPU compute paths; neither ever worked, and the compute
-        // shaders they dispatched sampled debug sine waves rather than the
-        // planet. Removed rather than carried.
-        bool meshGenerated = generateAdaptiveSphere(planet, camera);
-        if (!meshGenerated) {
-            std::cerr << "ERROR: mesh generation failed!\n";
-        }
-
-        if (!meshGenerated) {
-            // NO FALLBACKS! FAIL LOUDLY AND CLEARLY!
-            std::cerr << "\n================================\n";
-            std::cerr << "MESH GENERATION FAILED!\n";
-
-            std::cerr << "Press G to switch pipeline\n";
-            std::cerr << "================================\n\n";
-            // DO NOT try another method - that way lies madness
-        }
-    }
-    
     // Draw the frame
     // std::cout << "  About to call drawFrame..." << std::endl;
     drawFrame(planet, camera);
@@ -217,6 +115,8 @@ void VulkanRenderer::cleanup() {
         std::cerr << "WARNING: vkDeviceWaitIdle failed with error: " << result << std::endl;
     }
     
+    destroyAllPatches();
+
     // Cleanup ImGui
     imguiManager.cleanup();
     
@@ -536,62 +436,5 @@ void VulkanRenderer::dumpVertexData() {
     }
 }
 
-void VulkanRenderer::renderGPUMesh() {
-    if (meshVertexCount == 0 || meshIndexCount == 0) {
-        static int skipCount = 0;
-        if (skipCount++ % 60 == 0) {
-            std::cout << "[renderGPUMesh] Skipping - no mesh data (" << meshVertexCount << " verts, " << meshIndexCount << " indices)\n";
-        }
-        return;
-    }
-    
-    // We need currentCommandBuffer to be set - this should be called from drawFrame
-    if (!currentCommandBuffer) {
-        std::cerr << "[GPU MESH] No current command buffer!\n";
-        return;
-    }
-    
-    // Bind the triangle pipeline (reuse existing one)
-    if (trianglePipeline == VK_NULL_HANDLE) {
-        std::cerr << "[GPU MESH] No triangle pipeline!\n";
-        return;
-    }
-    
-    vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-    
-    // Bind descriptor sets (uniform buffer etc) - reuse from hierarchical pipeline
-    if (hierarchicalDescriptorSets.empty()) {
-        std::cerr << "[GPU MESH] No descriptor sets!\n";
-        return;
-    }
-    
-    vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            hierarchicalPipelineLayout, 0, 1, 
-                            &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
-    
-    // Bind vertex and index buffers
-    VkBuffer vertexBuffers[] = {meshVertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(currentCommandBuffer, meshIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
-    
-    // Draw indexed
-    vkCmdDrawIndexed(currentCommandBuffer, meshIndexCount, 1, 0, 0, 0);
-    
-    static int drawCallCount = 0;
-    if (drawCallCount++ % 60 == 0) {
-        // std::cout << "[renderGPUMesh] DRAW CALL EXECUTED: " << meshIndexCount << " indices (" << meshIndexCount/3 << " triangles)\n";
-    }
-    
-    // Print only when mesh changes
-    static size_t lastGpuVertexCount = 0;
-    static size_t lastGpuIndexCount = 0;
-    if (meshVertexCount != lastGpuVertexCount || meshIndexCount != lastGpuIndexCount) {
-        util::vlog() << "[GPU MESH] Rendering " << meshVertexCount << " vertices, " 
-                  << (meshIndexCount/3) << " triangles\n";
-        lastGpuVertexCount = meshVertexCount;
-        lastGpuIndexCount = meshIndexCount;
-    }
-}
 
 } // namespace rendering

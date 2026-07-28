@@ -123,7 +123,8 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         
         // Render the GPU-generated mesh
         currentCommandBuffer = commandBuffer;
-        renderGPUMesh();
+        renderPatches(glm::dvec3(currentCamera ? currentCamera->getPosition()
+                                              : glm::vec3(0.0f)));
         currentCommandBuffer = VK_NULL_HANDLE;
         
         static int frameCount = 0;
