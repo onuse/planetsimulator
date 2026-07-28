@@ -235,6 +235,49 @@ void testContinentsPersist() {
     check(std::isfinite(after.meanElevation), "elevations stay finite");
 }
 
+// How much does transport smear the planet?
+//
+// One plate covering the whole sphere has no boundaries and nothing to deform
+// against, so rotating it is a pure coordinate change: after a full turn every
+// column must be exactly where it started. Whatever contrast the field has lost
+// is numerical diffusion and nothing else. This is the honest measure of how
+// faithfully crust is carried, and it is the number that decides whether the
+// scheme is good enough or has to be replaced.
+void testRigidRotationPreservesContrast() {
+    std::printf("Rigid rotation returns the planet to where it started\n");
+    simulation::CrustGrid grid(1000000.0f, 42, 5, 1);
+
+    const auto contrast = [](const std::vector<simulation::CrustGrid::Cell>& cells) {
+        double mean = 0.0;
+        for (const auto& c : cells) mean += c.thickness;
+        mean /= static_cast<double>(cells.size());
+        double variance = 0.0;
+        for (const auto& c : cells) {
+            const double d = c.thickness - mean;
+            variance += d * d;
+        }
+        return std::sqrt(variance / static_cast<double>(cells.size()));
+    };
+
+    const double before = contrast(grid.getCells());
+
+    const float omega = grid.getPlates()[0].angularVelocity;
+    const float period = 2.0f * 3.14159265f / std::fabs(omega);
+    const int steps = static_cast<int>(std::ceil(period / 2.0f));
+    std::printf("  one full rotation is %.0f My, %d steps of 2 My\n", period, steps);
+
+    for (int i = 0; i < steps; i++) {
+        grid.step(2.0f);
+    }
+
+    const double after = contrast(grid.getCells());
+    const double retained = before > 0.0 ? after / before : 0.0;
+    std::printf("  thickness contrast %.0f m -> %.0f m (%.1f%% retained)\n",
+                before, after, retained * 100.0);
+
+    check(retained > 0.5, "a full rotation keeps most of the crustal contrast");
+}
+
 void testStepPerformance() {
     std::printf("A step is fast enough to run interactively\n");
     simulation::CrustGrid grid(1000000.0f, 42, 6, 12);
@@ -261,6 +304,7 @@ int main() {
     testPlatesActuallyMove();
     testSilicateBooksBalance();
     testContinentsPersist();
+    testRigidRotationPreservesContrast();
     testStepPerformance();
 
     std::printf("\n");

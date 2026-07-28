@@ -62,6 +62,11 @@ public:
         // growth is order 1-2 km^3/yr against ~3 km^3/yr subducted, but much
         // arc crust is itself recycled.
         float arcProductionRatio = 0.25f;
+
+        // Crust parcels per grid cell. More markers means finer material
+        // detail and a smoother projection, at linear cost.
+        int markersPerCell = 6;
+        int maxMarkersPerCell = 16;
     };
 
     struct Plate {
@@ -84,6 +89,29 @@ public:
         float density = 2950.0f;   // kg/m^3
         float age = 0.0f;          // My since this crust formed
         float elevation = 0.0f;    // m above the isostatic datum, derived
+    };
+
+    // A parcel of crust. Markers are the material; the grid is only where we
+    // look at it.
+    //
+    // Markers rotate exactly with their plate, so transport introduces no
+    // error at all no matter how small the timestep is. That is the whole
+    // point: carrying crust as fields on fixed cells means interpolating every
+    // step, and interpolation is diffusion. Measured on a single plate
+    // rotating once around the planet - a pure coordinate change that should
+    // return every column to where it started - field transport destroyed 57%
+    // of the crustal contrast. Markers destroy none, because nothing is ever
+    // averaged: a parcel of granite stays that parcel of granite.
+    struct Marker {
+        glm::vec3 position{0.0f, 0.0f, 1.0f}; // unit vector
+        uint16_t plateId = 0;
+        // Double, because this is the conserved quantity. A parcel holds
+        // ~1e11 m^3 and is repeatedly added to and subtracted from; in single
+        // precision the rounding accumulates into a visible imbalance in the
+        // silicate budget over a few hundred steps.
+        double volume = 0.0;                  // m^3 of crust in this parcel
+        float density = 2950.0f;              // kg/m^3
+        float age = 0.0f;                     // My since this rock formed
     };
 
     // subdivisions: icosphere level. 6 gives 40,962 cells, ~17 km apart on a
@@ -191,6 +219,10 @@ private:
 
     std::vector<Cell> cells;
     std::vector<Plate> plates;
+    std::vector<Marker> markers;
+
+    // Which markers currently land in each cell, rebuilt every projection.
+    std::vector<std::vector<int>> cellMarkers;
 
     // Flattened adjacency: neighbours of cell i are
     // neighbourIndices[neighbourStart[i] .. neighbourStart[i+1])
@@ -221,9 +253,11 @@ private:
     void assignPlates(int plateCount);
     void seedInitialCrust();
 
-    void transportCrust(float dt);
-    void migratePlateBoundaries(float dt);
-    void diffuseThermalAge(float dt);
+    void seedMarkers();
+    void advectMarkers(float dt);
+    void projectMarkersToGrid();
+    void reconcileCrust(float dt);
+    void rebalanceMarkers();
     void updateIsostasy();
     void solveSeaLevel();
 
