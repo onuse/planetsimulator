@@ -1,128 +1,125 @@
 # Planet Simulator
 
-An ambitious real-time planet renderer using C++, Vulkan, and advanced LOD techniques.
+A planet whose surface is simulated rather than generated. Plate tectonics runs
+continuously — continents drift, collide, weld into supercontinents and rift
+apart again — and the terrain you see is the output of that, not of a noise
+function tuned to look plausible.
 
-## Features
+## What is actually simulated
 
-- **Planetary-scale rendering** - Seamless rendering from space to surface
-- **Cube-to-sphere mapping** - 6 cube faces projected to sphere for uniform sampling
-- **Hierarchical LOD system** - SphericalQuadtree for far views, Octree for near surface
-- **Transvoxel algorithm** - Smooth voxel-to-mesh conversion
-- **Real-time performance** - 60+ FPS on modern GPUs
+**Plate motion is solved, not prescribed.** A plate floating on the
+asthenosphere has a Reynolds number around 10⁻²⁰, so its inertia is
+meaningless: at every instant the driving torques and viscous drag balance
+exactly. That reduces to a 3×3 solve per plate, `ω = D⁻¹T`, where the driving
+forces are the ones that actually move plates:
+
+- **slab pull**, from the negative buoyancy of cold lithosphere, growing as
+  √age because the thermal boundary layer thickens that way
+- **ridge push**, the gravitational sliding of the cooling column away from a
+  spreading centre
+- **basal drag**, stronger under continental keels, which is why
+  continent-heavy plates are the slow ones
+- **collision resistance** where neither side of a boundary can subduct
+
+**Elevation is an output of isostasy.** Crustal columns float on the mantle, so
+elevation is `thickness × (1 − ρ_crust / ρ_mantle)`. Continental crust at 35 km
+and 2750 kg/m³ stands 5833 m above the compensation datum; oceanic crust at
+7 km and 2950 stands 742 m. The 5.1 km step between them is not a tuned
+parameter — it falls out of measured densities and matches the real
+continent-to-abyssal-plain difference. Seafloor subsides as √age from
+half-space cooling, and sea level is solved from a conserved water volume, so
+growing continents displace water and raise it.
+
+**Crust is carried on Lagrangian markers.** Each parcel rotates exactly with
+its plate, so transport introduces no error at any timestep. Rotate a
+single-plate planet once around — a pure coordinate change — and 97% of the
+crustal contrast survives; the field-based transport it replaced destroyed 57%.
+Each parcel carries a stack of rock layers with types and ages, so the planet
+remembers its history: erosion strips from the top, delamination founders the
+bottom, and a subducting slab is consumed entire.
+
+**Nothing appears or disappears.** Crust is created from mantle melt at ridges
+and arcs and returned by subduction, and every transfer is booked. Crust plus
+mantle reservoir balances the starting volume to about 1 part in 10¹³.
+
+Numbers that come out of this rather than being asserted: mean plate speed
+~6 cm/yr on an Earth-sized body, slab pull exceeding ridge push by ~20×, land
+covering ~29% of the surface, mean seafloor age ~59 My.
 
 ## Building
 
-### Prerequisites
-- Visual Studio 2022 or later
-- Vulkan SDK 1.3+
-- CMake 3.20+
-- Windows 10/11
+Needs Visual Studio 2022 Build Tools, CMake, the Vulkan SDK and Python (the
+shader templates are transpiled by a small script).
 
-### Quick Build
-```bash
-# Full rebuild with tests
-./rebuild.bat
+```powershell
+.\rebuild_windows.bat
+```
 
-# Simple build
-./build.bat
+GLFW 3.3.8 declares a `cmake_minimum_required` that CMake 4 rejects, so
+configuring by hand needs the compatibility flag:
 
-# Build without tests
-./build_simple.bat
+```powershell
+$env:VULKAN_SDK = "C:\VulkanSDK\1.4.350.0"
+& "C:\Program Files\CMake\bin\cmake.exe" -S . -B build_windows -G "Visual Studio 17 2022" -A x64 "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+& "C:\Program Files\CMake\bin\cmake.exe" --build build_windows --config Release --parallel
 ```
 
 ## Running
 
-```bash
-# Basic run
-./run.ps1
-
-# With parameters
-./run.ps1 -radius 6371000 -max-depth 10 -screenshot-interval 5
-
-# Available options:
-#   -radius <meters>          Planet radius (default: 6371000)
-#   -max-depth <depth>        Octree max depth (default: 10)
-#   -seed <seed>             Random seed (default: 42)
-#   -width <pixels>          Window width (default: 1280)
-#   -height <pixels>         Window height (default: 720)
-#   -auto-terminate <sec>    Exit after N seconds
-#   -screenshot-interval <s>  Screenshot interval
-#   -vertex-dump            Dump mesh data on exit
-#   -quiet                  Suppress verbose output
+```powershell
+.\run.ps1
 ```
 
-## Controls
+| flag | |
+|---|---|
+| `-radius <m>` | planet radius, default 1 000 000 |
+| `-seed <n>` | a different planet |
+| `-auto-terminate <s>` | exit after N seconds |
+| `-screenshot-interval <s>` | write PNGs to `screenshot_dev\` |
 
-- **WASD** - Move camera
-- **Q/E** - Move up/down
-- **Mouse** - Look around (right-click + drag)
-- **Scroll** - Zoom in/out
-- **R** - Reset camera
-- **P** - Take screenshot
-- **TAB** - Toggle orbital/free-fly camera
-- **ESC** - Exit
+Left-drag orbits, scroll zooms, WASD/QE moves, TAB switches orbital/free-fly,
+R resets, P screenshots, ESC quits.
 
-## Project Structure
+Look for pale bands in deep ocean — those are spreading ridges, where crust is
+too young to have subsided. White belts across continents are collisional
+orogens. Give it a minute; the surface visibly reshapes.
+
+A note on scale: plate speed in metres per year barely depends on planet size,
+so the default 1000 km world crosses its own circumference far faster than
+Earth does and its tectonics run correspondingly fast. `-radius 6371000` gives
+a more sedate view.
+
+## Layout
 
 ```
-planetsimulator/
-├── build/              # Build output
-├── docs/               # Documentation
-│   ├── architecture/   # System design
-│   ├── debugging/      # Debug guides
-│   └── fixes/         # Solution docs
-├── include/           # Header files
-├── scripts/           # Build & utility scripts
-│   ├── analysis/      # Analysis tools
-│   └── testing/       # Test runners
-├── shaders/           # GLSL shaders
-├── src/               # Source code
-├── tests/             # Test suite
-└── debug_output/      # Debug files (gitignored)
+include/simulation/  crust_grid.hpp     plates, markers, isostasy
+include/core/        density_field.hpp  crust + sub-grid noise -> a signed distance field
+                     octree.hpp         voxels, derived from the field
+src/rendering/       Vulkan; one pipeline, which draws the planet
+tests/               nine test binaries, all linking one shared library
 ```
 
-## Key Components
+The simulation runs on its own thread and publishes immutable snapshots of the
+surface; the renderer holds whichever is newest and never blocks on it.
 
-### Rendering Pipeline
-- **SphericalQuadtree** - Manages planet-scale LOD
-- **CPUVertexGenerator** - Generates mesh vertices on CPU
-- **VulkanRenderer** - Vulkan rendering backend
-- **LODManager** - Switches between quadtree/octree based on altitude
+## Tests
 
-### Core Systems
-- **Octree** - Spatial data structure for voxels
-- **DensityField** - Procedural terrain generation
-- **MaterialTable** - Material properties system
-- **Camera** - Orbital and free-fly camera modes
-
-## Recent Fixes
-
-1. **Missing Cube Faces** - Fixed backface culling issue with X faces
-2. **Depth Precision** - Implemented depth bias to prevent z-fighting at planetary scale
-3. **Transform Precision** - Fixed MIN_RANGE bug causing microscopic patches
-
-## Documentation
-
-See the `docs/` folder for detailed documentation:
-- `docs/architecture/` - System design and architecture
-- `docs/debugging/` - Debugging guides and diagnostics
-- `docs/fixes/` - Solutions to specific issues
-
-## Testing
-
-The project includes a comprehensive test suite:
-```bash
-# Run all tests
-./scripts/testing/run_diagnostic_tests.ps1
-
-# Tests are automatically run during rebuild
-./rebuild.bat
+```powershell
+.\build_windows\bin\Release\test_crust_grid.exe
 ```
 
-## License
+The tectonics tests check mechanism rather than appearance — that isostasy
+predicts measured elevations, that the silicate budget balances, that plates
+reorganise, that transport does not smear the planet.
 
-This project is a personal learning project. See CLAUDE.md for AI assistant instructions.
+## Known limits
 
-## Contact
-
-For issues or questions, please update the documentation as needed.
+- The mesh is rebuilt on the CPU in full whenever the surface changes. It
+  cannot do level of detail and will not survive descending to the surface;
+  it needs replacing with GPU-side displacement or chunked streaming.
+- There is no erosion yet, so delamination is the only thing limiting orogens
+  and continental crust slowly drains to the mantle.
+- Surface colouring is elevation bands with a latitude-dependent snow line.
+  It should come from a climate model.
+- Voxels are generated once from the initial state and do not resync as
+  tectonics runs.

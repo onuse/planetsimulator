@@ -1,5 +1,4 @@
 #include "rendering/vulkan_renderer.hpp"
-#include "rendering/gpu_octree.hpp"
 #include "utils/screenshot.hpp"
 
 #include <iostream>
@@ -15,7 +14,6 @@
 namespace rendering {
 
 // Define static members
-VulkanRenderer::MeshPipeline VulkanRenderer::meshPipeline = VulkanRenderer::MeshPipeline::CPU_ADAPTIVE;
 
 // ============================================================================
 // Constructor and Main Interface
@@ -68,16 +66,9 @@ bool VulkanRenderer::initialize() {
             throw std::runtime_error("Failed to initialize ImGui");
         }
         
-        // Initialize GPU octree for mesh generation
-        gpuOctree = std::make_unique<rendering::GPUOctree>(device, physicalDevice);
-        std::cout << "[VulkanRenderer] GPU octree initialized at " << gpuOctree.get() << std::endl;
-        
-        // Initialize GPU mesh pipeline
+        // The mesh pipeline. This is the one that draws the planet.
         createTransvoxelPipeline();
-        
-        // Create Quadtree pipeline (if needed for visualization)
-        createQuadtreePipeline();
-        
+
         // Vulkan renderer initialized successfully
         return true;
     } catch (const std::exception& e) {
@@ -173,59 +164,21 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
         lastLODLevel = currentLODLevel;
         lastCameraPos = currentCameraPos;
         
-        // MASTER PIPELINE SWITCH - Crystal clear pipeline selection
-        bool meshGenerated = false;
-        
-        switch (meshPipeline) {
-            case MeshPipeline::CPU_ADAPTIVE:
-                // Current working implementation
-                meshGenerated = generateAdaptiveSphere(planet, camera);
-                if (!meshGenerated) {
-                    std::cerr << "ERROR: CPU adaptive sphere generation failed!\n";
-                }
-                break;
-                
-            case MeshPipeline::GPU_COMPUTE:
-                // Future GPU implementation
-                meshGenerated = generateGPUMesh(planet, camera);
-                if (!meshGenerated) {
-                    std::cerr << "ERROR: GPU compute mesh generation failed!\n";
-                }
-                break;
-                
-            case MeshPipeline::GPU_WITH_CPU_VERIFY: {
-                // Debug mode - run both separately but use GPU result
-                std::cout << "[VERIFY MODE] Running GPU mesh generation for verification...\n";
-                
-                // Run GPU first
-                bool gpuSuccess = generateGPUMesh(planet, camera);
-                
-                // Store GPU mesh counts for comparison
-                size_t gpuVertexCount = meshVertexCount;
-                size_t gpuIndexCount = meshIndexCount;
-                
-                // Now run CPU to compare counts (but don't use its buffers)
-                // We need a separate function that doesn't overwrite buffers
-                // For now, just report GPU results
-                
-                if (gpuSuccess) {
-                    std::cout << "[VERIFY MODE] GPU generated " << gpuVertexCount 
-                              << " vertices, " << (gpuIndexCount/3) << " triangles\n";
-                    meshGenerated = true;
-                } else {
-                    std::cerr << "[VERIFY MODE] GPU generation failed!\n";
-                    // Fall back to CPU
-                    meshGenerated = generateAdaptiveSphere(planet, camera);
-                }
-                break;
-            }
+        // Build the surface mesh from the density field, which the tectonic
+        // simulation drives. There used to be a switch here selecting between
+        // this and two GPU compute paths; neither ever worked, and the compute
+        // shaders they dispatched sampled debug sine waves rather than the
+        // planet. Removed rather than carried.
+        bool meshGenerated = generateAdaptiveSphere(planet, camera);
+        if (!meshGenerated) {
+            std::cerr << "ERROR: mesh generation failed!\n";
         }
-        
+
         if (!meshGenerated) {
             // NO FALLBACKS! FAIL LOUDLY AND CLEARLY!
             std::cerr << "\n================================\n";
             std::cerr << "MESH GENERATION FAILED!\n";
-            std::cerr << "Pipeline: " << (int)meshPipeline << "\n";
+
             std::cerr << "Press G to switch pipeline\n";
             std::cerr << "================================\n\n";
             // DO NOT try another method - that way lies madness
@@ -270,21 +223,7 @@ void VulkanRenderer::cleanup() {
     if (hierarchicalDescriptorSetLayout != VK_NULL_HANDLE) {
         vkDestroyDescriptorSetLayout(device, hierarchicalDescriptorSetLayout, nullptr);
     }
-    
-    // Cleanup Quadtree pipeline
-    if (quadtreePipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(device, quadtreePipeline, nullptr);
-        quadtreePipeline = VK_NULL_HANDLE;
-    }
-    if (quadtreePipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(device, quadtreePipelineLayout, nullptr);
-        quadtreePipelineLayout = VK_NULL_HANDLE;
-    }
-    if (quadtreeDescriptorSetLayout != VK_NULL_HANDLE) {
-        vkDestroyDescriptorSetLayout(device, quadtreeDescriptorSetLayout, nullptr);
-        quadtreeDescriptorSetLayout = VK_NULL_HANDLE;
-    }
-    
+
     cleanupSwapChain();
     
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -638,10 +577,6 @@ void VulkanRenderer::renderGPUMesh() {
         lastGpuVertexCount = meshVertexCount;
         lastGpuIndexCount = meshIndexCount;
     }
-}
-
-void VulkanRenderer::createTestNDCPipeline() {
-    // Empty stub - this test pipeline has been removed
 }
 
 } // namespace rendering

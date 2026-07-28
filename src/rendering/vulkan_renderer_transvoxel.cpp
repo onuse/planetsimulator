@@ -72,14 +72,6 @@ std::array<VkDescriptorSetLayoutBinding, 4> layoutBindings{};
     // Create triangle mesh pipeline
     createTrianglePipeline();
     
-    // CHEAT: Also create test NDC pipeline
-    try {
-        createTestNDCPipeline();
-    } catch (const std::exception& e) {
-        std::cout << "[WARNING] Failed to create test NDC pipeline: " << e.what() << std::endl;
-        // Not fatal - continue without it
-    }
-    
     std::cout << "Transvoxel pipeline created successfully\n";
     
     // Create descriptor sets now that layout is created
@@ -161,46 +153,23 @@ std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 void VulkanRenderer::createTrianglePipeline() {
     std::cout << "Creating triangle mesh pipeline..." << std::endl;
     
-    // Set flag for NDC mode
-    bool useNDCShaders = false; // DISABLE CHEAT MODE - use real shaders!
-    
-    // Load shaders - for now, use simple vertex/fragment shaders
+    // These two are the only shaders the renderer uses. There were three
+    // nested fallback tiers here - hardcoded NDC triangles, then "test simple",
+    // then the real ones - from when nothing drew at all and the question was
+    // whether Vulkan was working. It was; the vertex shader was missing.
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
-    
-    
+
     try {
-        if (useNDCShaders) {
-            // Try to load NDC cheat shaders
-            try {
-                vertShaderCode = readFile("shaders/test_ndc.vert.spv");
-                fragShaderCode = readFile("shaders/test_ndc.frag.spv");
-                std::cout << "\n[CHEAT MODE] Using NDC HARDCODED shaders - this MUST work!\n";
-                std::cout << "Loaded NDC shaders: vert=" << vertShaderCode.size() << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
-                std::cout << "These shaders hardcode triangle positions in NDC space!\n";
-            } catch (const std::exception& e) {
-                std::cout << "[ERROR] Failed to load NDC shaders: " << e.what() << std::endl;
-                // Fall back to test shaders
-                try {
-                    vertShaderCode = readFile("shaders/test_simple.vert.spv");
-                    fragShaderCode = readFile("shaders/test_simple.frag.spv");
-                    std::cout << "[DEBUG] Using TEST SIMPLE shaders for rendering\n";
-                } catch (...) {
-                    // Fall back to normal shaders
-                    std::cout << "[DEBUG] Test shaders not found, using normal triangle shaders\n";
-                    vertShaderCode = readFile("shaders/triangle.vert.spv");
-                    fragShaderCode = readFile("shaders/triangle.frag.spv");
-                }
-            }
-        } else {
-            vertShaderCode = readFile("shaders/triangle.vert.spv");
-            fragShaderCode = readFile("shaders/triangle.frag.spv");
-            std::cout << "Loaded triangle shaders: vert=" << vertShaderCode.size() << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
-        }
+        vertShaderCode = readFile("shaders/triangle.vert.spv");
+        fragShaderCode = readFile("shaders/triangle.frag.spv");
+        std::cout << "Loaded triangle shaders: vert=" << vertShaderCode.size()
+                  << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
     } catch (const std::exception& e) {
-        throw std::runtime_error("Failed to load shaders for Transvoxel: " + std::string(e.what()));
+        throw std::runtime_error("Failed to load triangle shaders: " + std::string(e.what()));
     }
-    
+
+
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
     
@@ -262,27 +231,14 @@ void VulkanRenderer::createTrianglePipeline() {
     attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
     attributeDescriptions[3].offset = sizeof(glm::vec3) * 3;
     
-    // CHEAT MODE: Check if we're using NDC shaders
-    bool isNDCMode = useNDCShaders; // Reference the flag from above
-    
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    
-    if (isNDCMode) {
-        // NDC MODE: No vertex input needed - shader generates everything
-        std::cout << "[CHEAT MODE] Creating pipeline with NO vertex input - all hardcoded!\n";
-        vertexInputInfo.vertexBindingDescriptionCount = 0;
-        vertexInputInfo.pVertexBindingDescriptions = nullptr;
-        vertexInputInfo.vertexAttributeDescriptionCount = 0;
-        vertexInputInfo.pVertexAttributeDescriptions = nullptr;
-    } else {
-        // Normal mode: Use vertex buffers
-        vertexInputInfo.vertexBindingDescriptionCount = 1;
-        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-    }
-    
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+
     // Input assembly - triangles
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -388,7 +344,6 @@ void VulkanRenderer::createTrianglePipeline() {
 // ============================================================================
 
 // Include sphere patch generator
-#include "../sphere_patch_generator.cpp"
 
 void VulkanRenderer::updateChunks(octree::OctreePlanet* /*planet*/, core::Camera* /*camera*/) {
     // GPU-ONLY: CPU chunk management removed
@@ -406,318 +361,5 @@ void VulkanRenderer::generateChunkMeshes(octree::OctreePlanet* /*planet*/) {
 // Quadtree Pipeline Creation
 // ============================================================================
 
-void VulkanRenderer::createQuadtreePipeline() {
-    std::cout << "Creating Quadtree LOD pipeline..." << std::endl;
-    
-    // Create descriptor set layout for quadtree rendering
-    // Binding 0: UBO (camera matrices)
-    // Binding 1: SSBO (instance data for patches)
-    
-    std::array<VkDescriptorSetLayoutBinding, 2> layoutBindings{};
-    
-    // Binding 0: UBO for camera matrices
-    layoutBindings[0].binding = 0;
-    layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    layoutBindings[0].descriptorCount = 1;
-    layoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    layoutBindings[0].pImmutableSamplers = nullptr;
-
-    // Binding 1: Instance data buffer (storage buffer)
-    layoutBindings[1].binding = 1;
-    layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    layoutBindings[1].descriptorCount = 1;
-    layoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    layoutBindings[1].pImmutableSamplers = nullptr;
-    
-    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
-    layoutInfo.pBindings = layoutBindings.data();
-    
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &quadtreeDescriptorSetLayout) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create Quadtree descriptor set layout!");
-    }
-    
-    // Create pipeline layout
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &quadtreeDescriptorSetLayout;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &quadtreePipelineLayout) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create Quadtree pipeline layout!");
-    }
-    
-    // Load quadtree shaders - use CPU vertex shader
-    std::vector<char> vertShaderCode;
-    std::vector<char> fragShaderCode;
-    
-    try {
-        // Try to load CPU vertex shader first
-        try {
-            vertShaderCode = readFile("shaders/quadtree_patch_cpu.vert.spv");
-            std::cout << "Using CPU vertex shader for quadtree" << std::endl;
-        } catch (...) {
-            // Fall back to original if CPU version not compiled yet
-            std::cout << "CPU vertex shader not found, falling back to GPU vertex shader" << std::endl;
-            vertShaderCode = readFile("shaders/quadtree_patch.vert.spv");
-        }
-        fragShaderCode = readFile("shaders/quadtree_patch.frag.spv");
-        std::cout << "Loaded quadtree shaders: vert=" << vertShaderCode.size() << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Failed to load quadtree shaders: " + std::string(e.what()));
-    }
-    
-    VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-    VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
-    
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = vertShaderModule;
-    vertShaderStageInfo.pName = "main";
-    
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = fragShaderModule;
-    fragShaderStageInfo.pName = "main";
-    
-    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-    
-    // Vertex input state - CPU-generated PatchVertex format
-    // struct PatchVertex {
-    //     glm::vec3 position;   // location 0
-    //     glm::vec3 normal;     // location 1
-    //     glm::vec2 texCoord;   // location 2
-    //     float height;         // location 3
-    //     uint32_t faceId;      // location 4
-    // };
-    VkVertexInputBindingDescription bindingDescription{};
-    bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2) + sizeof(float) + sizeof(uint32_t); // PatchVertex size with faceId
-    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    
-    std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
-    
-    // Position attribute - location 0
-    attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = 0;
-    
-    // Normal attribute - location 1
-    attributeDescriptions[1].binding = 0;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = sizeof(glm::vec3);
-    
-    // TexCoord attribute - location 2
-    attributeDescriptions[2].binding = 0;
-    attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[2].offset = sizeof(glm::vec3) + sizeof(glm::vec3);
-    
-    // Height attribute - location 3
-    attributeDescriptions[3].binding = 0;
-    attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32_SFLOAT;
-    attributeDescriptions[3].offset = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2);
-    
-    // FaceId attribute - location 4
-    attributeDescriptions[4].binding = 0;
-    attributeDescriptions[4].location = 4;
-    attributeDescriptions[4].format = VK_FORMAT_R32_UINT;
-    attributeDescriptions[4].offset = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2) + sizeof(float);
-    
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-    
-    // Input assembly - triangles
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssembly.primitiveRestartEnable = VK_FALSE;
-    
-    // Viewport state
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float) windowWidth;
-    viewport.height = (float) windowHeight;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
-    scissor.extent = {windowWidth, windowHeight};
-    
-    VkPipelineViewportStateCreateInfo viewportState{};
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports = &viewport;
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = &scissor;
-    
-    // Rasterizer
-    VkPipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizer.depthClampEnable = VK_FALSE;
-    rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizer.lineWidth = 1.0f;
-    // Backface culling is correct again now that updateUniformBuffer() applies
-    // the Vulkan Y flip. While that flip was missing, the projection mirrored
-    // the image and reversed apparent winding, which is what made whole faces
-    // disappear and forced this to VK_CULL_MODE_NONE.
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterizer.depthBiasEnable = VK_FALSE;
-
-    // Multisampling
-    VkPipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-    // Depth stencil
-    VkPipelineDepthStencilStateCreateInfo depthStencil{};
-    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = VK_TRUE;
-    depthStencil.depthWriteEnable = VK_TRUE;
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.stencilTestEnable = VK_FALSE;
-
-    // Color blending
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    
-    VkPipelineColorBlendStateCreateInfo colorBlending{};
-    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &colorBlendAttachment;
-    
-    // Dynamic state for viewport and scissor
-    VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-    VkPipelineDynamicStateCreateInfo dynamicState{};
-    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = 2;
-    dynamicState.pDynamicStates = dynamicStates;
-    
-    // Create the graphics pipeline
-    VkGraphicsPipelineCreateInfo pipelineInfo{};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = shaderStages;
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
-    pipelineInfo.pInputAssemblyState = &inputAssembly;
-    pipelineInfo.pViewportState = &viewportState;
-    pipelineInfo.pRasterizationState = &rasterizer;
-    pipelineInfo.pMultisampleState = &multisampling;
-    pipelineInfo.pDepthStencilState = &depthStencil;
-    pipelineInfo.pColorBlendState = &colorBlending;
-    pipelineInfo.pDynamicState = &dynamicState;
-    pipelineInfo.layout = quadtreePipelineLayout;
-    pipelineInfo.renderPass = renderPass;
-    pipelineInfo.subpass = 0;
-    
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &quadtreePipeline) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create Quadtree graphics pipeline!");
-    }
-    
-    vkDestroyShaderModule(device, fragShaderModule, nullptr);
-    vkDestroyShaderModule(device, vertShaderModule, nullptr);
-    
-    std::cout << "Quadtree pipeline created successfully\n";
-    
-    // Create descriptor sets
-    createQuadtreeDescriptorSets();
-}
-
-void VulkanRenderer::createQuadtreeDescriptorSets() {
-    std::cout << "Creating Quadtree descriptor sets..." << std::endl;
-    
-    // Allocate descriptor sets
-    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, quadtreeDescriptorSetLayout);
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    allocInfo.pSetLayouts = layouts.data();
-    
-    quadtreeDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(device, &allocInfo, quadtreeDescriptorSets.data()) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to allocate Quadtree descriptor sets!");
-    }
-    
-    // Update descriptor sets to point to buffers
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        // UBO (camera matrices)
-        VkDescriptorBufferInfo uboInfo{};
-        uboInfo.buffer = uniformBuffers[i];
-        uboInfo.offset = 0;
-        uboInfo.range = sizeof(UniformBufferObject);
-        
-        // For now, use a dummy buffer for instance data (will be updated by LODManager)
-        VkDescriptorBufferInfo instanceInfo{};
-        instanceInfo.buffer = uniformBuffers[i]; // Use UBO as placeholder
-        instanceInfo.offset = 0;
-        instanceInfo.range = sizeof(UniformBufferObject);
-        
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-        
-        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet = quadtreeDescriptorSets[i];
-        descriptorWrites[0].dstBinding = 0;
-        descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &uboInfo;
-        
-        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = quadtreeDescriptorSets[i];
-        descriptorWrites[1].dstBinding = 1;
-        descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pBufferInfo = &instanceInfo;
-        
-        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-    }
-    
-    std::cout << "Quadtree descriptor sets created successfully\n";
-}
-
-void VulkanRenderer::updateQuadtreeInstanceBuffer(VkBuffer instanceBuffer) {
-    if (instanceBuffer == VK_NULL_HANDLE) return;
-    
-    // Update all descriptor sets with the new instance buffer
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorBufferInfo instanceInfo{};
-        instanceInfo.buffer = instanceBuffer;
-        instanceInfo.offset = 0;
-        instanceInfo.range = VK_WHOLE_SIZE;
-        
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = quadtreeDescriptorSets[i];
-        descriptorWrite.dstBinding = 1; // Binding 1 is instance data
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &instanceInfo;
-        
-        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-    }
-}
 
 } // namespace rendering

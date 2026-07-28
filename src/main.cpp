@@ -459,23 +459,6 @@ private:
             }
         }
         
-        // Switch mesh generation pipeline with G key
-        if (input.keys[GLFW_KEY_G] && !input.prevKeys[GLFW_KEY_G]) {
-            // Cycle through pipeline modes
-            auto& pipeline = rendering::VulkanRenderer::meshPipeline;
-            if (pipeline == rendering::VulkanRenderer::MeshPipeline::CPU_ADAPTIVE) {
-                pipeline = rendering::VulkanRenderer::MeshPipeline::GPU_COMPUTE;
-                std::cout << "[G KEY] Switched to GPU_COMPUTE pipeline\n";
-            } else if (pipeline == rendering::VulkanRenderer::MeshPipeline::GPU_COMPUTE) {
-                pipeline = rendering::VulkanRenderer::MeshPipeline::GPU_WITH_CPU_VERIFY;
-                std::cout << "[G KEY] Switched to GPU_WITH_CPU_VERIFY pipeline (debug mode)\n";
-            } else {
-                pipeline = rendering::VulkanRenderer::MeshPipeline::CPU_ADAPTIVE;
-                std::cout << "[G KEY] Switched to CPU_ADAPTIVE pipeline (safe mode)\n";
-            }
-            std::cout << "NOTE: Move camera or zoom to trigger mesh regeneration with new pipeline\n";
-        }
-        
         // Flip front/back detail assignment for testing dual-detail LOD
         if (input.keys[GLFW_KEY_F] && !input.prevKeys[GLFW_KEY_F]) {
             // Toggle the flip flag
@@ -493,23 +476,6 @@ private:
                 std::cout << "NOTE: Move camera slightly or zoom to trigger mesh regeneration\n";
             }
         }
-        
-        // Toggle face culling with C key - DISABLED FOR NOW
-        // TODO: Add getLODManager() method to VulkanRenderer
-        /*
-        if (input.keys[GLFW_KEY_C] && !input.prevKeys[GLFW_KEY_C]) {
-            if (renderer.getLODManager()) {
-                auto* quadtree = renderer.getLODManager()->getQuadtree();
-                if (quadtree) {
-                    auto& config = quadtree->getConfig();
-                    config.enableFaceCulling = !config.enableFaceCulling;
-                    if (!config.quiet) {
-                        std::cout << "Face culling: " << (config.enableFaceCulling ? "ENABLED" : "DISABLED") << "\n";
-                    }
-                }
-            }
-        }
-        */
         
         // Exit with ESC
         if (input.keys[GLFW_KEY_ESCAPE]) {

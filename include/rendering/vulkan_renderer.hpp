@@ -13,7 +13,6 @@
 #include "core/octree.hpp"
 #include "core/camera.hpp"
 #include "rendering/imgui_manager.hpp"
-#include "rendering/gpu_octree.hpp"
 // REMOVED: CPU-based renderers - using GPU mesh generation only
 
 namespace rendering {
@@ -114,13 +113,6 @@ public:
     static bool adaptiveSphereFlipFrontBack;  // Toggle flag for testing dual-detail (flips which hemisphere gets high detail)
     
     // MASTER PIPELINE SWITCH - THE ONE BOOL TO RULE THEM ALL
-    enum class MeshPipeline {
-        CPU_ADAPTIVE,    // CPU adaptive sphere (current working implementation)
-        GPU_COMPUTE,     // GPU compute shader (future implementation)
-        GPU_WITH_CPU_VERIFY  // Run both and compare (debugging mode)
-    };
-    static MeshPipeline meshPipeline;  // Default to CPU_ADAPTIVE in .cpp file
-    
 private:
     // Window
     GLFWwindow* window = nullptr;
@@ -225,7 +217,6 @@ private:
     // REMOVED: CPU-based renderers - using GPU mesh generation only
     
     // GPU octree for GPU-only pipeline
-    std::unique_ptr<rendering::GPUOctree> gpuOctree;
     
     // REMOVED: GPU point cloud rendering - using only triangle mesh rendering
     
@@ -239,14 +230,12 @@ private:
     int currentLODLevel = 5;  // Track current LOD level for display
     
     // GPU mesh generation
-    bool generateGPUMesh(octree::OctreePlanet* planet, core::Camera* camera);   // Generate mesh vertices on GPU
     void renderGPUMesh();                                                       // Render the generated mesh
     
     // Sphere mesh generation with proper cube-to-sphere mapping
     bool generateSphereMesh(octree::OctreePlanet* planet);
     bool generateSphereMeshHighRes(octree::OctreePlanet* planet);  // High resolution version
     bool generateSeamlessSphere(octree::OctreePlanet* planet);  // Seamless version with vertex deduplication
-    bool generateUnifiedSphere(octree::OctreePlanet* planet, core::Camera* camera = nullptr);  // Unified recursive subdivision approach with LOD
     bool generateAdaptiveSphere(octree::OctreePlanet* planet, core::Camera* camera);  // Dual-detail adaptive sphere generation (Phase 1)
     bool generateGPUAdaptiveSphere(octree::OctreePlanet* planet, core::Camera* camera);  // GPU compute version
     bool generateGPUAdaptiveSphereWithOctree(octree::OctreePlanet* planet, core::Camera* camera);  // GPU with octree traversal
@@ -283,11 +272,6 @@ private:
     VkDescriptorSetLayout hierarchicalDescriptorSetLayout = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> hierarchicalDescriptorSets;
     
-    // Quadtree pipeline for LOD terrain rendering
-    VkPipeline quadtreePipeline = VK_NULL_HANDLE;
-    VkPipelineLayout quadtreePipelineLayout = VK_NULL_HANDLE;
-    VkDescriptorSetLayout quadtreeDescriptorSetLayout = VK_NULL_HANDLE;
-    std::vector<VkDescriptorSet> quadtreeDescriptorSets;
     
     // Initialization functions
     void createWindow();
@@ -359,12 +343,7 @@ private:
     void createTransvoxelPipeline();
     void createTransvoxelDescriptorSets();
     void createTrianglePipeline();
-    void createTestNDCPipeline(); // CHEAT: Minimal test pipeline
     
-    // Quadtree rendering
-    void createQuadtreePipeline();
-    void createQuadtreeDescriptorSets();
-    void updateQuadtreeInstanceBuffer(VkBuffer instanceBuffer);
     void updateChunks(octree::OctreePlanet* planet, core::Camera* camera);
     void generateChunkMeshes(octree::OctreePlanet* planet);
     
