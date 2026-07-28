@@ -4,6 +4,7 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include "utils/log.hpp"
 #include <queue>
 #include <unordered_map>
 

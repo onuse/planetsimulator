@@ -1,4 +1,5 @@
 #include "rendering/vulkan_renderer.hpp"
+#include "utils/log.hpp"
 #include "core/material_table.hpp"
 #include <array>
 #include <cstring>
@@ -13,7 +14,7 @@ struct GPUMaterial {
 };
 
 void VulkanRenderer::createMaterialTableBuffer() {
-    std::cout << "Creating material table buffer..." << std::endl;
+    util::vlog() << "Creating material table buffer..." << std::endl;
     
     // Get the material table instance
     auto& materialTable = core::MaterialTable::getInstance();
@@ -67,7 +68,7 @@ void VulkanRenderer::createMaterialTableBuffer() {
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
     
-    std::cout << "Material table buffer created with " << bufferSize << " bytes" << std::endl;
+    util::vlog() << "Material table buffer created with " << bufferSize << " bytes" << std::endl;
 }
 
 void VulkanRenderer::updateMaterialTableBuffer() {

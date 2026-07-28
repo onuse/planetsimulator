@@ -11,6 +11,7 @@
 #include <limits>
 #include <algorithm>
 #include <chrono>
+#include "utils/log.hpp"
 
 namespace rendering {
 
@@ -43,9 +44,9 @@ struct Vec3Equal {
 
 // Generate adaptive sphere with dual detail levels
 bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::Camera* camera) {
-    std::cout << "\n=== Generating DUAL-DETAIL Adaptive Sphere Mesh ===\n";
+    util::vlog() << "\n=== Generating DUAL-DETAIL Adaptive Sphere Mesh ===\n";
     if (adaptiveSphereFlipFrontBack) {
-        std::cout << "[FLIPPED MODE] Back faces get high detail, front faces get low detail\n";
+        util::vlog() << "[FLIPPED MODE] Back faces get high detail, front faces get low detail\n";
     }
     
     if (!planet) {
@@ -93,8 +94,8 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
     // Cap at reasonable level
     if (highDetailLevel > 9) highDetailLevel = 9;
     
-    std::cout << "Camera distance: " << distanceToSurface / planetRadius << "x radius\n";
-    std::cout << "Dual-Detail LOD: Front=" << highDetailLevel 
+    util::vlog() << "Camera distance: " << distanceToSurface / planetRadius << "x radius\n";
+    util::vlog() << "Dual-Detail LOD: Front=" << highDetailLevel 
               << " (~" << (20 * (int)pow(4, highDetailLevel)) << " tris)"
               << ", Back=" << lowDetailLevel 
               << " (~" << (20 * (int)pow(4, lowDetailLevel)) << " tris)\n";
@@ -208,13 +209,13 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
     int backTriangles = backFaces * (int)pow(4, lowDetailLevel);
     float detailRatio = (float)frontTriangles / (float)backTriangles;
     
-    std::cout << "Face distribution: " << frontFaces << " front (high detail), " 
+    util::vlog() << "Face distribution: " << frontFaces << " front (high detail), " 
               << backFaces << " back (low detail)\n";
-    std::cout << "Triangle distribution:\n";
-    std::cout << "  Front hemisphere: ~" << frontTriangles << " triangles (LOD " << highDetailLevel << ")\n";
-    std::cout << "  Back hemisphere: ~" << backTriangles << " triangles (LOD " << lowDetailLevel << ")\n";
-    std::cout << "  Detail ratio: " << detailRatio << ":1 (front has " << detailRatio << "x more detail)\n";
-    std::cout << "Generated " << vertices.size() << " unique vertices, " 
+    util::vlog() << "Triangle distribution:\n";
+    util::vlog() << "  Front hemisphere: ~" << frontTriangles << " triangles (LOD " << highDetailLevel << ")\n";
+    util::vlog() << "  Back hemisphere: ~" << backTriangles << " triangles (LOD " << lowDetailLevel << ")\n";
+    util::vlog() << "  Detail ratio: " << detailRatio << ":1 (front has " << detailRatio << "x more detail)\n";
+    util::vlog() << "Generated " << vertices.size() << " unique vertices, " 
               << indices.size() / 3 << " triangles\n";
     
     // Displace the sphere by the terrain field.
@@ -377,19 +378,19 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
     const float displaceMs = std::chrono::duration<float, std::milli>(
         std::chrono::steady_clock::now() - displaceStart).count();
 
-    std::cout << "Terrain height range: [" << minHeight << ", " << maxHeight
+    util::vlog() << "Terrain height range: [" << minHeight << ", " << maxHeight
               << "] m (max elevation " << maxElevation
               << " m, max ocean depth " << maxOceanDepth << " m)"
               << " [displace " << displaceMs << " ms]\n";
 
     // Print material distribution
-    std::cout << "Material distribution:\n";
+    util::vlog() << "Material distribution:\n";
     for (const auto& [matId, count] : materialCounts) {
-        std::cout << "  Material " << matId << ": " << count << " vertices\n";
+        util::vlog() << "  Material " << matId << ": " << count << " vertices\n";
     }
     
     // Recalculate normals from actual geometry
-    std::cout << "Calculating smooth normals...\n";
+    util::vlog() << "Calculating smooth normals...\n";
     std::vector<glm::vec3> vertexNormals(vertices.size(), glm::vec3(0));
     
     for (size_t i = 0; i < indices.size(); i += 3) {
@@ -441,13 +442,13 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
     size_t vertexDataSize = vertexData.size() * sizeof(float);
     size_t indexDataSize = indices.size() * sizeof(uint32_t);
     
-    std::cout << "\n=== DUAL-DETAIL MESH COMPLETE ===\n";
-    std::cout << "Total vertices: " << vertices.size() << "\n";
-    std::cout << "Total triangles: " << indices.size() / 3 << "\n";
-    std::cout << "Front hemisphere: ~" << (frontFaces * (int)pow(4, highDetailLevel)) << " triangles\n";
-    std::cout << "Back hemisphere: ~" << (backFaces * (int)pow(4, lowDetailLevel)) << " triangles\n";
-    std::cout << "Triangle ratio: " << ((float)pow(4, highDetailLevel - lowDetailLevel)) << ":1\n";
-    std::cout << "=================================\n";
+    util::vlog() << "\n=== DUAL-DETAIL MESH COMPLETE ===\n";
+    util::vlog() << "Total vertices: " << vertices.size() << "\n";
+    util::vlog() << "Total triangles: " << indices.size() / 3 << "\n";
+    util::vlog() << "Front hemisphere: ~" << (frontFaces * (int)pow(4, highDetailLevel)) << " triangles\n";
+    util::vlog() << "Back hemisphere: ~" << (backFaces * (int)pow(4, lowDetailLevel)) << " triangles\n";
+    util::vlog() << "Triangle ratio: " << ((float)pow(4, highDetailLevel - lowDetailLevel)) << ":1\n";
+    util::vlog() << "=================================\n";
     
     bool success = uploadCPUReferenceMesh(
         vertexData.data(), vertexDataSize,
@@ -457,7 +458,7 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
     );
     
     if (success) {
-        std::cout << "Dual-detail mesh successfully uploaded to GPU!\n";
+        util::vlog() << "Dual-detail mesh successfully uploaded to GPU!\n";
     }
     
     return success;

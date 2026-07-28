@@ -1,5 +1,6 @@
 #include "rendering/vulkan_renderer.hpp"
 #include "utils/screenshot.hpp"
+#include "utils/log.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -153,14 +154,26 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
         lastCrustRebuild = nowForRebuild;
     }
 
-    // TEMPORARILY disable camera movement trigger to test dual-detail
-    if (planet && camera && (currentLODLevel != lastLODLevel || crustChanged /* || significantCameraMove */)) {
-        // LOD changed, tectonics moved, or camera moved significantly
+    // Rebuilding on every LOD change means a zoom crosses several thresholds
+    // and pays for a full mesh rebuild at each one, which is why the frame
+    // rate collapses while zooming and recovers once you stop. Wait for the
+    // level to hold still before acting on it: flying through a detail band is
+    // not a reason to rebuild for it.
+    static int pendingLODLevel = -1;
+    static std::chrono::steady_clock::time_point lodSettledAt{};
+    if (currentLODLevel != pendingLODLevel) {
+        pendingLODLevel = currentLODLevel;
+        lodSettledAt = nowForRebuild;
+    }
+    const float lodHeldFor = std::chrono::duration<float>(nowForRebuild - lodSettledAt).count();
+    const bool lodChanged = (currentLODLevel != lastLODLevel) && (lodHeldFor > 0.35f);
+
+    if (planet && camera && (lodChanged || crustChanged)) {
         lastCrustVersion = crustVersion;
         if (currentLODLevel != lastLODLevel) {
-            std::cout << "[LOD] Level changed from " << lastLODLevel << " to " << currentLODLevel << " - regenerating mesh\n";
+            util::vlog() << "[LOD] Level changed from " << lastLODLevel << " to " << currentLODLevel << " - regenerating mesh\n";
         } else if (significantCameraMove) {
-            std::cout << "[CAMERA] Significant camera movement detected (moved " 
+            util::vlog() << "[CAMERA] Significant camera movement detected (moved " 
                       << cameraMoveDistance / planet->getRadius() << " radii) - regenerating mesh for dual-detail adaptation\n";
         }
         lastLODLevel = currentLODLevel;
@@ -574,7 +587,7 @@ void VulkanRenderer::renderGPUMesh() {
     static size_t lastGpuVertexCount = 0;
     static size_t lastGpuIndexCount = 0;
     if (meshVertexCount != lastGpuVertexCount || meshIndexCount != lastGpuIndexCount) {
-        std::cout << "[GPU MESH] Rendering " << meshVertexCount << " vertices, " 
+        util::vlog() << "[GPU MESH] Rendering " << meshVertexCount << " vertices, " 
                   << (meshIndexCount/3) << " triangles\n";
         lastGpuVertexCount = meshVertexCount;
         lastGpuIndexCount = meshIndexCount;

@@ -1,4 +1,5 @@
 #include "rendering/vulkan_renderer.hpp"
+#include "utils/log.hpp"
 #include <stdexcept>
 #include <cstring>
 #include <array>
@@ -244,17 +245,17 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     // DEBUG: Print actual values being used
     static int debugCount = 0;
     if (false && debugCount++ % 60 == 0) {  // Disabled verbose debug
-        std::cout << "\n[UNIFORM BUFFER DEBUG]" << std::endl;
-        std::cout << "  Camera position: " << viewPosF.x << ", " << viewPosF.y << ", " << viewPosF.z << std::endl;
-        std::cout << "  WORLD_SCALE: " << WORLD_SCALE << std::endl;
-        std::cout << "  Original near/far: " << camera->getNearPlane() << " / " << camera->getFarPlane() << std::endl;
-        std::cout << "  Scaled near/far: " << nearPlane << " / " << farPlane << std::endl;
-        std::cout << "  FOV: " << fov << ", Aspect: " << aspect << std::endl;
+        util::vlog() << "\n[UNIFORM BUFFER DEBUG]" << std::endl;
+        util::vlog() << "  Camera position: " << viewPosF.x << ", " << viewPosF.y << ", " << viewPosF.z << std::endl;
+        util::vlog() << "  WORLD_SCALE: " << WORLD_SCALE << std::endl;
+        util::vlog() << "  Original near/far: " << camera->getNearPlane() << " / " << camera->getFarPlane() << std::endl;
+        util::vlog() << "  Scaled near/far: " << nearPlane << " / " << farPlane << std::endl;
+        util::vlog() << "  FOV: " << fov << ", Aspect: " << aspect << std::endl;
         
         // Debug the raw view matrix from camera
-        std::cout << "  Raw view matrix from camera:" << std::endl;
+        util::vlog() << "  Raw view matrix from camera:" << std::endl;
         for (int i = 0; i < 4; i++) {
-            std::cout << "    [" << viewF[i][0] << ", " << viewF[i][1] 
+            util::vlog() << "    [" << viewF[i][0] << ", " << viewF[i][1] 
                       << ", " << viewF[i][2] << ", " << viewF[i][3] << "]" << std::endl;
         }
     }
@@ -304,38 +305,38 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     static bool firstFrame = true;
     if (firstFrame) {
         firstFrame = false;
-        std::cout << "DEBUG: Camera matrices on first frame (double precision):\n";
-        std::cout << "  Camera position: (" << ubo.viewPos.x << ", " << ubo.viewPos.y << ", " << ubo.viewPos.z << ")\n";
+        util::vlog() << "DEBUG: Camera matrices on first frame (double precision):\n";
+        util::vlog() << "  Camera position: (" << ubo.viewPos.x << ", " << ubo.viewPos.y << ", " << ubo.viewPos.z << ")\n";
         
         // Print view matrix
-        std::cout << "  View matrix:\n";
+        util::vlog() << "  View matrix:\n";
         for (int i = 0; i < 4; i++) {
-            std::cout << "    [" << ubo.view[i][0] << ", " << ubo.view[i][1] 
+            util::vlog() << "    [" << ubo.view[i][0] << ", " << ubo.view[i][1] 
                       << ", " << ubo.view[i][2] << ", " << ubo.view[i][3] << "]\n";
         }
         
         // Print projection matrix
-        std::cout << "  Projection matrix:\n";
+        util::vlog() << "  Projection matrix:\n";
         for (int i = 0; i < 4; i++) {
-            std::cout << "    [" << ubo.proj[i][0] << ", " << ubo.proj[i][1] 
+            util::vlog() << "    [" << ubo.proj[i][0] << ", " << ubo.proj[i][1] 
                       << ", " << ubo.proj[i][2] << ", " << ubo.proj[i][3] << "]\n";
         }
         
         // Print combined ViewProj
-        std::cout << "  ViewProj (Proj * View):\n";
-        std::cout << "    [0]: " << ubo.viewProj[0][0] << ", " << ubo.viewProj[0][1] << ", " << ubo.viewProj[0][2] << ", " << ubo.viewProj[0][3] << "\n";
-        std::cout << "    [1]: " << ubo.viewProj[1][0] << ", " << ubo.viewProj[1][1] << ", " << ubo.viewProj[1][2] << ", " << ubo.viewProj[1][3] << "\n";
-        std::cout << "    [2]: " << ubo.viewProj[2][0] << ", " << ubo.viewProj[2][1] << ", " << ubo.viewProj[2][2] << ", " << ubo.viewProj[2][3] << "\n";
-        std::cout << "    [3]: " << ubo.viewProj[3][0] << ", " << ubo.viewProj[3][1] << ", " << ubo.viewProj[3][2] << ", " << ubo.viewProj[3][3] << "\n";
-        std::cout << "  ViewProj[3]: " << ubo.viewProj[3][0] << ", " << ubo.viewProj[3][1] << ", " << ubo.viewProj[3][2] << ", " << ubo.viewProj[3][3] << "\n";
+        util::vlog() << "  ViewProj (Proj * View):\n";
+        util::vlog() << "    [0]: " << ubo.viewProj[0][0] << ", " << ubo.viewProj[0][1] << ", " << ubo.viewProj[0][2] << ", " << ubo.viewProj[0][3] << "\n";
+        util::vlog() << "    [1]: " << ubo.viewProj[1][0] << ", " << ubo.viewProj[1][1] << ", " << ubo.viewProj[1][2] << ", " << ubo.viewProj[1][3] << "\n";
+        util::vlog() << "    [2]: " << ubo.viewProj[2][0] << ", " << ubo.viewProj[2][1] << ", " << ubo.viewProj[2][2] << ", " << ubo.viewProj[2][3] << "\n";
+        util::vlog() << "    [3]: " << ubo.viewProj[3][0] << ", " << ubo.viewProj[3][1] << ", " << ubo.viewProj[3][2] << ", " << ubo.viewProj[3][3] << "\n";
+        util::vlog() << "  ViewProj[3]: " << ubo.viewProj[3][0] << ", " << ubo.viewProj[3][1] << ", " << ubo.viewProj[3][2] << ", " << ubo.viewProj[3][3] << "\n";
         
         // Test transform a sample vertex with double precision
         glm::dvec4 testVertex(4470575.0, 4534870.0, 14112.0, 1.0);
         glm::dvec4 transformed = ubo.viewProj * testVertex;
-        std::cout << "  Test vertex (" << testVertex.x << ", " << testVertex.y << ", " << testVertex.z << ") -> (" 
+        util::vlog() << "  Test vertex (" << testVertex.x << ", " << testVertex.y << ", " << testVertex.z << ") -> (" 
                   << transformed.x << ", " << transformed.y << ", " << transformed.z << ", w=" << transformed.w << ")\n";
         if (transformed.w != 0) {
-            std::cout << "  After perspective divide: (" << transformed.x/transformed.w << ", " 
+            util::vlog() << "  After perspective divide: (" << transformed.x/transformed.w << ", " 
                       << transformed.y/transformed.w << ", " << transformed.z/transformed.w << ")\n";
         }
     }

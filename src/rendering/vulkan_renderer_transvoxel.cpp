@@ -1,4 +1,5 @@
 #include "rendering/vulkan_renderer.hpp"
+#include "utils/log.hpp"
 #include <iostream>
 #include <cmath>
 #include <cstddef>
@@ -13,7 +14,7 @@ namespace rendering {
 // ============================================================================
 
 void VulkanRenderer::createTransvoxelPipeline() {
-    std::cout << "Creating Transvoxel triangle mesh pipeline..." << std::endl;
+    util::vlog() << "Creating Transvoxel triangle mesh pipeline..." << std::endl;
     
     // Create descriptor set layout for triangle mesh rendering
     // Binding 0: UBO (camera matrices)
@@ -72,14 +73,14 @@ std::array<VkDescriptorSetLayoutBinding, 4> layoutBindings{};
     // Create triangle mesh pipeline
     createTrianglePipeline();
     
-    std::cout << "Transvoxel pipeline created successfully\n";
+    util::vlog() << "Transvoxel pipeline created successfully\n";
     
     // Create descriptor sets now that layout is created
     createTransvoxelDescriptorSets();
 }
 
 void VulkanRenderer::createTransvoxelDescriptorSets() {
-    std::cout << "Creating Transvoxel descriptor sets..." << std::endl;
+    util::vlog() << "Creating Transvoxel descriptor sets..." << std::endl;
     
     // Allocate descriptor sets
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, hierarchicalDescriptorSetLayout);
@@ -147,11 +148,11 @@ std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
     
-    std::cout << "Transvoxel descriptor sets created successfully\n";
+    util::vlog() << "Transvoxel descriptor sets created successfully\n";
 }
 
 void VulkanRenderer::createTrianglePipeline() {
-    std::cout << "Creating triangle mesh pipeline..." << std::endl;
+    util::vlog() << "Creating triangle mesh pipeline..." << std::endl;
     
     // These two are the only shaders the renderer uses. There were three
     // nested fallback tiers here - hardcoded NDC triangles, then "test simple",
@@ -163,7 +164,7 @@ void VulkanRenderer::createTrianglePipeline() {
     try {
         vertShaderCode = readFile("shaders/triangle.vert.spv");
         fragShaderCode = readFile("shaders/triangle.frag.spv");
-        std::cout << "Loaded triangle shaders: vert=" << vertShaderCode.size()
+        util::vlog() << "Loaded triangle shaders: vert=" << vertShaderCode.size()
                   << " bytes, frag=" << fragShaderCode.size() << " bytes" << std::endl;
     } catch (const std::exception& e) {
         throw std::runtime_error("Failed to load triangle shaders: " + std::string(e.what()));
@@ -180,9 +181,9 @@ void VulkanRenderer::createTrianglePipeline() {
         throw std::runtime_error("Shader module creation failed!");
     }
     
-    std::cout << "Created shader modules successfully" << std::endl;
-    std::cout << "  Vert: 0x" << std::hex << reinterpret_cast<uint64_t>(vertShaderModule) << std::dec << std::endl;
-    std::cout << "  Frag: 0x" << std::hex << reinterpret_cast<uint64_t>(fragShaderModule) << std::dec << std::endl;
+    util::vlog() << "Created shader modules successfully" << std::endl;
+    util::vlog() << "  Vert: 0x" << std::hex << reinterpret_cast<uint64_t>(vertShaderModule) << std::dec << std::endl;
+    util::vlog() << "  Frag: 0x" << std::hex << reinterpret_cast<uint64_t>(fragShaderModule) << std::dec << std::endl;
     
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -327,7 +328,7 @@ void VulkanRenderer::createTrianglePipeline() {
         throw std::runtime_error("Failed to create triangle graphics pipeline!");
     }
     
-    std::cout << "Pipeline creation returned: " << result << ", handle: 0x" << std::hex << reinterpret_cast<uint64_t>(trianglePipeline) << std::dec << std::endl;
+    util::vlog() << "Pipeline creation returned: " << result << ", handle: 0x" << std::hex << reinterpret_cast<uint64_t>(trianglePipeline) << std::dec << std::endl;
     
     if (trianglePipeline == VK_NULL_HANDLE) {
         std::cerr << "ERROR: Pipeline handle is NULL despite successful creation!" << std::endl;
@@ -336,7 +337,7 @@ void VulkanRenderer::createTrianglePipeline() {
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
     
-    std::cout << "Triangle mesh pipeline created, handle=0x" << std::hex << reinterpret_cast<uint64_t>(trianglePipeline) << std::dec << std::endl;
+    util::vlog() << "Triangle mesh pipeline created, handle=0x" << std::hex << reinterpret_cast<uint64_t>(trianglePipeline) << std::dec << std::endl;
 }
 
 // ============================================================================

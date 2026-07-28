@@ -1,4 +1,5 @@
 #include "rendering/vulkan_renderer.hpp"
+#include "utils/log.hpp"
 #include <fstream>
 #include <stdexcept>
 #include <iostream>
@@ -124,7 +125,7 @@ void VulkanRenderer::createDescriptorSetLayout() {
 
 void VulkanRenderer::createGraphicsPipeline() {
     // Disabled - using Transvoxel pipeline instead
-    std::cout << "Main graphics pipeline disabled - using Transvoxel mesh renderer\n";
+    util::vlog() << "Main graphics pipeline disabled - using Transvoxel mesh renderer\n";
 }
 
 // ============================================================================

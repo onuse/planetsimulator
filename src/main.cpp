@@ -11,6 +11,7 @@
 #include "core/octree.hpp"
 #include "rendering/vulkan_renderer.hpp"
 #include "core/camera.hpp"
+#include "utils/log.hpp"
 
 // Global flag for clean shutdown
 std::atomic<bool> g_shouldExit(false);
@@ -65,6 +66,8 @@ Config parseArgs(int argc, char** argv) {
             config.screenshotInterval = std::stof(argv[++i]);
         } else if (arg == "-quiet") {
             config.quiet = true;
+        } else if (arg == "-verbose") {
+            util::verbose = true;
         } else if (arg == "-vertex-dump") {
             config.vertexDump = true;
         } else if (arg == "-auto-zoom") {
@@ -142,13 +145,6 @@ public:
         float simulationTime = 0.0f; // In million years
         const float timeScale = 1000000.0f; // 1 second = 1 million years
         
-        if (!config.quiet) {
-            std::cout << "Entering render loop..." << std::endl;
-        }
-        
-        std::cout << "DEBUG: Starting main loop, auto-terminate=" << config.autoTerminate 
-                  << ", screenshot-interval=" << config.screenshotInterval << std::endl;
-        
         while (!shouldExit()) {
             auto currentTime = std::chrono::high_resolution_clock::now();
             float elapsed = std::chrono::duration<float>(currentTime - loopStartTime).count();
@@ -209,13 +205,15 @@ public:
             
             // Frame counter
             frameCount++;
-            // PERFORMANCE: Less frequent frame stats (was every 300, now every 3000 frames)
-            if (!config.quiet && frameCount % 500 == 0) {
-                std::cout << "Frame " << frameCount 
-                          << ", Time: " << elapsed << "s"
-                          << ", Sim: " << simulationTime / 1000000.0f << " My"
-                          << ", FPS: " << (1.0f / deltaTime)
-                          << ", Nodes: " << renderer.getNodeCount() << "\n";
+            // A single status line every few seconds. This used to fire on a
+            // frame count, which at ten thousand frames a second is a torrent.
+            static float lastStatus = 0.0f;
+            if (!config.quiet && elapsed - lastStatus >= 5.0f) {
+                lastStatus = elapsed;
+                std::cout << "[" << static_cast<int>(elapsed) << "s] "
+                          << static_cast<int>(1.0f / std::max(deltaTime, 1e-6f)) << " fps, "
+                          << planet.getCrustGrid()->getSimulationTime() << " My simulated ("
+                          << planet.getAchievedSimulationRate() << " My/s)" << std::endl;
             }
             
             // Note: handleInput() moved to before camera.update()
@@ -231,7 +229,6 @@ private:
     core::Camera camera;
     
     void init() {
-        std::cout << "=== INIT FUNCTION CALLED ===\n" << std::flush;
         
         // Clean up old screenshots if we're taking new ones
         if (config.screenshotInterval > 0) {
@@ -259,7 +256,6 @@ private:
         try {
             // Hierarchical GPU octree is always enabled
             if (!config.quiet) {
-                std::cout << "Hierarchical GPU octree rendering enabled\n" << std::flush;
             }
             
             if (!renderer.initialize()) {
@@ -288,8 +284,6 @@ private:
             // Default view - far enough to see the planet properly
             // Use 3x radius to see the whole sphere
             float initialDistance = config.radius * 3.0f;
-            std::cout << "=== SETTING CAMERA POSITION ===\n";
-            std::cout << "Initial distance: " << initialDistance << " (altitude: " << (initialDistance - config.radius) << ")\n";
             // Position camera to look at land/coast instead of open ocean
             // Rotate to see interesting terrain features
             float angle = glm::radians(45.0f);  // Different angle to find land
@@ -303,9 +297,7 @@ private:
         
         // Adjust near/far planes based on initial altitude
         float altitude = camera.getAltitude(glm::vec3(0, 0, 0), config.radius);
-        std::cout << "=== CALLING autoAdjustClipPlanes with altitude=" << altitude << " ===\n";
         camera.autoAdjustClipPlanes(altitude);
-        std::cout << "=== DONE CALLING autoAdjustClipPlanes ===\n";
         
         if (!config.quiet) {
             glm::vec3 pos = camera.getPosition();

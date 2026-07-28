@@ -1,5 +1,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "core/camera.hpp"
+#include "utils/log.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <iostream>
@@ -25,7 +26,7 @@ Camera::Camera(uint32_t width, uint32_t height)
     float altitude = glm::length(position) - 1000.0f; // Temporary default
     autoAdjustClipPlanes(altitude);
     
-    std::cout << "Camera constructor: altitude=" << altitude << ", near=" << nearPlane << ", far=" << farPlane << std::endl;
+    util::vlog() << "Camera constructor: altitude=" << altitude << ", near=" << nearPlane << ", far=" << farPlane << std::endl;
     
     updateVectors();
     updateViewMatrix();
@@ -125,7 +126,7 @@ void Camera::zoom(float delta) {
         // Log significant zoom changes
         float newAltitude = orbitDistance - PLANET_RADIUS;
         if (std::abs(oldDistance - orbitDistance) > 1000.0f) {  // More than 1km change
-            std::cout << "[CAMERA ZOOM] Alt: " << altitude/1000.0f << "km -> " 
+            util::vlog() << "[CAMERA ZOOM] Alt: " << altitude/1000.0f << "km -> " 
                       << newAltitude/1000.0f << "km (delta: " << delta 
                       << ", scale: " << speedScale << ")" << std::endl;
         }
@@ -207,7 +208,7 @@ void Camera::setPosition(const glm::vec3& pos) {
             orbitAzimuth = std::atan2(dir.x, dir.z);
         }
         
-        std::cout << "[CAMERA] setPosition in Orbital mode: orbitDistance=" << orbitDistance 
+        util::vlog() << "[CAMERA] setPosition in Orbital mode: orbitDistance=" << orbitDistance 
                   << ", orbitCenter=(" << orbitCenter.x << "," << orbitCenter.y << "," << orbitCenter.z << ")" << std::endl;
     }
 }
@@ -370,7 +371,7 @@ void Camera::setNearFar(float near, float far) {
 }
 
 void Camera::updateProjection() {
-    // std::cout << "updateProjection called: near=" << nearPlane << ", far=" << farPlane << std::endl;
+    // util::vlog() << "updateProjection called: near=" << nearPlane << ", far=" << farPlane << std::endl;
     
     projectionMatrix = glm::perspective(
         glm::radians(fov),
@@ -415,7 +416,7 @@ void Camera::autoAdjustClipPlanes(float altitude) {
     farPlane = std::max(farPlane, nearPlane * 1000.0f);  // Keep ratio reasonable
     
     // PERFORMANCE: Disabled clipping plane debug logging
-    // std::cout << "[DEBUG] Clipping planes OVERRIDDEN for debugging: near=" 
+    // util::vlog() << "[DEBUG] Clipping planes OVERRIDDEN for debugging: near=" 
     //           << nearPlane << ", far=" << farPlane << std::endl;
     
     /* ORIGINAL CODE - DISABLED FOR DEBUGGING
@@ -443,7 +444,7 @@ void Camera::autoAdjustClipPlanes(float altitude) {
     }
     */
     
-    // std::cout << "autoAdjustClipPlanes result: near=" << nearPlane << ", far=" << farPlane << std::endl;
+    // util::vlog() << "autoAdjustClipPlanes result: near=" << nearPlane << ", far=" << farPlane << std::endl;
     updateProjection();
 }
 
@@ -631,7 +632,7 @@ void Camera::updateOrbitalPosition() {
     
     // Debug output if position changed significantly
     if (glm::length(position - oldPos) > 10.0f) {
-        std::cout << "[CAMERA UPDATE] Orbital position updated: dist=" << orbitDistance 
+        util::vlog() << "[CAMERA UPDATE] Orbital position updated: dist=" << orbitDistance 
                   << ", pos=(" << position.x << "," << position.y << "," << position.z << ")" << std::endl;
     }
     
@@ -665,21 +666,21 @@ void Camera::applyInertia(float deltaTime) {
 // ============================================================================
 
 void Camera::printDebugInfo() const {
-    std::cout << "Camera Debug Info:\n";
-    std::cout << "  Mode: " << (mode == CameraMode::Orbital ? "Orbital" : 
+    util::vlog() << "Camera Debug Info:\n";
+    util::vlog() << "  Mode: " << (mode == CameraMode::Orbital ? "Orbital" : 
                                (mode == CameraMode::FreeFly ? "FreeFly" : "FirstPerson")) << "\n";
-    std::cout << "  Position: (" << position.x << ", " << position.y << ", " << position.z << ")\n";
-    std::cout << "  Target: (" << target.x << ", " << target.y << ", " << target.z << ")\n";
-    std::cout << "  Forward: (" << forward.x << ", " << forward.y << ", " << forward.z << ")\n";
-    std::cout << "  Up: (" << up.x << ", " << up.y << ", " << up.z << ")\n";
-    std::cout << "  FOV: " << fov << " degrees\n";
-    std::cout << "  Near/Far: " << nearPlane << " / " << farPlane << "\n";
-    std::cout << "  Movement Speed: " << movementSpeed << " m/s\n";
+    util::vlog() << "  Position: (" << position.x << ", " << position.y << ", " << position.z << ")\n";
+    util::vlog() << "  Target: (" << target.x << ", " << target.y << ", " << target.z << ")\n";
+    util::vlog() << "  Forward: (" << forward.x << ", " << forward.y << ", " << forward.z << ")\n";
+    util::vlog() << "  Up: (" << up.x << ", " << up.y << ", " << up.z << ")\n";
+    util::vlog() << "  FOV: " << fov << " degrees\n";
+    util::vlog() << "  Near/Far: " << nearPlane << " / " << farPlane << "\n";
+    util::vlog() << "  Movement Speed: " << movementSpeed << " m/s\n";
     
     if (mode == CameraMode::Orbital) {
-        std::cout << "  Orbit Distance: " << orbitDistance << " m\n";
-        std::cout << "  Orbit Azimuth: " << glm::degrees(orbitAzimuth) << " degrees\n";
-        std::cout << "  Orbit Elevation: " << glm::degrees(orbitElevation) << " degrees\n";
+        util::vlog() << "  Orbit Distance: " << orbitDistance << " m\n";
+        util::vlog() << "  Orbit Azimuth: " << glm::degrees(orbitAzimuth) << " degrees\n";
+        util::vlog() << "  Orbit Elevation: " << glm::degrees(orbitElevation) << " degrees\n";
     }
 }
 

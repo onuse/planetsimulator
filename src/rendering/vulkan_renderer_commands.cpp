@@ -1,4 +1,5 @@
 #include "rendering/vulkan_renderer.hpp"
+#include "utils/log.hpp"
 #include <stdexcept>
 #include <array>
 #include <iostream>
@@ -81,7 +82,7 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     static int viewportDebug = 0;
     if (viewportDebug++ % 60 == 0) {
         // Commented out to reduce spam
-        // std::cout << "[VIEWPORT] " << viewport.width << "x" << viewport.height 
+        // util::vlog() << "[VIEWPORT] " << viewport.width << "x" << viewport.height 
         //           << " depth: " << viewport.minDepth << "-" << viewport.maxDepth << std::endl;
     }
     
@@ -133,7 +134,7 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
             static size_t lastVertexCount = 0;
             static size_t lastIndexCount = 0;
             if (meshVertexCount != lastVertexCount || meshIndexCount != lastIndexCount) {
-                std::cout << "[RENDER] Drawing mesh (" << meshVertexCount << " verts, " << meshIndexCount/3 << " tris)\n";
+                util::vlog() << "[RENDER] Drawing mesh (" << meshVertexCount << " verts, " << meshIndexCount/3 << " tris)\n";
                 lastVertexCount = meshVertexCount;
                 lastIndexCount = meshIndexCount;
             }
@@ -183,7 +184,7 @@ void VulkanRenderer::createSyncObjects() {
 void VulkanRenderer::drawFrame(octree::OctreePlanet* /*planet*/, core::Camera* camera) {
     // Debug output
     // static int frameNum = 0;
-    // std::cout << "DrawFrame " << frameNum++ << " starting..." << std::endl;
+    // util::vlog() << "DrawFrame " << frameNum++ << " starting..." << std::endl;
     
     // Wait for previous frame
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, 100000000); // 100ms timeout

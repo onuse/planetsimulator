@@ -1,4 +1,5 @@
 #include "rendering/vulkan_renderer.hpp"
+#include "utils/log.hpp"
 #include <set>
 #include <string>
 #include <iostream>
@@ -38,7 +39,7 @@ void VulkanRenderer::pickPhysicalDevice() {
             // Prefer NVIDIA GPUs (vendor ID 0x10DE)
             if (deviceProperties.vendorID == 0x10DE) {
                 score += 500;
-                std::cout << "Found NVIDIA GPU: " << deviceProperties.deviceName << std::endl;
+                util::vlog() << "Found NVIDIA GPU: " << deviceProperties.deviceName << std::endl;
             }
             
             // Prefer RTX 3070 specifically
@@ -61,7 +62,7 @@ void VulkanRenderer::pickPhysicalDevice() {
     // Print selected device info
     VkPhysicalDeviceProperties deviceProperties;
     vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-    std::cout << "Selected GPU: " << deviceProperties.deviceName << std::endl;
+    util::vlog() << "Selected GPU: " << deviceProperties.deviceName << std::endl;
 }
 
 bool VulkanRenderer::isDeviceSuitable(VkPhysicalDevice physDevice) {
