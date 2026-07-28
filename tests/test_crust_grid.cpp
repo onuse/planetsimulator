@@ -442,15 +442,14 @@ void testPlatesReorganise() {
     // never start.
     {
         std::vector<double> continental(grid.getPlates().size(), 0.0);
-        double total = 0.0;
+        const double total = static_cast<double>(grid.getCells().size());
         for (const auto& cell : grid.getCells()) {
             if (cell.density >= grid.getConstants().subductionDensity) continue;
             if (cell.plateId < continental.size()) continental[cell.plateId] += 1.0;
-            total += 1.0;
         }
         double biggest = 0.0;
         for (double c : continental) biggest = std::max(biggest, c);
-        std::printf("  largest plate holds %.0f%% of the continental crust (rift at %.0f%%)\n",
+        std::printf("  largest continental blanket covers %.0f%% of the surface (rifts at %.0f%%)\n",
                     total > 0.0 ? 100.0 * biggest / total : 0.0,
                     100.0 * grid.getConstants().supercontinentFraction);
     }
@@ -479,6 +478,117 @@ void testPlatesReorganise() {
     check(std::isfinite(stats.meanElevation), "elevations stay finite through reorganisation");
     check(stats.landFraction > 0.02f && stats.landFraction < 0.98f,
           "the planet still has land and ocean after 600 My");
+}
+
+// Erosion moves rock; it does not create or destroy it. These check the
+// mechanism: that mountains wear down, that what comes off them arrives
+// somewhere lower as sediment, and that the two quantities match.
+void testErosionConservesRock() {
+    std::printf("Erosion moves rock rather than destroying it\n");
+    simulation::CrustGrid grid(6371000.0f, 21, 4, 10);
+
+    for (int i = 0; i < 100; i++) {
+        grid.step(2.0f);
+    }
+
+    const double eroded = grid.getErodedVolume();
+    const double deposited = grid.getDepositedVolume();
+    std::printf("  eroded %.4e m^3, deposited %.4e m^3\n", eroded, deposited);
+
+    check(eroded > 0.0, "erosion actually happened");
+
+    const double mismatch = eroded > 0.0 ? std::fabs(eroded - deposited) / eroded : 0.0;
+    std::printf("  mismatch %.2e relative\n", mismatch);
+    check(mismatch < 1e-6, "every cubic metre eroded was deposited somewhere");
+
+    // Denudation rate, for a sanity check against the real world. Continents
+    // lower at something like 0.01-0.1 mm/yr on average, faster in active
+    // orogens - so 10 to 100 m per million years.
+    const auto stats = grid.computeStats();
+    const double landArea = stats.landFraction * 4.0 * 3.14159265 *
+                            std::pow(grid.getPlanetRadius(), 2.0);
+    if (landArea > 0.0) {
+        const double metresPerMy = eroded / landArea / grid.getSimulationTime();
+        std::printf("  mean denudation %.1f m/My over %.0f My\n",
+                    metresPerMy, grid.getSimulationTime());
+        check(metresPerMy > 0.5 && metresPerMy < 2000.0,
+              "denudation rate is geologically plausible");
+    }
+}
+
+void testErosionMovesRockDownhill() {
+    std::printf("Sediment ends up lower than where it came from\n");
+    simulation::CrustGrid grid(6371000.0f, 33, 4, 10);
+
+    for (int i = 0; i < 60; i++) {
+        grid.step(2.0f);
+    }
+
+    // Where is the sediment? It should sit below the land it came off, which
+    // is the meaningful comparison - not below the planet's mean elevation,
+    // since most of that is abyssal plain that rivers never reach.
+    double sedimentElevation = 0.0, sedimentVolume = 0.0;
+
+    const auto& cells = grid.getCells();
+    for (const auto& marker : grid.getMarkers()) {
+        const int cell = grid.findNearestCell(marker.position);
+        if (cell < 0) continue;
+        const double elevation = cells[cell].elevation - grid.getSeaLevel();
+        for (int L = 0; L < marker.layerCount; L++) {
+            if (marker.layers[L].rock == simulation::CrustGrid::RockType::Sediment) {
+                sedimentElevation += elevation * marker.layers[L].volume;
+                sedimentVolume += marker.layers[L].volume;
+            }
+        }
+    }
+
+    double landElevation = 0.0;
+    int landCells = 0;
+    for (const auto& cell : cells) {
+        const double elevation = cell.elevation - grid.getSeaLevel();
+        if (elevation > 0.0) {
+            landElevation += elevation;
+            landCells++;
+        }
+    }
+
+    check(sedimentVolume > 0.0, "sediment was laid down as a distinct rock type");
+
+    if (sedimentVolume > 0.0 && landCells > 0) {
+        const double sedimentMean = sedimentElevation / sedimentVolume;
+        const double landMean = landElevation / landCells;
+        std::printf("  sediment sits at %.0f m, land averages %.0f m\n",
+                    sedimentMean, landMean);
+        check(sedimentMean < landMean,
+              "sediment ended up below the land it eroded from");
+    }
+}
+
+void testErosionLimitsMountains() {
+    std::printf("Erosion caps how high mountains get\n");
+
+    // Same planet twice, once with rivers switched off.
+    simulation::CrustGrid eroding(6371000.0f, 5, 4, 10);
+    simulation::CrustGrid pristine(6371000.0f, 5, 4, 10);
+    pristine.getConstants().streamPowerCoefficient = 0.0f;
+    pristine.getConstants().hillslopeDiffusivity = 0.0f;
+
+    for (int i = 0; i < 120; i++) {
+        eroding.step(2.0f);
+        pristine.step(2.0f);
+    }
+
+    const float withRivers = eroding.getMaxElevation();
+    const float without = pristine.getMaxElevation();
+    std::printf("  highest point %.0f m with erosion, %.0f m without\n", withRivers, without);
+
+    // This is the coupling that matters: an orogen is limited as much by its
+    // top being stripped off as by its root foundering into the mantle.
+    check(withRivers < without, "rivers hold the mountains down");
+
+    std::printf("  delamination lost %.3e m^3 with erosion, %.3e without\n",
+                eroding.getContinentalLostToDelamination(),
+                pristine.getContinentalLostToDelamination());
 }
 
 void testStratigraphy() {
@@ -580,6 +690,9 @@ int main() {
     testContinentalPlatesAreSlower();
     testPlateMotionEvolves();
     testPlatesReorganise();
+    testErosionConservesRock();
+    testErosionMovesRockDownhill();
+    testErosionLimitsMountains();
     testStratigraphy();
     testRigidRotationPreservesContrast();
     testStepPerformance();

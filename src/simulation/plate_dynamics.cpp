@@ -529,10 +529,10 @@ bool CrustGrid::riftSupercontinent() {
         return false;
     }
 
-    // How much continental crust each plate is carrying, and how much there is
-    // in total.
+    // How much of the planet's surface each plate blankets with continental
+    // crust.
     std::vector<double> continental(plates.size(), 0.0);
-    double planetTotal = 0.0;
+    const double planetTotal = static_cast<double>(cells.size());
     for (size_t i = 0; i < cells.size(); i++) {
         if (cells[i].density >= constants.subductionDensity) {
             continue;
@@ -540,7 +540,6 @@ bool CrustGrid::riftSupercontinent() {
         if (cells[i].plateId < continental.size()) {
             continental[cells[i].plateId] += 1.0;
         }
-        planetTotal += 1.0;
     }
     if (planetTotal <= 0.0) {
         return false;

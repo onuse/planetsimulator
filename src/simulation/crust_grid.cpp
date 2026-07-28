@@ -1001,6 +1001,13 @@ void CrustGrid::stepOnce(float millionYears) {
     continentalDeltaTransport += computeContinentalVolume() - continentalBefore;
 
     reconcileCrust(millionYears);
+
+    // Isostasy before erosion, because rivers need to know which way is
+    // downhill, and that is decided by how the columns float.
+    updateIsostasy();
+    solveSeaLevel();
+    erodeSurface(millionYears);
+
     rebalanceMarkers();
     updateIsostasy();
     solveSeaLevel();

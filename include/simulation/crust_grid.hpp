@@ -141,9 +141,19 @@ public:
         // plate and the mantle beneath cannot shed its heat, the region domes
         // up, and the interior goes into tension until it rifts. This is why
         // supercontinents do not last - Pangaea assembled and broke apart, and
-        // Rodinia before it. Expressed as the share of all the planet's
-        // continental crust that one plate has to hold to become unstable.
-        float supercontinentFraction = 0.40f;
+        // Rodinia before it.
+        //
+        // Measured as the fraction of the planet's surface the plate's
+        // continental crust covers, because what traps the heat is the size of
+        // the blanket - how far the interior sits from any edge. This was
+        // originally a share of all continental crust, which erosion exposed
+        // as the wrong measure: sediment aprons on passive margins are light
+        // enough to count as continental, so the total grows over time and
+        // every plate's share falls even as the landmasses gather.
+        // Earth's continents cover ~29% of the surface and Pangaea held nearly
+        // all of them in one plate, so a blanket of this size is genuinely a
+        // supercontinent rather than just a large landmass.
+        float supercontinentFraction = 0.30f;
 
         // Below this many cells a fragment is not worth tracking as its own
         // plate and gets absorbed by a neighbour.
@@ -156,6 +166,40 @@ public:
         // A ceiling so a pathological configuration cannot spawn plates
         // without limit.
         int maxPlates = 40;
+
+        // --- Erosion -------------------------------------------------------
+        //
+        // Rivers do the work. Incision follows the stream power law,
+        // E = K A^m S^n, which is the standard geomorphic transport law: the
+        // more water passing through and the steeper the ground, the faster
+        // the channel cuts down.
+        //
+        // At 17 km cells this resolves continental denudation rather than
+        // individual rivers - a "channel" here is a whole drainage basin.
+
+        // Erodibility. This is a measured field quantity that spans orders of
+        // magnitude with rock type and rainfall; the value here is set so that
+        // mean continental denudation lands near the 30-100 m/My that is
+        // actually observed, which is the same kind of calibration as the
+        // asthenosphere viscosity.
+        float streamPowerCoefficient = 0.03f;  // K
+        float drainageExponent = 0.5f;         // m, the usual value
+        float slopeExponent = 1.0f;            // n, the usual value
+
+        // How much sediment a river can carry relative to what it is cutting.
+        // High enough that steep rivers carry their load through to the sea,
+        // low enough that it drops out when the gradient flattens - which is
+        // what builds floodplains, deltas and continental shelves.
+        float transportCapacity = 25.0f;
+
+        // Hillslope creep. Real diffusivity is 0.01-0.1 m^2/yr, which matters
+        // at the scale of a hillside and is nearly invisible across a 17 km
+        // cell; it is here for completeness rather than effect.
+        float hillslopeDiffusivity = 5.0e4f;   // m^2/My
+
+        // Multiplies erosion everywhere. This is where climate plugs in: it
+        // should become a precipitation field rather than one number.
+        float precipitation = 1.0f;
     };
 
     // Surface gravity, derived from radius and mean density rather than
@@ -218,6 +262,20 @@ public:
             case RockType::Andesite: return 2800.0f;
             case RockType::Sediment: return 2400.0f;
             default:                 return 2900.0f;
+        }
+    }
+
+    // How readily each rock erodes, relative to granite. Loose sediment goes
+    // first; crystalline basement resists. This is the stratigraphy earning
+    // its keep - what a column is made of decides how fast it wears down, so
+    // stripping a soft cover off hard basement slows erosion by itself.
+    static float rockErodibility(RockType rock) {
+        switch (rock) {
+            case RockType::Sediment: return 3.0f;
+            case RockType::Basalt:   return 1.3f;
+            case RockType::Andesite: return 1.1f;
+            case RockType::Granite:  return 1.0f;
+            default:                 return 1.0f;
         }
     }
 
@@ -413,6 +471,11 @@ public:
     double getContinentalLostToDelamination() const { return continentalLostToDelamination; }
     double getContinentalCreatedByArcs() const { return continentalCreatedByArcs; }
 
+    // Rock removed by erosion and sediment laid back down, in m^3. These must
+    // agree: erosion moves material, it does not destroy it.
+    double getErodedVolume() const { return erodedVolume; }
+    double getDepositedVolume() const { return depositedVolume; }
+
     // Diagnostics
     struct Stats {
         float landFraction = 0.0f;
@@ -481,6 +544,8 @@ private:
     double continentalDeltaTransport = 0.0;
     uint32_t splitCount = 0;
     uint32_t weldCount = 0;
+    double erodedVolume = 0.0;
+    double depositedVolume = 0.0;
 
     void buildGeodesicGrid(int subdivisions);
     void buildAccelerator();
@@ -493,6 +558,9 @@ private:
 
     // Break up plates whose driving forces disagree, and weld together plates
     // that have locked in continental collision. Also in plate_dynamics.cpp.
+    // Wear the surface down and move what comes off. In erosion.cpp.
+    void erodeSurface(float dt);
+
     void reorganisePlates();
     bool trySplitPlate(uint16_t plateId);
     bool riftSupercontinent();
