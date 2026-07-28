@@ -48,6 +48,20 @@ public:
         // initial condition, not a target for the finished planet - tectonics
         // moves it from here.
         float initialContinentalFraction = 0.38f;
+
+        // Crust denser than this founders and subducts; lighter crust is too
+        // buoyant to be pulled under, which is why continents survive while
+        // ocean floor is recycled.
+        float subductionDensity = 2850.0f;     // kg/m^3
+
+        // Fraction of subducted crustal volume that comes back as new
+        // continental crust through arc magmatism: the slab dehydrates, the
+        // mantle wedge melts, and andesite is emplaced on the overriding
+        // plate. This is how continents grow, and without it they can only
+        // shrink. The least well constrained number here - Earth's continental
+        // growth is order 1-2 km^3/yr against ~3 km^3/yr subducted, but much
+        // arc crust is itself recycled.
+        float arcProductionRatio = 0.25f;
     };
 
     struct Plate {
@@ -55,10 +69,11 @@ public:
         float angularVelocity = 0.0f;          // radians per million years
         bool oceanic = true;
 
-        // Rotation banked but not yet applied to the grid. A plate creeping a
-        // few kilometres per step would otherwise round to the same cell every
-        // time and never move at all; instead the motion accumulates until it
-        // is worth a cell, then is spent in one go.
+        // Rotation banked but not yet applied to plate membership. Thickness
+        // and density can move a fraction of a cell because they are
+        // continuous; plate identity cannot, because a column belongs to one
+        // plate or to another and never to a blend. So the boundary has to
+        // jump, and the motion is banked until jumping it is justified.
         float pendingRotation = 0.0f;          // radians
     };
 
@@ -125,6 +140,25 @@ public:
     // Mean cell area in m^2, used to turn per-cell sums into volumes.
     float getCellArea() const;
 
+    // Silicate volume returned to the mantle, minus what has been drawn out of
+    // it as melt, since t = 0. Crust volume plus this must equal the starting
+    // crust volume, once advection's numerical leak is accounted for.
+    double getMantleReservoir() const { return mantleReservoir; }
+    double getInitialCrustVolume() const { return initialCrustVolume; }
+
+    // Volume unaccounted for by any process. Transport is a forward scatter
+    // with weights that sum to one, so this should stay at rounding error; if
+    // it ever grows, a process has started leaking.
+    double getAdvectionDrift() const { return advectionDrift; }
+
+    // Where continental crust goes when it stops being continental. Split by
+    // channel so a runaway can be attributed to a process rather than guessed
+    // at: rifting thins it until it founders and floods with basalt, and
+    // over-thickened orogenic roots turn to eclogite and delaminate.
+    double getContinentalLostToRifting() const { return continentalLostToRifting; }
+    double getContinentalLostToDelamination() const { return continentalLostToDelamination; }
+    double getContinentalCreatedByArcs() const { return continentalCreatedByArcs; }
+
     // Diagnostics
     struct Stats {
         float landFraction = 0.0f;
@@ -132,9 +166,23 @@ public:
         float minElevation = 0.0f;
         float maxElevation = 0.0f;
         float meanOceanicAge = 0.0f;
-        float crustVolume = 0.0f;   // m^3, should be near-conserved
+        float crustVolume = 0.0f;         // m^3
+        float continentalVolume = 0.0f;   // m^3 of buoyant crust
+        float oceanicVolume = 0.0f;       // m^3 of dense crust
     };
     Stats computeStats() const;
+
+    // Total crustal volume in m^3.
+    double computeCrustVolume() const;
+
+    // Volume of buoyant (continental) crust in m^3.
+    double computeContinentalVolume() const;
+
+    // Change in continental volume attributable to transport. Reclassification
+    // has no explicit channel - a column can drift across the compositional
+    // threshold without any process reporting a loss - so the only reliable
+    // way to attribute it is to measure the phase directly.
+    double getContinentalDeltaFromTransport() const { return continentalDeltaTransport; }
 
 private:
     float planetRadius;
@@ -160,13 +208,21 @@ private:
     float maxElevation = 0.0f;
     uint64_t version = 0;
 
+    double mantleReservoir = 0.0;
+    double initialCrustVolume = 0.0;
+    double advectionDrift = 0.0;
+    double continentalLostToRifting = 0.0;
+    double continentalLostToDelamination = 0.0;
+    double continentalCreatedByArcs = 0.0;
+    double continentalDeltaTransport = 0.0;
+
     void buildGeodesicGrid(int subdivisions);
     void buildAccelerator();
     void assignPlates(int plateCount);
     void seedInitialCrust();
 
-    void advect(float dt);
-    void applyStrain(float dt);
+    void transportCrust(float dt);
+    void migratePlateBoundaries(float dt);
     void diffuseThermalAge(float dt);
     void updateIsostasy();
     void solveSeaLevel();

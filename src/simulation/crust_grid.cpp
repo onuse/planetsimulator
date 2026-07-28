@@ -73,6 +73,27 @@ CrustGrid::CrustGrid(float planetRadius, uint32_t seed, int subdivisions, int pl
     seedInitialCrust();
     updateIsostasy();
     solveSeaLevel();
+    initialCrustVolume = computeCrustVolume();
+}
+
+double CrustGrid::computeCrustVolume() const {
+    const double cellArea = getCellArea();
+    double volume = 0.0;
+    for (const Cell& cell : cells) {
+        volume += static_cast<double>(cell.thickness) * cellArea;
+    }
+    return volume;
+}
+
+double CrustGrid::computeContinentalVolume() const {
+    const double cellArea = getCellArea();
+    double volume = 0.0;
+    for (const Cell& cell : cells) {
+        if (cell.density < constants.subductionDensity) {
+            volume += static_cast<double>(cell.thickness) * cellArea;
+        }
+    }
+    return volume;
 }
 
 // ============================================================================
@@ -445,11 +466,210 @@ float CrustGrid::cellSpacing() const {
     return std::sqrt(getCellArea());
 }
 
-void CrustGrid::advect(float dt) {
-    // Bank this step's rotation for every plate. A plate only actually moves
-    // once it has banked enough to carry crust into the next cell; below that
-    // the nearest-cell lookup would return the cell itself and the plate would
-    // sit still forever no matter how long the simulation ran.
+void CrustGrid::transportCrust(float dt) {
+    const Constants& k = constants;
+    const float cellArea = getCellArea();
+    const int n = static_cast<int>(cells.size());
+
+    // Plates move by this step's rotation, however small. Weighted scatter
+    // handles sub-cell displacement naturally - the weights shift a little and
+    // a little material flows - so there is no need to bank motion until it is
+    // worth a whole cell. Banking it made convergent margins receive an entire
+    // column in one jump, doubling their crust instantly and blowing straight
+    // through the delamination limit, which is orogeny by discretisation
+    // rather than by tectonics.
+
+    // Forward scatter. Each column is carried by its plate to wherever the
+    // plate takes it and deposited there, spread over the destination
+    // neighbourhood by weights that sum to one.
+    //
+    // This is the opposite of asking each cell where its material came from,
+    // and the difference matters: a backward gather has no way to guarantee
+    // that every column is collected exactly once, so material silently
+    // vanishes at margins - which is what was dissolving the continents. Here
+    // conservation is structural. Every column is deposited, once, in full.
+    //
+    // It also means ridges and trenches stop being things we detect. Where
+    // plates pull apart, less material arrives than left, and the column
+    // thins. Where they converge, more arrives than can stand, and the excess
+    // founders. Spreading and subduction are what transport does, not rules
+    // laid on top of it.
+    std::vector<double> volume(cells.size(), 0.0);
+    std::vector<double> mass(cells.size(), 0.0);
+    std::vector<double> ageVolume(cells.size(), 0.0);
+    std::vector<double> plateWeight(cells.size(), 0.0);
+    std::vector<uint16_t> plateVote(cells.size(), 0);
+
+    std::vector<int> stencil;
+    std::vector<double> weights;
+    stencil.reserve(8);
+    weights.reserve(8);
+
+    for (int i = 0; i < n; i++) {
+        const Cell& cell = cells[i];
+        const Plate& plate = plates[cell.plateId];
+
+        const glm::vec3 destination =
+            rotateAbout(cell.position, plate.eulerPole, plate.angularVelocity * dt);
+
+        const int landing = findNearestCell(destination);
+        if (landing < 0) {
+            continue;
+        }
+
+        // Spread over the landing cell and its neighbours so that a rotation
+        // of a fraction of a cell does not quantise into spurious holes and
+        // pile-ups across the interior of an otherwise rigid plate.
+        stencil.clear();
+        weights.clear();
+        double weightTotal = 0.0;
+
+        const auto consider = [&](int index) {
+            const float cosAngle =
+                glm::clamp(glm::dot(cells[index].position, destination), -1.0f, 1.0f);
+            const float angle = std::acos(cosAngle);
+            const double weight = 1.0 / (static_cast<double>(angle) * angle + 1e-9);
+            stencil.push_back(index);
+            weights.push_back(weight);
+            weightTotal += weight;
+        };
+
+        consider(landing);
+        for (int m = 0; m < neighbourCount(landing); m++) {
+            consider(neighbourAt(landing, m));
+        }
+        if (weightTotal <= 0.0) {
+            continue;
+        }
+
+        const double columnVolume = cell.thickness;
+        for (size_t s = 0; s < stencil.size(); s++) {
+            const int j = stencil[s];
+            const double fraction = weights[s] / weightTotal;
+            const double share = columnVolume * fraction;
+
+            volume[j] += share;
+            mass[j] += share * cell.density;
+            ageVolume[j] += share * cell.age;
+
+            // Plate identity is categorical, so it is voted on by mass rather
+            // than averaged - averaging plate numbers is meaningless.
+            if (share > plateWeight[j]) {
+                plateWeight[j] = share;
+                plateVote[j] = cell.plateId;
+            }
+        }
+    }
+
+    double toMantle = 0.0;
+    double fromMantle = 0.0;
+    std::vector<float> arcPending(cells.size(), 0.0f);
+
+    for (int i = 0; i < n; i++) {
+        Cell& cell = cells[i];
+
+        if (volume[i] <= 0.0) {
+            // Nothing arrived at all. The plates opened a hole here, and it
+            // fills with mantle melt.
+            fromMantle += static_cast<double>(k.oceanicThickness) * cellArea;
+            cell.thickness = k.oceanicThickness;
+            cell.density = k.oceanicDensity;
+            cell.age = 0.0f;
+            continue;
+        }
+
+        float thickness = static_cast<float>(volume[i]);
+        float density = static_cast<float>(mass[i] / volume[i]);
+        float age = static_cast<float>(ageVolume[i] / volume[i]);
+        cell.plateId = plateVote[i];
+
+        density = glm::clamp(density, k.continentalDensity, k.oceanicDensity);
+
+        // How much crust this column can support. Dense ocean floor founders
+        // rather than stacking, which is why trenches are deep and narrow;
+        // buoyant crust cannot be pulled under and piles into an orogen.
+        const bool buoyant = density < k.subductionDensity;
+        const float capacity = buoyant ? k.maxCrustThickness : k.oceanicThickness * 1.6f;
+
+        if (thickness > capacity) {
+            const float excess = thickness - capacity;
+            toMantle += static_cast<double>(excess) * cellArea;
+            if (buoyant) {
+                continentalLostToDelamination += static_cast<double>(excess) * cellArea;
+            } else {
+                // A descending slab dehydrates and melts the wedge above it.
+                // The arc it builds is the only source of new continental
+                // crust; without it continents can only ever shrink.
+                arcPending[i] = excess * k.arcProductionRatio;
+            }
+            thickness = capacity;
+        }
+
+        if (thickness < k.oceanicThickness) {
+            // The column was stretched thinner than crust can be. Mantle melt
+            // floods the gap and freezes as new basaltic seafloor.
+            if (buoyant) {
+                continentalLostToRifting += static_cast<double>(thickness) * cellArea;
+            }
+            fromMantle += static_cast<double>(k.oceanicThickness - thickness) * cellArea;
+            thickness = k.oceanicThickness;
+            density = k.oceanicDensity;
+            age = 0.0f;
+        }
+
+        cell.thickness = thickness;
+        cell.density = density;
+        cell.age = age + dt;
+    }
+
+    // Emplace arc crust on the most buoyant neighbour of each subducting cell,
+    // which is where the volcanic arc actually builds on the overriding plate.
+    for (int i = 0; i < n; i++) {
+        if (arcPending[i] <= 0.0f) {
+            continue;
+        }
+        int target = -1;
+        float lowestDensity = cells[i].density;
+        for (int m = 0; m < neighbourCount(i); m++) {
+            const int j = neighbourAt(i, m);
+            if (cells[j].density < lowestDensity) {
+                lowestDensity = cells[j].density;
+                target = j;
+            }
+        }
+        if (target < 0) {
+            target = i;
+        }
+
+        Cell& receiver = cells[target];
+        const float arc = arcPending[i];
+        const float newThickness = std::min(receiver.thickness + arc, k.maxCrustThickness);
+        const float added = newThickness - receiver.thickness;
+        if (added <= 0.0f) {
+            continue;
+        }
+
+        // Andesite, so the column gets lighter in proportion to how much of it
+        // arrived, and its thermal clock partly resets.
+        const float totalMass = receiver.thickness * receiver.density + added * k.continentalDensity;
+        receiver.thickness = newThickness;
+        receiver.density = glm::clamp(totalMass / newThickness,
+                                      k.continentalDensity, k.oceanicDensity);
+        receiver.age *= (1.0f - glm::clamp(added / newThickness, 0.0f, 1.0f));
+
+        fromMantle += static_cast<double>(added) * cellArea;
+        continentalCreatedByArcs += static_cast<double>(added) * cellArea;
+    }
+
+    mantleReservoir += toMantle - fromMantle;
+}
+
+void CrustGrid::migratePlateBoundaries(float dt) {
+    // Plate membership is categorical, so it cannot be scattered with weights
+    // the way thickness is - averaging plate numbers is meaningless, and a
+    // sub-cell rotation would leave every column voting for itself and the
+    // boundaries frozen in place forever. Bank the rotation instead and move
+    // the boundary a whole cell once a plate has carried it that far.
     const float threshold = cellSpacing() * 0.5f / planetRadius;  // radians
 
     std::vector<bool> moving(plates.size(), false);
@@ -465,158 +685,30 @@ void CrustGrid::advect(float dt) {
         return;
     }
 
-    // Semi-Lagrangian: the grid is fixed, so for each cell ask where the crust
-    // now sitting there came from, and copy that column forward. Sampling by
-    // nearest cell rather than interpolating keeps plate boundaries sharp -
-    // interpolation would smear plate identity across every margin.
-    std::vector<Cell> next = cells;
+    const int n = static_cast<int>(cells.size());
+    std::vector<uint16_t> next(cells.size());
 
-    for (size_t i = 0; i < cells.size(); i++) {
-        const Cell& cell = cells[i];
-        const Plate& plate = plates[cell.plateId];
-        if (!moving[cell.plateId]) {
+    for (int i = 0; i < n; i++) {
+        const uint16_t owner = cells[i].plateId;
+        if (!moving[owner]) {
+            next[i] = owner;
             continue;
         }
-
-        // Trace back along the rotation this plate has banked.
-        const glm::vec3 source = rotateAbout(cell.position, plate.eulerPole,
-                                             -plate.pendingRotation);
+        // Which column was standing here before this plate carried it along.
+        const glm::vec3 source =
+            rotateAbout(cells[i].position, plates[owner].eulerPole, -plates[owner].pendingRotation);
         const int from = findNearestCell(source);
-        if (from < 0) {
-            continue;
-        }
-
-        // Only inherit material from crust on the same plate; otherwise this
-        // cell is at a margin and what happens there is the strain step's job.
-        if (cells[from].plateId == cell.plateId) {
-            // Interpolate the continuous fields over the source neighbourhood.
-            // Taking the nearest cell's values alone quantises how far crust
-            // appears to move - a plate creeping a fraction of a cell either
-            // jumps a whole cell or nothing - which scrambles seafloor age and
-            // shows up as a mottle across the ocean once isostasy turns age
-            // into depth. Plate identity is categorical and stays nearest.
-            double weightSum = 0.0;
-            double thicknessSum = 0.0;
-            double densitySum = 0.0;
-            double ageSum = 0.0;
-
-            auto accumulate = [&](int index) {
-                if (cells[index].plateId != cell.plateId) {
-                    return;
-                }
-                const float cosAngle =
-                    glm::clamp(glm::dot(cells[index].position, source), -1.0f, 1.0f);
-                const float angle = std::acos(cosAngle);
-                const double weight = 1.0 / (static_cast<double>(angle) * angle + 1e-9);
-                weightSum += weight;
-                thicknessSum += weight * cells[index].thickness;
-                densitySum += weight * cells[index].density;
-                ageSum += weight * cells[index].age;
-            };
-
-            accumulate(from);
-            for (int k = 0; k < neighbourCount(from); k++) {
-                accumulate(neighbourAt(from, k));
-            }
-
-            if (weightSum > 0.0) {
-                next[i].thickness = static_cast<float>(thicknessSum / weightSum);
-                next[i].density = static_cast<float>(densitySum / weightSum);
-                next[i].age = static_cast<float>(ageSum / weightSum);
-            }
-        }
-
-        // Plate identity advects too, so boundaries actually travel and the
-        // plate layout is not frozen for all time.
-        next[i].plateId = cells[from].plateId;
+        next[i] = from >= 0 ? cells[from].plateId : owner;
     }
 
-    cells.swap(next);
+    for (int i = 0; i < n; i++) {
+        cells[i].plateId = next[i];
+    }
 
-    // Spend the rotation that was just applied.
     for (size_t p = 0; p < plates.size(); p++) {
         if (moving[p]) {
             plates[p].pendingRotation = 0.0f;
         }
-    }
-}
-
-void CrustGrid::applyStrain(float dt) {
-    const Constants& k = constants;
-
-    // Strain rate along each edge, from the relative velocity of the two
-    // columns. Because plate interiors are rigid, this is near zero except at
-    // plate boundaries - the boundaries do not need to be found explicitly,
-    // they fall out of the velocity field.
-    std::vector<float> strain(cells.size(), 0.0f);
-
-    for (size_t i = 0; i < cells.size(); i++) {
-        const glm::vec3 pi = cells[i].position;
-        const glm::vec3 vi = plateVelocityAt(pi, cells[i].plateId);
-
-        float total = 0.0f;
-        int count = 0;
-        for (int n = 0; n < neighbourCount(static_cast<int>(i)); n++) {
-            const int j = neighbourAt(static_cast<int>(i), n);
-            const glm::vec3 pj = cells[j].position;
-            const glm::vec3 vj = plateVelocityAt(pj, cells[j].plateId);
-
-            const glm::vec3 separation = (pj - pi) * planetRadius;
-            const float distance = glm::length(separation);
-            if (distance < 1e-3f) {
-                continue;
-            }
-            const glm::vec3 direction = separation / distance;
-
-            // Positive: neighbours pulling apart. Negative: converging.
-            total += glm::dot(vj - vi, direction) / distance;
-            count++;
-        }
-        strain[static_cast<size_t>(i)] = count > 0 ? total / static_cast<float>(count) : 0.0f;
-    }
-
-    for (size_t i = 0; i < cells.size(); i++) {
-        Cell& cell = cells[i];
-        const float s = strain[i];
-
-        const float oceanicFraction = glm::clamp(
-            (cell.density - k.continentalDensity) / (k.oceanicDensity - k.continentalDensity),
-            0.0f, 1.0f);
-        const float continentality = 1.0f - oceanicFraction;
-
-        if (s > 0.0f) {
-            // Extension thins the crust. Rift a continent for long enough and
-            // it necks down to oceanic thickness and becomes a new ocean.
-            cell.thickness *= std::max(0.0f, 1.0f - s * dt);
-
-            if (cell.thickness <= k.oceanicThickness) {
-                // Breakup: fresh basalt floods the gap. This is seafloor
-                // spreading, and it is why ridges are young and shallow.
-                cell.thickness = k.oceanicThickness;
-                cell.density = k.oceanicDensity;
-                cell.age = 0.0f;
-            }
-        } else if (s < 0.0f) {
-            // Convergence. Dense oceanic crust founders and is subducted, so
-            // it does not pile up; buoyant continental crust cannot subduct
-            // and instead thickens into an orogen.
-            cell.thickness *= (1.0f - s * dt * continentality);
-
-            if (oceanicFraction > 0.5f) {
-                // Subducting slab: crust is consumed rather than thickened,
-                // and the overriding margin gains a little accreted material.
-                cell.thickness = std::min(cell.thickness,
-                                          k.oceanicThickness * (1.0f + 0.2f * continentality));
-            } else {
-                // Collision welds crust together and makes it lighter on
-                // average as sediment and granite are incorporated.
-                cell.density = glm::mix(cell.density, k.continentalDensity,
-                                        glm::clamp(-s * dt * 4.0f, 0.0f, 0.2f));
-            }
-        }
-
-        cell.thickness = glm::clamp(cell.thickness, k.minCrustThickness, k.maxCrustThickness);
-        cell.age += dt;
     }
 }
 
@@ -664,8 +756,15 @@ void CrustGrid::step(float millionYears) {
         return;
     }
 
-    advect(millionYears);
-    applyStrain(millionYears);
+    // Semi-Lagrangian transport does not conserve volume. Measure what it
+    // gains or loses rather than folding it into the mantle reservoir: the
+    // physics and the numerical error should not be recorded in the same
+    // place, or a leaking scheme looks like geology.
+    const double continentalBefore = computeContinentalVolume();
+    transportCrust(millionYears);
+    continentalDeltaTransport += computeContinentalVolume() - continentalBefore;
+
+    migratePlateBoundaries(millionYears);
     diffuseThermalAge(millionYears);
     updateIsostasy();
     solveSeaLevel();
@@ -722,6 +821,8 @@ CrustGrid::Stats CrustGrid::computeStats() const {
     double elevationSum = 0.0;
     double ageSum = 0.0;
     double volume = 0.0;
+    double continentalVolume = 0.0;
+    double oceanicVolume = 0.0;
     int land = 0;
     int oceanic = 0;
     stats.minElevation = std::numeric_limits<float>::max();
@@ -742,13 +843,21 @@ CrustGrid::Stats CrustGrid::computeStats() const {
             ageSum += cell.age;
             oceanic++;
         }
-        volume += static_cast<double>(cell.thickness) * cellArea;
+        const double cellVolume = static_cast<double>(cell.thickness) * cellArea;
+        volume += cellVolume;
+        if (cell.density >= constants.subductionDensity) {
+            oceanicVolume += cellVolume;
+        } else {
+            continentalVolume += cellVolume;
+        }
     }
 
     stats.landFraction = static_cast<float>(land) / static_cast<float>(cells.size());
     stats.meanElevation = static_cast<float>(elevationSum / static_cast<double>(cells.size()));
     stats.meanOceanicAge = oceanic > 0 ? static_cast<float>(ageSum / oceanic) : 0.0f;
     stats.crustVolume = static_cast<float>(volume);
+    stats.continentalVolume = static_cast<float>(continentalVolume);
+    stats.oceanicVolume = static_cast<float>(oceanicVolume);
     return stats;
 }
 

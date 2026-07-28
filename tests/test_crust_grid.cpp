@@ -171,29 +171,68 @@ void testPlatesActuallyMove() {
     check(grid.getVersion() == 25, "version tracks steps taken");
 }
 
-void testCrustIsRoughlyConserved() {
-    std::printf("Crust volume stays bounded under long simulation\n");
+// Every gram of crust must be accounted for. Crust is created from mantle melt
+// at ridges and arcs, and returned to the mantle by subduction; nothing else
+// may appear or disappear. This is the check that catches a process quietly
+// leaking material - which is exactly how continents were vanishing.
+void testSilicateBooksBalance() {
+    std::printf("Crust and mantle books balance exactly\n");
     simulation::CrustGrid grid(1000000.0f, 5, 5, 12);
 
-    const float initial = grid.computeStats().crustVolume;
+    const double initial = grid.getInitialCrustVolume();
     for (int i = 0; i < 50; i++) {
         grid.step(2.0f);
     }
-    const float final = grid.computeStats().crustVolume;
 
-    const float ratio = final / initial;
-    std::printf("  crust volume %.3e -> %.3e m^3 (ratio %.3f)\n", initial, final, ratio);
+    const double crust = grid.computeCrustVolume();
+    const double mantle = grid.getMantleReservoir();
+    const double drift = grid.getAdvectionDrift();
 
-    // Crust is created at ridges and destroyed at trenches, so this is not
-    // exactly conserved - but it must not run away in either direction.
-    check(ratio > 0.5f && ratio < 2.0f, "crust volume neither collapses nor explodes");
+    // crust + what went to the mantle - what the transport scheme leaked
+    // must equal what we started with.
+    const double residual = crust + mantle - drift - initial;
+    const double relative = std::fabs(residual) / initial;
 
-    const auto stats = grid.computeStats();
-    std::printf("  land %.1f%%, mean oceanic age %.1f My\n",
-                stats.landFraction * 100.0f, stats.meanOceanicAge);
-    check(stats.landFraction > 0.01f && stats.landFraction < 0.99f,
-          "planet still has both land and ocean after 100 My");
-    check(std::isfinite(stats.meanElevation), "elevations stay finite");
+    std::printf("  initial %.4e, crust %.4e, mantle %.4e, advection drift %.4e\n",
+                initial, crust, mantle, drift);
+    std::printf("  unaccounted residual %.3e (%.2e relative)\n", residual, relative);
+
+    check(relative < 1e-6, "no silicate is unaccounted for");
+
+    // Transport is a forward scatter with weights summing to one, so it should
+    // not leak at all - anything here is a bug, not a tolerance.
+    std::printf("  transport leak %.3e m^3 (%.2e relative)\n",
+                drift, std::fabs(drift) / initial);
+    check(std::fabs(drift) / initial < 1e-9, "transport conserves volume exactly");
+}
+
+void testContinentsPersist() {
+    std::printf("Continents survive because arc magmatism replaces them\n");
+    simulation::CrustGrid grid(1000000.0f, 5, 5, 12);
+
+    const auto before = grid.computeStats();
+    for (int i = 0; i < 100; i++) {
+        grid.step(2.0f);
+    }
+    const auto after = grid.computeStats();
+
+    std::printf("  land %.1f%% -> %.1f%% over %.0f My\n",
+                before.landFraction * 100.0f, after.landFraction * 100.0f,
+                grid.getSimulationTime());
+    std::printf("  continental crust %.3e -> %.3e m^3\n",
+                before.continentalVolume, after.continentalVolume);
+    std::printf("  created by arcs      %.3e m^3\n", grid.getContinentalCreatedByArcs());
+    std::printf("  lost to rifting      %.3e m^3\n", grid.getContinentalLostToRifting());
+    std::printf("  lost to delamination %.3e m^3\n", grid.getContinentalLostToDelamination());
+    std::printf("  net change in transport phase %.3e m^3\n", grid.getContinentalDeltaFromTransport());
+
+    // Continents are consumed at margins and rebuilt by arc magmatism. They
+    // may grow or shrink, but they must not be wiped out - that was the bug.
+    check(after.continentalVolume > before.continentalVolume * 0.5f,
+          "continental crust is not consumed away");
+    check(after.landFraction > 0.08f, "the planet still has substantial land");
+    check(after.landFraction < 0.85f, "the planet has not become all land");
+    check(std::isfinite(after.meanElevation), "elevations stay finite");
 }
 
 void testStepPerformance() {
@@ -220,7 +259,8 @@ int main() {
     testIsostasyPredictsRealElevations();
     testSeaLevelRespondsToCrust();
     testPlatesActuallyMove();
-    testCrustIsRoughlyConserved();
+    testSilicateBooksBalance();
+    testContinentsPersist();
     testStepPerformance();
 
     std::printf("\n");
