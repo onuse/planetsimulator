@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <map>
 #include <cmath>
+#include <limits>
+#include <algorithm>
 
 namespace rendering {
 
@@ -214,57 +216,97 @@ bool VulkanRenderer::generateAdaptiveSphere(octree::OctreePlanet* planet, core::
     std::cout << "Generated " << vertices.size() << " unique vertices, " 
               << indices.size() / 3 << " triangles\n";
     
-    // Now sample terrain and materials from octree
-    std::cout << "Sampling terrain from octree...\n";
-    
+    // Displace the sphere by the terrain field.
+    //
+    // This used to pick displacement from a switch on the voxel's material,
+    // which gave the whole planet exactly six possible elevations - the
+    // terraced contour rings that made continents look like a topographic map.
+    // Sampling the height field directly gives continuous terrain, and it is
+    // the same field the octree voxels were filled from.
+    std::cout << "Displacing mesh from density field...\n";
+
+    const core::DensityField& field = planet->getDensityField();
+    const float seaLevelHeight = field.getSeaLevelHeight();
+    const float maxElevation = std::max(field.getMaxElevation(), 1e-6f);
+    const float maxOceanDepth = std::max(field.getMaxOceanDepth(), 1e-6f);
+
     std::map<int, int> materialCounts;
+    float minHeight = std::numeric_limits<float>::max();
+    float maxHeight = std::numeric_limits<float>::lowest();
+
     for (auto& vertex : vertices) {
-        glm::vec3 normal = glm::normalize(vertex.position);
-        
-        // Sample voxel at this position
-        const octree::Voxel* voxel = planet->getVoxel(vertex.position);
-        
-        float displacement = 0.0f;
-        glm::vec3 color(0.5f, 0.5f, 0.5f);
-        
-        if (voxel) {
-            auto materialID = voxel->getDominantMaterialID();
+        const glm::vec3 normal = glm::normalize(vertex.position);
+        const float terrainHeight = field.getTerrainHeight(normal);
+
+        minHeight = std::min(minHeight, terrainHeight);
+        maxHeight = std::max(maxHeight, terrainHeight);
+
+        // Oceans render as a flat water surface at sea level; the sea floor
+        // below is real geometry but is not what the camera sees from orbit.
+        const bool submerged = terrainHeight < seaLevelHeight;
+        const float surfaceHeight = submerged ? seaLevelHeight : terrainHeight;
+        vertex.position = normal * (planetRadius + surfaceHeight);
+
+        // Colour follows the same field, so shading cannot disagree with shape.
+        const float elevation = terrainHeight - seaLevelHeight;
+
+        glm::vec3 color;
+        core::MaterialID materialID;
+        if (submerged) {
+            // Deeper water reads darker and bluer
+            const float depth = glm::clamp(-elevation / maxOceanDepth, 0.0f, 1.0f);
+            const glm::vec3 water = glm::mix(glm::vec3(0.18f, 0.45f, 0.65f),
+                                             glm::vec3(0.02f, 0.10f, 0.30f), std::sqrt(depth));
+
+            // Blend into pack ice across the margin rather than switching at a
+            // latitude, which draws a straight line across the pole.
+            const float ice = field.getSeaIceCoverage(normal);
+            color = glm::mix(water, glm::vec3(0.86f, 0.90f, 0.94f), ice);
+            materialID = ice > 0.5f ? core::MaterialID::Snow : core::MaterialID::Water;
+
             materialCounts[static_cast<int>(materialID)]++;
-            
-            // Map material to height and color
-            switch(materialID) {
-                case core::MaterialID::Water:
-                    displacement = -100.0f;
-                    color = glm::vec3(0.1f, 0.3f, 0.6f);
-                    break;
-                case core::MaterialID::Sand:
-                    displacement = 10.0f;
-                    color = glm::vec3(0.9f, 0.85f, 0.65f);
-                    break;
-                case core::MaterialID::Grass:
-                    displacement = 50.0f;
-                    color = glm::vec3(0.2f, 0.6f, 0.2f);
-                    break;
-                case core::MaterialID::Rock:
-                    displacement = 150.0f;
-                    color = glm::vec3(0.4f, 0.3f, 0.2f);
-                    break;
-                case core::MaterialID::Snow:
-                    displacement = 300.0f;
-                    color = glm::vec3(0.95f, 0.95f, 0.98f);
-                    break;
-                default:
-                    displacement = 0.0f;
-                    color = glm::vec3(0.7f, 0.7f, 0.8f);
-                    break;
-            }
+            vertex.color = color;
+            continue;
         }
-        
-        // Apply displacement
-        vertex.position = vertex.position + normal * displacement;
+
+        // Snow is decided by the shared snow line, which drops towards the
+        // poles, rather than by a fixed elevation everywhere.
+        const float snowLine = field.getSnowLineElevation(normal);
+        const float e = elevation / maxElevation;
+
+        if (elevation > snowLine) {
+            const float t = glm::clamp((elevation - snowLine) / (maxElevation * 0.15f), 0.0f, 1.0f);
+            color = glm::mix(glm::vec3(0.62f, 0.62f, 0.63f),
+                             glm::vec3(0.95f, 0.95f, 0.98f), t);
+            materialID = core::MaterialID::Snow;
+        } else if (e < 0.012f) {
+            color = glm::vec3(0.82f, 0.76f, 0.57f);   // beach sand
+            materialID = core::MaterialID::Sand;
+        } else if (e < 0.10f) {
+            const float t = glm::clamp((e - 0.012f) / 0.088f, 0.0f, 1.0f);
+            color = glm::mix(glm::vec3(0.32f, 0.55f, 0.22f),
+                             glm::vec3(0.17f, 0.38f, 0.14f), t);  // grass to forest
+            materialID = core::MaterialID::Grass;
+        } else if (e < 0.30f) {
+            const float t = glm::clamp((e - 0.10f) / 0.20f, 0.0f, 1.0f);
+            color = glm::mix(glm::vec3(0.17f, 0.38f, 0.14f),
+                             glm::vec3(0.44f, 0.36f, 0.27f), t);  // forest to rock
+            materialID = core::MaterialID::Rock;
+        } else {
+            const float t = glm::clamp((e - 0.30f) / 0.25f, 0.0f, 1.0f);
+            color = glm::mix(glm::vec3(0.44f, 0.36f, 0.27f),
+                             glm::vec3(0.55f, 0.53f, 0.50f), t);  // rock to bare stone
+            materialID = core::MaterialID::Rock;
+        }
+
+        materialCounts[static_cast<int>(materialID)]++;
         vertex.color = color;
     }
-    
+
+    std::cout << "Terrain height range: [" << minHeight << ", " << maxHeight
+              << "] m (max elevation " << maxElevation
+              << " m, max ocean depth " << maxOceanDepth << " m)\n";
+
     // Print material distribution
     std::cout << "Material distribution:\n";
     for (const auto& [matId, count] : materialCounts) {

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <functional>
 #include "mixed_voxel.hpp"
+#include "density_field.hpp"
 
 namespace octree {
 
@@ -121,6 +122,11 @@ public:
     float getRadius() const { return radius; }
     int getMaxDepth() const { return maxDepth; }
     const OctreeNode* getRoot() const { return root.get(); }
+
+    // The terrain field this planet was built from. Renderers sample the same
+    // field so mesh geometry and voxel materials cannot drift apart.
+    core::DensityField& getDensityField() { return densityField; }
+    const core::DensityField& getDensityField() const { return densityField; }
     
 private:
     float radius;
@@ -136,14 +142,16 @@ private:
     };
     std::vector<Plate> plates;
     
-    // Helper functions  
+    // Helper functions
     void generateTestSphere(OctreeNode* node, int depth);
-    float sampleImprovedTerrain(const glm::vec3& sphereNormal) const;
+    // Removed: sampleImprovedTerrain() - replaced by DensityField, which is
+    // 3D noise on the sphere rather than sin/cos in lat/long
     // Removed: generateSphere() - functionality in setMaterials()
     bool isInsidePlanet(const glm::vec3& position) const;
     float getDistanceFromSurface(const glm::vec3& position) const;
-    
+
     uint32_t seed = 42;
+    core::DensityField densityField;
 };
 
 } // namespace octree

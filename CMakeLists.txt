@@ -90,15 +90,9 @@ FetchContent_Declare(
 # stb is included locally in include/stb_image_write.h
 # No need to fetch it
 
-# FastNoise2 (for terrain generation)
-FetchContent_Declare(
-    FastNoise2
-    GIT_REPOSITORY https://github.com/Auburn/FastNoise2.git
-    GIT_TAG master
-    GIT_SHALLOW TRUE
-)
-set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "" FORCE)
-set(FASTNOISE2_TESTS OFF CACHE BOOL "" FORCE)
+# FastNoise2 was fetched and linked here but never referenced by any source
+# file - terrain noise lives in core::DensityField. Removed; if bulk SIMD noise
+# is needed later, add it back with an actual call site.
 
 # Dear ImGui
 FetchContent_Declare(
@@ -109,7 +103,7 @@ FetchContent_Declare(
 )
 
 # Make dependencies available
-FetchContent_MakeAvailable(glfw glm FastNoise2 imgui)
+FetchContent_MakeAvailable(glfw glm imgui)
 
 # Vulkan's clip space uses a [0, 1] depth range; GLM defaults to OpenGL's
 # [-1, 1]. Without this, glm::perspective() maps the near half of the frustum
@@ -146,7 +140,6 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         glfw
         glm::glm
-        FastNoise
 )
 
 # Shader compilation
@@ -738,6 +731,21 @@ set_target_properties(test_planet_math PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
 add_test(NAME PlanetMath COMMAND test_planet_math)
+
+# DensityField - the terrain source of truth
+add_executable(test_density_field
+    tests/test_density_field.cpp
+    src/core/density_field.cpp
+)
+target_include_directories(test_density_field PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${glm_SOURCE_DIR}
+)
+target_link_libraries(test_density_field PRIVATE glm::glm)
+set_target_properties(test_density_field PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+add_test(NAME DensityField COMMAND test_density_field)
 
 # Test: Face boundary alignment
 # FIXED: The test now uses correct UV parameterization for shared edges
