@@ -43,6 +43,34 @@ public:
     void setMode(CameraMode mode);
     CameraMode getMode() const { return mode; }
     
+    // Dragging the planet itself.
+    //
+    // Orbiting by accumulating azimuth and elevation is not what a hand on a
+    // globe does. It rotates about the world's vertical axis rather than the
+    // screen's, so how far the surface travels for a given drag depends on
+    // where the camera happens to be - near the poles it spins in place - and
+    // the direction the ground moves stops matching the direction of the drag.
+    //
+    // Instead: find the point of the planet under the cursor when the drag
+    // starts, and every frame afterwards rotate the camera so that same point
+    // is under the cursor again. The ground then follows the mouse exactly,
+    // at every latitude and any zoom, because it is the same question being
+    // asked each frame rather than an angle being accumulated.
+    //
+    // Both arguments are unit directions from the planet centre, as returned
+    // by pickSphere.
+    void dragSurface(const glm::vec3& fromDirection, const glm::vec3& toDirection);
+
+    // World-space direction of the ray through a pixel.
+    glm::vec3 rayDirection(const glm::vec2& pixel) const;
+
+    // Where the ray through a pixel meets the planet, as a unit direction from
+    // its centre. Off the limb there is no intersection, so this returns the
+    // nearest point on the silhouette instead - which keeps a drag going
+    // smoothly when the cursor runs off the edge of the planet rather than
+    // dropping it. Returns false only if the camera is inside the sphere.
+    bool pickSphere(const glm::vec2& pixel, float radius, glm::vec3& outDirection) const;
+
     // Planet-aware functions
     void alignToPlanetSurface(const glm::vec3& planetCenter, float planetRadius);
     void clampToMinimumAltitude(const glm::vec3& planetCenter, float planetRadius, float minAltitude);
@@ -76,8 +104,13 @@ public:
     // Getters for matrices
     const glm::mat4& getViewMatrix() const { return viewMatrix; }
     const glm::mat4& getProjectionMatrix() const { return projectionMatrix; }
+    // Same convention as the no-argument version, including the Y flip for
+    // Vulkan clip space. It did not used to, which made two functions of the
+    // same name disagree about which way up the world was.
     glm::mat4 getProjectionMatrix(float aspect) const {
-        return glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
+        glm::mat4 projection = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
+        projection[1][1] *= -1.0f;
+        return projection;
     }
     glm::mat4 getViewProjectionMatrix() const { return projectionMatrix * viewMatrix; }
     
@@ -132,8 +165,16 @@ private:
     
     // Orbital mode parameters
     float orbitDistance = 10000.0f;  // Will be set based on planet size
-    float orbitAzimuth = 0.0f;          // Horizontal angle (radians)
-    float orbitElevation = 0.0f;        // Vertical angle (radians)
+    // Where the camera sits on its orbit, as a rotation rather than a pair of
+    // angles: the camera is at orbitRotation * +Z, with orbitRotation * +Y
+    // overhead. Angles have a singularity at the poles that a rotation does
+    // not, and dragging the surface composes rotations directly - there is no
+    // pair of angles that expresses "rotate about this arbitrary axis".
+    glm::quat orbitRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+
+    // The orbit rotation that places the camera along a given direction from
+    // the orbit centre, keeping north as close to overhead as possible.
+    static glm::quat orbitRotationLookingFrom(const glm::vec3& direction);
     glm::vec3 orbitCenter = glm::vec3(0.0f); // Usually planet center
     
     // Free fly mode parameters

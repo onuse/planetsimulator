@@ -334,6 +334,12 @@ private:
         float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
         lastTime = currentTime;
         
+        // The point of the planet the mouse grabbed, held for as long as the
+        // button is down. A unit direction from the centre, so it stays valid
+        // however far the camera then moves.
+        static glm::vec3 dragAnchor(0.0f);
+        static bool dragAnchorValid = false;
+
         // Base movement speed - adjust based on camera altitude
         float moveSpeed = 1000.0f; // meters per second
         float altitude = camera.getAltitude(glm::vec3(0, 0, 0), config.radius);
@@ -370,12 +376,27 @@ private:
             if (input.keys[GLFW_KEY_E]) camera.moveUp(frameMoveSpeed);
         }
         
-        // Sphere rotation with mouse (left-click drag) - orbital camera mode
-        if (!imguiWantsMouse && input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
-            float sensitivity = 0.002f; // Radians per pixel
-            // Orbit the camera around the sphere (effectively rotating the view)
-            // Note: Y-axis inverted for natural mouse control (drag up = rotate up)
-            camera.orbit(-input.mouseDelta.x * sensitivity, -input.mouseDelta.y * sensitivity);
+        // Left-drag turns the planet by the point under the cursor.
+        //
+        // The old version fed the mouse delta into azimuth and elevation with
+        // a sensitivity in radians per pixel. That has no correct value: the
+        // ground travels a distance that depends on zoom and on latitude, so
+        // whatever suits one view is wrong in the next. Anchoring to the
+        // surface removes the constant entirely - the ground moves exactly as
+        // far as the cursor does, because that is what is being solved for.
+        const bool dragging = !imguiWantsMouse && input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT];
+        if (dragging) {
+            glm::vec3 under;
+            if (camera.pickSphere(input.mousePos, config.radius, under)) {
+                if (!dragAnchorValid) {
+                    dragAnchor = under;         // grabbed here
+                    dragAnchorValid = true;
+                } else {
+                    camera.dragSurface(under, dragAnchor);
+                }
+            }
+        } else {
+            dragAnchorValid = false;
         }
         
         // Camera rotation with mouse (right-click drag) - only if ImGui doesn't want mouse

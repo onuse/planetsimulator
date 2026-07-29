@@ -83,15 +83,17 @@ void Camera::update(float deltaTime) {
 void Camera::orbit(float deltaAzimuth, float deltaElevation) {
     if (mode != CameraMode::Orbital) return;
     
-    orbitAzimuth += deltaAzimuth * rotationSpeed;
-    orbitElevation += deltaElevation * rotationSpeed;
-    
-    // Clamp elevation to prevent gimbal lock
-    orbitElevation = clamp(orbitElevation, -1.5f, 1.5f); // ~+-85 degrees
-    
-    // Keep azimuth in reasonable range
-    while (orbitAzimuth > static_cast<float>(M_PI * 2.0)) orbitAzimuth -= static_cast<float>(M_PI * 2.0);
-    while (orbitAzimuth < 0.0f) orbitAzimuth += static_cast<float>(M_PI * 2.0);
+    // Both rotations are about the camera's own axes rather than the world's,
+    // so a drag moves the surface in the direction of the drag wherever the
+    // camera is - which the world-vertical version stopped doing near the
+    // poles. Kept for keyboard and scripted use; dragSurface() is what the
+    // mouse goes through.
+    const glm::vec3 localUp = orbitRotation * glm::vec3(0.0f, 1.0f, 0.0f);
+    const glm::vec3 localRight = orbitRotation * glm::vec3(1.0f, 0.0f, 0.0f);
+
+    orbitRotation = glm::angleAxis(deltaAzimuth * rotationSpeed, localUp) * orbitRotation;
+    orbitRotation = glm::angleAxis(deltaElevation * rotationSpeed, localRight) * orbitRotation;
+    orbitRotation = glm::normalize(orbitRotation);
 }
 
 void Camera::zoom(float delta) {
@@ -203,9 +205,8 @@ void Camera::setPosition(const glm::vec3& pos) {
         orbitDistance = glm::length(position - orbitCenter);
         
         if (orbitDistance > 0.001f) {
-            glm::vec3 dir = glm::normalize(position - orbitCenter);
-            orbitElevation = std::asin(dir.y);
-            orbitAzimuth = std::atan2(dir.x, dir.z);
+            orbitRotation = orbitRotationLookingFrom(
+                glm::normalize(position - orbitCenter));
         }
         
         util::vlog() << "[CAMERA] setPosition in Orbital mode: orbitDistance=" << orbitDistance 
@@ -258,9 +259,8 @@ void Camera::setMode(CameraMode newMode) {
         orbitDistance = glm::length(position - orbitCenter);
         
         if (orbitDistance > 0.001f) {
-            glm::vec3 dir = glm::normalize(position - orbitCenter);
-            orbitElevation = std::asin(dir.y);
-            orbitAzimuth = std::atan2(dir.x, dir.z);
+            orbitRotation = orbitRotationLookingFrom(
+                glm::normalize(position - orbitCenter));
         }
     } else if (newMode == CameraMode::FreeFly) {
         // Switch to free fly: calculate orientation from current view
@@ -554,6 +554,23 @@ void Camera::updateVectors() {
         forward = -rotMatrix[2]; // -Z is forward in OpenGL/Vulkan
         right = rotMatrix[0];     // X is right
         up = rotMatrix[1];        // Y is up
+    } else if (mode == CameraMode::Orbital) {
+        // Overhead comes from the orbit rotation, which is the only thing that
+        // knows how the camera has been turned.
+        //
+        // This used to rebuild the basis from world north regardless, which
+        // discarded whatever roll the orbit carried - so dragging the surface
+        // could not track the cursor, because part of the rotation it applied
+        // was thrown away before the next frame's ray was cast. It also had to
+        // special-case looking straight down the axis, where world north is
+        // parallel to the view and the cross product collapses; that switched
+        // reference axis abruptly and snapped the view round as the camera
+        // crossed a pole. Neither problem exists if the orbit's own frame is
+        // used, and there is no pole in it to special-case.
+        forward = glm::normalize(target - position);
+        const glm::vec3 orbitUp = orbitRotation * glm::vec3(0.0f, 1.0f, 0.0f);
+        right = glm::normalize(glm::cross(forward, orbitUp));
+        up = glm::normalize(glm::cross(right, forward));
     } else {
         // Calculate vectors from position and target
         forward = glm::normalize(target - position);
@@ -579,26 +596,94 @@ void Camera::updateViewMatrix() {
     }
 }
 
-void Camera::updateOrbitalPosition() {
-    // Calculate position from spherical coordinates
-    float cosElev = std::cos(orbitElevation);
-    float sinElev = std::sin(orbitElevation);
-    float cosAzim = std::cos(orbitAzimuth);
-    float sinAzim = std::sin(orbitAzimuth);
-    
-    glm::vec3 oldPos = position;
-    position = orbitCenter + glm::vec3(
-        orbitDistance * cosElev * sinAzim,
-        orbitDistance * sinElev,
-        orbitDistance * cosElev * cosAzim
-    );
-    
-    // Debug output if position changed significantly
-    if (glm::length(position - oldPos) > 10.0f) {
-        util::vlog() << "[CAMERA UPDATE] Orbital position updated: dist=" << orbitDistance 
-                  << ", pos=(" << position.x << "," << position.y << "," << position.z << ")" << std::endl;
+glm::quat Camera::orbitRotationLookingFrom(const glm::vec3& direction) {
+    // The rotation taking +Z to this direction, with the camera's overhead as
+    // close to world north as it can be. Degenerate directly above a pole, so
+    // there the reference is swung to +Z instead; any choice is arbitrary
+    // there and this one is at least continuous with the approach to it.
+    const glm::vec3 f = glm::normalize(direction);
+    const glm::vec3 reference =
+        std::abs(f.y) > 0.9999f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+
+    const glm::vec3 r = glm::normalize(glm::cross(reference, f));
+    const glm::vec3 u = glm::cross(f, r);
+    return glm::normalize(glm::quat_cast(glm::mat3(r, u, f)));
+}
+
+glm::vec3 Camera::rayDirection(const glm::vec2& pixel) const {
+    // Pixel to normalised device coordinates. Y is flipped because window
+    // coordinates count down from the top and clip space counts up.
+    const float ndcX = (2.0f * pixel.x / static_cast<float>(viewportWidth)) - 1.0f;
+    const float ndcY = 1.0f - (2.0f * pixel.y / static_cast<float>(viewportHeight));
+
+    const float tanHalfFov = std::tan(glm::radians(fov) * 0.5f);
+    const float aspect = static_cast<float>(viewportWidth) / static_cast<float>(viewportHeight);
+
+    // Built from the camera's own axes rather than by inverting the view
+    // matrix, so this cannot drift out of step with how the view is built.
+    return glm::normalize(forward + right * (ndcX * tanHalfFov * aspect) +
+                          up * (ndcY * tanHalfFov));
+}
+
+bool Camera::pickSphere(const glm::vec2& pixel, float radius, glm::vec3& outDirection) const {
+    const glm::vec3 origin = position;
+    const glm::vec3 dir = rayDirection(pixel);
+
+    const float distanceSquared = glm::dot(origin, origin);
+    if (distanceSquared <= radius * radius) {
+        return false;   // inside the planet; there is no sphere to grab
     }
-    
+
+    // Closest approach of the ray to the centre.
+    const float along = -glm::dot(origin, dir);
+    const glm::vec3 closest = origin + dir * along;
+    const float missDistanceSquared = glm::dot(closest, closest);
+
+    if (missDistanceSquared <= radius * radius) {
+        const float halfChord = std::sqrt(radius * radius - missDistanceSquared);
+        const float hit = along - halfChord;   // near intersection
+        outDirection = glm::normalize(origin + dir * hit);
+        return true;
+    }
+
+    // The ray missed. The closest point of the sphere to it is on the
+    // silhouette, and using that keeps a drag continuous when the cursor
+    // leaves the planet instead of stalling it at the edge.
+    outDirection = glm::normalize(closest);
+    return true;
+}
+
+void Camera::dragSurface(const glm::vec3& fromDirection, const glm::vec3& toDirection) {
+    if (mode != CameraMode::Orbital) {
+        return;
+    }
+
+    const glm::vec3 from = glm::normalize(fromDirection);
+    const glm::vec3 to = glm::normalize(toDirection);
+
+    const float cosAngle = glm::clamp(glm::dot(from, to), -1.0f, 1.0f);
+    if (cosAngle > 0.999999f) {
+        return;   // the cursor has not moved far enough to matter
+    }
+
+    glm::vec3 axis = glm::cross(from, to);
+    const float axisLength = glm::length(axis);
+    if (axisLength < 1e-8f) {
+        return;   // antipodal; the axis is undefined
+    }
+    axis /= axisLength;
+
+    // Rotating the camera by the rotation that takes the point now under the
+    // cursor to the point that was under it when the drag began puts the
+    // grabbed ground back under the cursor. Recomputed from the live camera
+    // every frame rather than integrated, so it cannot drift.
+    const glm::quat delta = glm::angleAxis(std::acos(cosAngle), axis);
+    orbitRotation = glm::normalize(delta * orbitRotation);
+}
+
+void Camera::updateOrbitalPosition() {
+    position = orbitCenter + (orbitRotation * glm::vec3(0.0f, 0.0f, 1.0f)) * orbitDistance;
+    up = orbitRotation * glm::vec3(0.0f, 1.0f, 0.0f);
     target = orbitCenter;
 }
 
@@ -642,8 +727,9 @@ void Camera::printDebugInfo() const {
     
     if (mode == CameraMode::Orbital) {
         util::vlog() << "  Orbit Distance: " << orbitDistance << " m\n";
-        util::vlog() << "  Orbit Azimuth: " << glm::degrees(orbitAzimuth) << " degrees\n";
-        util::vlog() << "  Orbit Elevation: " << glm::degrees(orbitElevation) << " degrees\n";
+        const glm::vec3 dir = orbitRotation * glm::vec3(0.0f, 0.0f, 1.0f);
+        util::vlog() << "  Orbit Latitude: " << glm::degrees(std::asin(dir.y)) << " degrees\n";
+        util::vlog() << "  Orbit Longitude: " << glm::degrees(std::atan2(dir.x, dir.z)) << " degrees\n";
     }
 }
 

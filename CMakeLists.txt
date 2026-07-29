@@ -160,6 +160,7 @@ planet_test(test_materials         tests/test_materials.cpp)          # material
 planet_test(test_planet_math       tests/test_planet_math_simple.cpp) # planet-scale maths
 planet_test(test_mesh_connectivity tests/test_mesh_connectivity.cpp)  # mesh topology
 planet_test(test_chunk_boundaries  tests/test_chunk_boundaries.cpp)   # voxel chunk seams
+planet_test(test_camera_drag       tests/test_camera_drag.cpp)        # dragging the planet
 
 message(STATUS "")
 message(STATUS "=== PlanetSimulator ===")

@@ -161,6 +161,7 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
 
     std::vector<glm::dvec3> world(N * N);
     std::vector<float> elevation(N * N);
+    std::vector<float> smooth(N * N);
 
     double maxRadius = 0.0;
 
@@ -178,6 +179,14 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
             // is real geometry but is not what is being looked at.
             const float surface = std::max(h, seaLevel);
             elevation[j * N + i] = h;
+
+            // Kept separately for colouring the sea. Sub-grid roughness
+            // belongs in the geometry but not in ocean depth: it is invisible
+            // under kilometres of water, and because vertex spacing changes
+            // between levels of detail the same noise is sampled at a
+            // different scale in each one, banding the ocean along the rings
+            // where the level changes.
+            smooth[j * N + i] = field.getLargeScaleElevation(n);
 
             world[j * N + i] = dir * (static_cast<double>(planetRadius) + surface);
             maxRadius = std::max(maxRadius, glm::length(world[j * N + i] - patch.centre));
@@ -230,7 +239,11 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
 
             glm::vec3 colour;
             if (relative < 0.0f) {
-                const float depth = glm::clamp(-relative / maxDepth, 0.0f, 1.0f);
+                // Coastlines come from the full-detail height so the colour
+                // change lands exactly where the geometry meets sea level;
+                // only the depth shading uses the resolved shape.
+                const float depth =
+                    glm::clamp((seaLevel - smooth[index]) / maxDepth, 0.0f, 1.0f);
                 const glm::vec3 water = glm::mix(glm::vec3(0.18f, 0.45f, 0.65f),
                                                  glm::vec3(0.02f, 0.10f, 0.30f),
                                                  std::sqrt(depth));
