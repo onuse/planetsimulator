@@ -444,10 +444,26 @@ private:
         }
         
         // Screenshot with P key
-        if (input.keys[GLFW_KEY_P] && !input.prevKeys[GLFW_KEY_P]) {
-            auto now = std::chrono::steady_clock::now();
-            float elapsed = std::chrono::duration<float>(now - startTime).count();
-            takeScreenshot(elapsed, 0);
+        // P captures. Tapping it takes one frame; holding it takes every frame
+        // until the burst limit, which is the only way to show anything that
+        // happens while the view is moving. A still frame from a camera that
+        // is not moving cannot contain a motion artefact, so asking for one is
+        // asking for the wrong evidence - hold P and drag instead.
+        if (input.keys[GLFW_KEY_P]) {
+            static int burstFrames = 0;
+            constexpr int BURST_LIMIT = 60;
+
+            if (!input.prevKeys[GLFW_KEY_P]) {
+                burstFrames = 0;
+                std::cout << "Capturing (hold P to keep going, " << BURST_LIMIT
+                          << " frames max)\n";
+            }
+            if (burstFrames < BURST_LIMIT) {
+                auto now = std::chrono::steady_clock::now();
+                float elapsed = std::chrono::duration<float>(now - startTime).count();
+                takeScreenshot(elapsed, static_cast<float>(burstFrames));
+                burstFrames++;
+            }
         }
         
         // Surface views. These used to advertise eight modes for data that did

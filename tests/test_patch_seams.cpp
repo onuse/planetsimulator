@@ -49,27 +49,33 @@ double heightAlongEdge(const PatchTree::PatchKey& key, const core::DensityField&
     return std::max(h, field.getSeaLevelHeight());
 }
 
-// The worst distance between a fine patch's edge and the straight line a
-// coarse neighbour draws between the same two points - which is exactly what
-// the skirt has to cover.
+// How far this patch's edge stands off the straight line a coarser neighbour
+// draws across it. That is the gap the skirt has to cover, and it is a
+// different measurement from how well this patch represents the terrain.
+//
+// A neighbour one level coarser has a vertex at every second one of this
+// patch's, and joins them with a chord; two levels coarser, every fourth. The
+// vertices in between are where the two edges part company. Sampling between
+// this patch's own vertices instead - the obvious thing, and what this
+// function did at first - measures what a neighbour one level *finer* would
+// expose, which no skirt on this patch is responsible for, and reports numbers
+// far too small.
 double worstSeamGap(const PatchTree::PatchKey& fine, const core::DensityField& field,
-                    bool alongX) {
+                    bool alongX, int span) {
     double worst = 0.0;
 
-    // Every span between two of the coarse patch's vertices holds one extra
-    // vertex of the fine patch, and that is where they differ most.
-    for (int segment = 0; segment < PatchTree::GRID; segment++) {
+    for (int segment = 0; segment + span <= PatchTree::GRID; segment += span) {
         const double t0 = static_cast<double>(segment) / PatchTree::GRID;
-        const double t1 = static_cast<double>(segment + 1) / PatchTree::GRID;
+        const double t1 = static_cast<double>(segment + span) / PatchTree::GRID;
 
         const double h0 = heightAlongEdge(fine, field, t0, alongX);
         const double h1 = heightAlongEdge(fine, field, t1, alongX);
 
-        for (int k = 1; k < 4; k++) {
-            const double t = t0 + (t1 - t0) * (k / 4.0);
+        for (int k = 1; k < span; k++) {
+            const double t = t0 + (t1 - t0) * (static_cast<double>(k) / span);
             const double actual = heightAlongEdge(fine, field, t, alongX);
-            const double straight = h0 + (h1 - h0) * (k / 4.0);
-            worst = std::max(worst, std::abs(actual - straight));
+            const double chord = h0 + (h1 - h0) * (static_cast<double>(k) / span);
+            worst = std::max(worst, std::abs(actual - chord));
         }
     }
     return worst;
@@ -143,8 +149,8 @@ void testSkirtCoversTheSeam() {
         patch.key = key;
         PatchTree::build(patch, field, PLANET_RADIUS);
 
-        const double gap = std::max(worstSeamGap(key, field, true),
-                                    worstSeamGap(key, field, false));
+        const double gap = std::max(worstSeamGap(key, field, true, 2),
+                                    worstSeamGap(key, field, false, 2));
 
         std::printf("    level %2d: patch %8.0f m across, seam %7.2f m, skirt %8.2f m\n",
                     level, PatchTree::patchWorldSize(key, PLANET_RADIUS), gap,
@@ -173,20 +179,8 @@ void testSkirtSurvivesTwoLevels() {
 
         // A neighbour two levels coarser draws one straight line across four
         // of this patch's spans.
-        double worst = 0.0;
-        for (int segment = 0; segment + 4 <= PatchTree::GRID; segment += 4) {
-            const double t0 = static_cast<double>(segment) / PatchTree::GRID;
-            const double t1 = static_cast<double>(segment + 4) / PatchTree::GRID;
-            const double h0 = heightAlongEdge(key, field, t0, true);
-            const double h1 = heightAlongEdge(key, field, t1, true);
-
-            for (int k = 1; k < 4; k++) {
-                const double t = t0 + (t1 - t0) * (k / 4.0);
-                const double actual = heightAlongEdge(key, field, t, true);
-                const double straight = h0 + (h1 - h0) * (k / 4.0);
-                worst = std::max(worst, std::abs(actual - straight));
-            }
-        }
+        const double worst = std::max(worstSeamGap(key, field, true, 4),
+                                      worstSeamGap(key, field, false, 4));
 
         std::printf("    level %2d: two-level seam %7.2f m, skirt %8.2f m\n",
                     level, worst, patch.skirtDepth);

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <iostream>
 #include <vector>
 
 // Drawing the surface as a quadtree of patches.
@@ -377,6 +378,27 @@ void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
             continue;   // not built yet
         }
         const GpuPatch& gpu = it->second;
+
+        // A patch's geometry has to belong to the key it is filed under. If a
+        // slot is ever written by one patch while another is drawing from it,
+        // or a cache entry outlives the geometry it points at, the result is
+        // ground drawn somewhere it does not belong - which is what detached
+        // fragments of surface look like. The key implies exactly where its
+        // centre should be, so the two can be compared.
+        const glm::dvec3 expectedCentre =
+            PatchTree::patchCentre(key, patchCullPlanetRadius);
+        const double allowed =
+            PatchTree::patchWorldSize(key, patchCullPlanetRadius) * 0.5 + 30000.0;
+        if (glm::length(gpu.centre - expectedCentre) > allowed) {
+            static int reported = 0;
+            if (reported++ < 20) {
+                std::cerr << "[patches] MISPLACED patch face=" << int(key.face)
+                          << " level=" << int(key.level) << " x=" << key.x
+                          << " y=" << key.y << " slot=" << gpu.slot << " off by "
+                          << glm::length(gpu.centre - expectedCentre) << " m\n";
+            }
+            continue;
+        }
 
         if (horizonCulling &&
             glm::dot(gpu.centre, cameraPosition) + gpu.boundingRadius * cameraDistance <

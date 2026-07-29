@@ -298,24 +298,43 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
     // Skirt: drop a copy of each edge vertex inward along its own radius and
     // join it to the edge with a strip of triangles.
     //
-    // How deep it has to hang is set by the terrain, not by the patch. Two
-    // patches meeting at different levels sample the shared edge at different
-    // vertex spacings, and how far their edges then part company depends on
-    // how much the ground rises and falls across them - a flat plain agrees to
-    // within centimetres at any level, a mountain ridge disagrees by hundreds
-    // of metres.
+    // How deep it has to hang is set by how far a coarser neighbour's edge
+    // departs from this one, and nothing else. That neighbour draws a straight
+    // chord between vertices this patch has one or three extra vertices
+    // between, so the gap is the amount this edge bends away from straight -
+    // its second difference - and not its total height, its slope, or the size
+    // of the patch.
     //
-    // This used to be a fixed fraction of the patch width, which reads as
-    // plausible and fails in a very specific way: patches shrink with level
-    // while relief does not. At the top of the tree a patch is a thousand
-    // kilometres across and the skirt is kilometres deep, so everything is
-    // covered; fourteen levels down the patch is under a hundred metres across
-    // and the skirt is a few metres, which a mountainside walks straight
-    // through. That is why the seams held from orbit and opened on approach.
-    const float relief = static_cast<float>(maxSurfaceRadius - minSurfaceRadius);
+    // Getting this wrong is expensive in both directions. Sized from the patch
+    // width it scales the wrong way, because patches shrink with level while
+    // terrain does not, so it is generous from orbit and too thin on approach.
+    // Sized from the patch's total relief it is far too deep - a patch can
+    // climb a kilometre across its width while every step along its edge is
+    // nearly straight - and an over-deep skirt is not free: it is a wall of
+    // ground hanging off every patch edge, and at a grazing angle you see it.
+    float worstBend = 0.0f;
+    const auto measureEdge = [&](int index0, int index1, int index2) {
+        const float chord = 0.5f * (static_cast<float>(glm::length(world[index0])) +
+                                    static_cast<float>(glm::length(world[index2])));
+        worstBend = std::max(worstBend,
+                             std::abs(static_cast<float>(glm::length(world[index1])) - chord));
+    };
+    for (int i = 1; i < N - 1; i++) {
+        measureEdge(i - 1, i, i + 1);                                              // top
+        measureEdge((N - 1) * N + i - 1, (N - 1) * N + i, (N - 1) * N + i + 1);     // bottom
+        measureEdge((i - 1) * N, i * N, (i + 1) * N);                              // left
+        measureEdge((i - 1) * N + N - 1, i * N + N - 1, (i + 1) * N + N - 1);       // right
+    }
+
+    // worstBend is already the one-level gap: a neighbour one level coarser
+    // joins alternate vertices, and the vertex it skips stands off that chord
+    // by exactly this. Two levels coarser spans four steps instead of two and
+    // the departure grows with the square of the span, so four times over. The
+    // factor below is that, doubled, and no more - the skirt is only ever seen
+    // when it is too deep.
     const float skirtDepth =
-        std::max(relief * 1.5f,
-                 static_cast<float>(patchWorldSize(key, planetRadius)) * 0.02f);
+        std::max(worstBend * 8.0f,
+                 static_cast<float>(patchWorldSize(key, planetRadius)) * 0.002f);
     patch.skirtDepth = skirtDepth;
 
     const auto addSkirt = [&](const std::vector<int>& edge) {
