@@ -24,7 +24,7 @@ Camera::Camera(uint32_t width, uint32_t height)
     
     // Auto-adjust clip planes based on initial altitude (temporary until properly set)
     float altitude = glm::length(position) - 1000.0f; // Temporary default
-    autoAdjustClipPlanes(altitude);
+    autoAdjustClipPlanes(altitude, 1000.0f);
     
     util::vlog() << "Camera constructor: altitude=" << altitude << ", near=" << nearPlane << ", far=" << farPlane << std::endl;
     
@@ -384,67 +384,30 @@ void Camera::updateProjection() {
     projectionMatrix[1][1] *= -1.0f;
 }
 
-void Camera::autoAdjustClipPlanes(float altitude) {
-    // Dynamic clipping planes based on altitude for scaled coordinate system
-    // altitude is in meters, we scale by 1/1,000,000 in the renderer
-    
-    // Note: This function needs the actual planet radius passed in
-    // For now, use a reasonable default that works for various planet sizes
-    const float planetRadius = 100.0f;  // Will be overridden by actual value
-    float cameraDistance = altitude + planetRadius;  // Distance from planet center
-    
-    if (altitude < 1000.0f) {
-        // Very close to surface (< 1km) - for walking around
-        nearPlane = 0.1f;  // 10cm near plane for detail
-        farPlane = 100000.0f;  // 100km view distance to see more
-    } else if (altitude < 100000.0f) {
-        // Low altitude (1km - 100km) - for flying
-        nearPlane = std::min(10.0f, altitude * 0.001f);  // Much smaller near plane (0.1% of altitude, max 10m)
-        farPlane = altitude * 20.0f + planetRadius;  // See to horizon
-    } else if (altitude < 1000000.0f) {
-        // Medium altitude (100km - 1000km) - see significant portion of planet
-        nearPlane = altitude * 0.1f;  // 10% of altitude
-        farPlane = cameraDistance * 3.0f;  // See past planet
-    } else {
-        // High altitude (> 1000km) - see whole planet
-        nearPlane = altitude * 0.2f;  // 20% of altitude to avoid precision issues
-        farPlane = cameraDistance * 4.0f;  // See well past planet
-    }
-    
-    // Ensure minimum values for stability
-    nearPlane = std::max(nearPlane, 0.1f);
-    farPlane = std::max(farPlane, nearPlane * 1000.0f);  // Keep ratio reasonable
-    
-    // PERFORMANCE: Disabled clipping plane debug logging
-    // util::vlog() << "[DEBUG] Clipping planes OVERRIDDEN for debugging: near=" 
-    //           << nearPlane << ", far=" << farPlane << std::endl;
-    
-    /* ORIGINAL CODE - DISABLED FOR DEBUGGING
-    // Adjust near/far planes based on altitude
-    if (altitude < 20000.0f) {
-        // Very close to surface (10-20km)
-        nearPlane = 1.0f;  // 1 meter near plane for close detail
-        farPlane = 100000.0f;  // 100km far plane
-    } else if (altitude < 100000.0f) {
-        // Low altitude (20-100km)
-        nearPlane = 10.0f;
-        farPlane = altitude * 100.0f;
-    } else if (altitude < 1000000.0f) {
-        // Medium altitude (100km-1000km)
-        nearPlane = 100.0f;
-        farPlane = altitude * 50.0f;
-    } else {
-        // High altitude / space (>1000km)
-        // Keep near/far ratio under 10,000:1 to avoid precision issues
-        nearPlane = altitude * 0.001f;   // Near at 0.1% of altitude
-        farPlane = altitude * 2.0f;      // Far at 2x altitude
-        // Clamp to reasonable values
-        nearPlane = std::max(1000.0f, nearPlane);
-        farPlane = std::min(50000000.0f, farPlane);  // Cap at 50M meters
-    }
-    */
-    
-    // util::vlog() << "autoAdjustClipPlanes result: near=" << nearPlane << ", far=" << farPlane << std::endl;
+void Camera::autoAdjustClipPlanes(float altitude, float planetRadius) {
+    // Relief the near plane must not clip. Altitude is measured against the
+    // sea-level sphere, so a camera a kilometre up over a mountain range is
+    // much closer to the ground than its altitude suggests.
+    constexpr float MAX_RELIEF = 15000.0f;
+
+    const float clearance = std::max(altitude - MAX_RELIEF, 1.0f);
+
+    // A tenth of the clearance. Large enough that the ratio to the far plane
+    // stays in the hundreds - which is what keeps the depth buffer usable -
+    // and still an order of magnitude closer than anything that can be drawn.
+    nearPlane = std::max(0.5f, clearance * 0.1f);
+
+    // Distance to the horizon from this altitude, by Pythagoras on the
+    // tangent: the far plane only has to reach the furthest ground visible,
+    // and beyond the horizon the planet occludes itself. The margin covers
+    // terrain standing up past the horizon plane and, later, atmosphere.
+    const float distance = planetRadius + std::max(altitude, 0.0f);
+    const float horizon =
+        std::sqrt(std::max(distance * distance - planetRadius * planetRadius, 0.0f));
+    farPlane = horizon + MAX_RELIEF * 4.0f + planetRadius * 0.05f;
+
+    farPlane = std::max(farPlane, nearPlane * 16.0f);
+
     updateProjection();
 }
 

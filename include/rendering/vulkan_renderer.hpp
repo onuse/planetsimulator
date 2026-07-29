@@ -249,12 +249,18 @@ private:
         PatchTree::VERTS * PatchTree::VERTS + 4 * PatchTree::VERTS;
     static constexpr uint32_t PATCH_INDEX_COUNT =
         PatchTree::GRID * PatchTree::GRID * 6 + 4 * PatchTree::GRID * 12;
-    static constexpr uint32_t MAX_PATCHES = 2048;
+    // Sized for the whole horizon disc at low altitude, not for what is on
+    // screen. Only frustum culling knows about where the camera points, and
+    // that is applied at draw time rather than at selection time - so turning
+    // on the spot never has to rebuild anything. About 220 MB, which buys the
+    // camera the freedom to spin without the surface going coarse.
+    static constexpr uint32_t MAX_PATCHES = 3072;
 
     struct GpuPatch {
         uint32_t slot = UINT32_MAX;
         uint32_t indexCount = 0;
         glm::dvec3 centre{0.0};
+        float boundingRadius = 0.0f;
         uint64_t lastUsedFrame = 0;
 
         // What the surface looked like when this was built. When the
@@ -295,6 +301,12 @@ private:
         uint64_t freedOnFrame = 0;
     };
     std::vector<PendingSlot> pendingPatchSlots;
+
+    // The camera-relative view-projection the uniform buffer was last written
+    // with. Culling has to test against exactly the matrix the vertex shader
+    // will use, or patches get rejected while still on screen.
+    glm::mat4 patchCullMatrix{1.0f};
+    float patchCullPlanetRadius = 0.0f;
 
     static uint64_t packPatchKey(const PatchTree::PatchKey& key);
     void createPatchPools();

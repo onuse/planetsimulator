@@ -297,7 +297,7 @@ private:
         
         // Adjust near/far planes based on initial altitude
         float altitude = camera.getAltitude(glm::vec3(0, 0, 0), config.radius);
-        camera.autoAdjustClipPlanes(altitude);
+        camera.autoAdjustClipPlanes(altitude, config.radius);
         
         if (!config.quiet) {
             glm::vec3 pos = camera.getPosition();
@@ -339,7 +339,7 @@ private:
         float altitude = camera.getAltitude(glm::vec3(0, 0, 0), config.radius);
         
         // Auto-adjust near/far planes based on altitude
-        camera.autoAdjustClipPlanes(altitude);
+        camera.autoAdjustClipPlanes(altitude, config.radius);
         
         // Scale speed based on altitude (move faster when far away)
         if (altitude > config.radius * 0.1f) {
@@ -534,7 +534,7 @@ private:
         
         // Update clip planes for new altitude
         float altitude = newDistance - config.radius;
-        camera.autoAdjustClipPlanes(altitude);
+        camera.autoAdjustClipPlanes(altitude, config.radius);
         
         if (!config.quiet) {
             std::cout << "Auto-zoom: Distance " << currentDistance/1000.0f << "km -> " 

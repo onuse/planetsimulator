@@ -35,6 +35,51 @@ namespace {
 constexpr VkDeviceSize kVertexStride = sizeof(algorithms::MeshVertex);
 constexpr VkDeviceSize kIndexStride = sizeof(uint32_t);
 
+// The six frustum planes, in the space the matrix maps from. Each is
+// (normal.xyz, distance) with the normal pointing inwards, so a point is
+// inside when dot(normal, p) + distance >= 0.
+struct Frustum {
+    glm::vec4 planes[6];
+
+    bool containsSphere(const glm::vec3& centre, float radius) const {
+        for (const glm::vec4& p : planes) {
+            if (glm::dot(glm::vec3(p), centre) + p.w < -radius) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+// Gribb-Hartmann: adding or subtracting a row of the view-projection from its
+// w row gives a clip plane directly, no matrix inverse involved. The near
+// plane is the z row alone rather than w+z because Vulkan's depth range is
+// [0,1] where OpenGL's is [-1,1].
+Frustum frustumFrom(const glm::mat4& m) {
+    const glm::vec4 row0(m[0][0], m[1][0], m[2][0], m[3][0]);
+    const glm::vec4 row1(m[0][1], m[1][1], m[2][1], m[3][1]);
+    const glm::vec4 row2(m[0][2], m[1][2], m[2][2], m[3][2]);
+    const glm::vec4 row3(m[0][3], m[1][3], m[2][3], m[3][3]);
+
+    Frustum f;
+    f.planes[0] = row3 + row0;   // left
+    f.planes[1] = row3 - row0;   // right
+    f.planes[2] = row3 + row1;   // bottom
+    f.planes[3] = row3 - row1;   // top
+    f.planes[4] = row2;          // near
+    f.planes[5] = row3 - row2;   // far
+
+    // Normalised so plane distances are in metres and can be compared against
+    // a bounding radius.
+    for (glm::vec4& p : f.planes) {
+        const float length = glm::length(glm::vec3(p));
+        if (length > 0.0f) {
+            p /= length;
+        }
+    }
+    return f;
+}
+
 } // namespace
 
 uint64_t VulkanRenderer::packPatchKey(const PatchTree::PatchKey& key) {
@@ -173,6 +218,7 @@ void VulkanRenderer::uploadPatch(const PatchTree::Patch& patch, GpuPatch& gpu) {
 
     gpu.indexCount = PATCH_INDEX_COUNT;
     gpu.centre = patch.centre;
+    gpu.boundingRadius = patch.boundingRadius;
 }
 
 void VulkanRenderer::evictUnusedPatches() {
@@ -207,6 +253,7 @@ void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* c
     const float planetRadius = planet->getRadius();
     const glm::dvec3 cameraPosition(camera->getPosition());
     const uint64_t crustVersion = planet->getCrustVersion();
+    patchCullPlanetRadius = planetRadius;
 
     if (meshRebuildRequested) {
         meshRebuildRequested = false;
@@ -304,7 +351,25 @@ void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
     vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, &patchVertexPool, offsets);
     vkCmdBindIndexBuffer(currentCommandBuffer, patchIndexPool, 0, VK_INDEX_TYPE_UINT32);
 
+    const Frustum frustum = frustumFrom(patchCullMatrix);
+
+    // Anything below the horizon is behind the planet's own bulk. On a sphere
+    // that is a little over half the surface at any altitude, and none of it
+    // survives the depth test, so it is the cheaper half of the two tests.
+    //
+    // A point X on the surface is visible from C only when dot(X, C) >= R^2.
+    // Allowing for the patch's bounding sphere, the furthest that quantity can
+    // reach is dot(P, C) + r|C|, so that is what has to clear R^2. R is shaded
+    // slightly under sea level to keep the test conservative near the limb.
+    const double cameraDistance = glm::length(cameraPosition);
+    const double occluderRadius = patchCullPlanetRadius * 0.985;
+    const bool horizonCulling = patchCullPlanetRadius > 0.0f &&
+                                cameraDistance > occluderRadius;
+    const double horizonThreshold = occluderRadius * occluderRadius;
+
     uint32_t drawn = 0;
+    uint32_t culledByHorizon = 0;
+    uint32_t culledByFrustum = 0;
 
     for (const PatchTree::PatchKey& key : visiblePatches) {
         auto it = patchCache.find(packPatchKey(key));
@@ -313,10 +378,22 @@ void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
         }
         const GpuPatch& gpu = it->second;
 
+        if (horizonCulling &&
+            glm::dot(gpu.centre, cameraPosition) + gpu.boundingRadius * cameraDistance <
+                horizonThreshold) {
+            culledByHorizon++;
+            continue;
+        }
+
         // The one place the planet's absolute scale is handled, and it is done
         // in double before anything reaches the shader.
         PatchPushConstants push;
         push.patchOffset = glm::vec3(gpu.centre - cameraPosition);
+
+        if (!frustum.containsSphere(push.patchOffset, gpu.boundingRadius)) {
+            culledByFrustum++;
+            continue;
+        }
 
         vkCmdPushConstants(currentCommandBuffer, hierarchicalPipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PatchPushConstants), &push);
@@ -333,8 +410,9 @@ void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
     if (patchFrameCounter - lastReport > 600) {
         lastReport = patchFrameCounter;
         util::vlog() << "[patches] " << drawn << " drawn of " << visiblePatches.size()
-                     << " visible, " << patchCache.size() << " cached, "
-                     << (drawn * PATCH_INDEX_COUNT / 3) << " triangles\n";
+                     << " selected (" << culledByHorizon << " over horizon, "
+                     << culledByFrustum << " off screen), " << patchCache.size()
+                     << " cached, " << (drawn * PATCH_INDEX_COUNT / 3) << " triangles\n";
     }
 }
 

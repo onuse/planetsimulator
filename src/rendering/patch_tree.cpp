@@ -70,6 +70,26 @@ void PatchTree::selectRecursive(const PatchKey& key, const glm::dvec3& cameraPos
     const double toCentre = glm::length(cameraPosition - centre);
     const double distance = std::max(1.0, toCentre - size * 0.5);
 
+    // Reject everything below the horizon before descending into it. If a
+    // patch is hidden by the planet's own curvature then so is every one of
+    // its children, so this prunes whole subtrees rather than leaves - which
+    // is the difference between selecting the far side at full detail and not
+    // touching it at all.
+    //
+    // Safe to do here, unlike frustum culling, because the horizon depends
+    // only on where the camera is and not on where it is pointing. Turning on
+    // the spot changes nothing, so nothing has to be rebuilt when it does.
+    const double cameraDistance = glm::length(cameraPosition);
+    if (cameraDistance > planetRadius) {
+        // Half the diagonal, plus room for terrain standing up off the sphere.
+        const double bounding = size * 0.75 + 15000.0;
+        const double occluder = planetRadius * 0.985;
+        if (glm::dot(centre, cameraPosition) + bounding * cameraDistance <
+            occluder * occluder) {
+            return;
+        }
+    }
+
     const bool wantsSplit = key.level < MAX_LEVEL && (size / distance) > splitFactor;
 
     if (wantsSplit) {

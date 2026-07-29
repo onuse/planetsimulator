@@ -275,6 +275,8 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     ubo.view = viewRelative;
     ubo.proj = scaledProj;
     ubo.viewProj = viewProjF;
+    // Kept for patch culling, which must use the same matrix the shader does.
+    patchCullMatrix = viewProjF;
     // Camera position used as reference origin for camera-relative rendering
     ubo.viewPos = viewPosF;
     

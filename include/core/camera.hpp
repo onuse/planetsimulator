@@ -59,7 +59,16 @@ public:
     void updateProjection();
     
     // Auto-adjust near/far based on altitude
-    void autoAdjustClipPlanes(float altitude);
+    // Put the near and far planes where the visible world actually is.
+    //
+    // Both are derived rather than tabulated. Nothing can be nearer than the
+    // ground below the camera, so the near plane tracks altitude; nothing
+    // solid is further than the horizon, so the far plane is the horizon
+    // distance for this altitude. That keeps the ratio between them small at
+    // every scale, which is what depth precision depends on - a fixed near
+    // plane either clips the ground on approach or wastes the entire depth
+    // buffer from orbit.
+    void autoAdjustClipPlanes(float altitude, float planetRadius);
     
     // Viewport
     void setViewport(uint32_t width, uint32_t height);
