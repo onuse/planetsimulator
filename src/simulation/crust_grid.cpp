@@ -559,15 +559,21 @@ CrustGrid::SurfaceSample CrustGrid::sampleSurface(const Snapshot& snapshot,
 
     int dominant = corner[0];
     float best = weight[0];
-    for (int i = 1; i < 3; i++) {
+    float roughness = 0.0f;
+    for (int i = 0; i < 3; i++) {
         if (weight[i] > best) {
             best = weight[i];
             dominant = corner[i];
+        }
+        if (corner[i] < static_cast<int>(snapshot.surfaceRock.size())) {
+            roughness += weight[i] *
+                         rockRoughness(static_cast<RockType>(snapshot.surfaceRock[corner[i]]));
         }
     }
     if (dominant < static_cast<int>(snapshot.surfaceRock.size())) {
         sample.rock = snapshot.surfaceRock[dominant];
     }
+    sample.roughness = roughness > 0.0f ? roughness : 1.0f;
     return sample;
 }
 
@@ -599,19 +605,28 @@ CrustGrid::SurfaceSample CrustGrid::sampleSurface(const glm::vec3& sphereNormal)
     }
 
     // The live grid keeps its rock in the markers rather than in a published
-    // array, so this is the type of the largest parcel sitting on the cell.
-    uint8_t rock = static_cast<uint8_t>(RockType::Basalt);
-    double biggest = 0.0;
-    if (dominant < static_cast<int>(cellMarkers.size())) {
-        for (int index : cellMarkers[dominant]) {
-            const Marker& marker = markers[index];
-            if (marker.layerCount > 0 && marker.volume > biggest) {
-                biggest = marker.volume;
-                rock = static_cast<uint8_t>(marker.layers[marker.layerCount - 1].rock);
+    // array, so this is the type of the largest parcel sitting on each cell.
+    const auto rockAt = [&](int cell) {
+        uint8_t rock = static_cast<uint8_t>(RockType::Basalt);
+        double biggest = 0.0;
+        if (cell >= 0 && cell < static_cast<int>(cellMarkers.size())) {
+            for (int index : cellMarkers[cell]) {
+                const Marker& marker = markers[index];
+                if (marker.layerCount > 0 && marker.volume > biggest) {
+                    biggest = marker.volume;
+                    rock = static_cast<uint8_t>(marker.layers[marker.layerCount - 1].rock);
+                }
             }
         }
+        return rock;
+    };
+
+    float roughness = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        roughness += weight[i] * rockRoughness(static_cast<RockType>(rockAt(corner[i])));
     }
-    sample.rock = rock;
+    sample.roughness = roughness > 0.0f ? roughness : 1.0f;
+    sample.rock = rockAt(dominant);
     return sample;
 }
 

@@ -143,6 +143,7 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
             ImGui::MenuItem("Stats", nullptr, &uiState.showStats);
             ImGui::MenuItem("Camera", nullptr, &uiState.showCamera);
             ImGui::MenuItem("Settings", nullptr, &uiState.showSettings);
+            ImGui::MenuItem("Simulation", nullptr, &uiState.showSimulation);
             ImGui::MenuItem("Console", nullptr, &uiState.showConsole);
             ImGui::Separator();
             ImGui::MenuItem("ImGui Demo", nullptr, &uiState.showDemo);
@@ -193,6 +194,10 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
     // Show settings window
     if (uiState.showSettings) {
         renderSettingsWindow();
+    }
+
+    if (uiState.showSimulation && renderer) {
+        renderSimulationWindow(renderer);
     }
 }
 
@@ -301,6 +306,65 @@ void ImGuiManager::renderCameraWindow(const glm::vec3& position, const glm::vec3
         
         ImGui::Spacing();
         ImGui::SliderFloat("Speed", &uiState.cameraSpeed, 100.0f, 100000.0f, "%.0f m/s", ImGuiSliderFlags_Logarithmic);
+    }
+    ImGui::End();
+}
+
+void ImGuiManager::renderSimulationWindow(const VulkanRenderer* renderer) {
+    octree::OctreePlanet* planet = renderer->getPlanet();
+    if (planet == nullptr) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(410, 30), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(460, 290), ImGuiCond_FirstUseEver);
+
+    if (ImGui::Begin("Simulation", &uiState.showSimulation)) {
+        // What the simulation is managing against what was asked of it. The
+        // two part company when the tectonics cannot keep up, which is worth
+        // seeing rather than guessing at.
+        ImGui::Text("Requested: %.3f My/s   Achieved: %.3f My/s",
+                    planet->getSimulationRate(), planet->getAchievedSimulationRate());
+        ImGui::Separator();
+
+        // Geological time against wall clock time.
+        //
+        // The default runs a million years a second, which is the right speed
+        // for watching an ocean open and hopeless for looking at anything.
+        // Continents cross the screen while you are trying to focus on a
+        // hillside, and every patch on it is rebuilt several times a second as
+        // the ground underneath moves.
+        float rate = planet->getSimulationRate();
+
+        ImGui::Text("Geological time");
+        if (ImGui::SliderFloat("My per second", &rate, 0.0f, 5.0f, "%.3f",
+                               ImGuiSliderFlags_Logarithmic)) {
+            planet->setSimulationRate(std::max(rate, 0.0f));
+        }
+
+        // Presets, because the useful range spans six orders of magnitude and
+        // a slider cannot reach both ends of it comfortably.
+        struct Preset { const char* name; float rate; const char* what; };
+        static const Preset presets[] = {
+            {"Paused",   0.0f,      "nothing moves; look at whatever you like"},
+            {"Slow",     0.01f,     "a hillside holds still while you study it"},
+            {"Normal",   1.0f,      "an ocean opens in a minute"},
+            {"Fast",     5.0f,      "supercontinents assemble and break up"},
+        };
+
+        for (const Preset& preset : presets) {
+            if (ImGui::Button(preset.name)) {
+                planet->setSimulationRate(preset.rate);
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", preset.what);
+        }
+
+        ImGui::Separator();
+        ImGui::TextWrapped(
+            "Surface patches are rebuilt whenever the crust moves, so slowing "
+            "time also settles the terrain - which is what makes it possible "
+            "to judge detail rather than watch it change.");
     }
     ImGui::End();
 }

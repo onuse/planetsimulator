@@ -44,6 +44,7 @@ public:
     void renderCameraWindow(const glm::vec3& position, const glm::vec3& forward,
                             const core::Camera* camera, float planetRadius);
     void renderSettingsWindow();
+    void renderSimulationWindow(const VulkanRenderer* renderer);
     
     // Getters for UI state
     bool wantsCaptureMouse() const { return ImGui::GetIO().WantCaptureMouse; }
@@ -54,6 +55,7 @@ public:
         bool showDemo = false;
         bool showStats = true;
         bool showCamera = true;
+        bool showSimulation = true;
         bool showSettings = false;
         bool showConsole = false;
         

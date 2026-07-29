@@ -456,7 +456,31 @@ public:
         float elevation = 0.0f;   // metres relative to sea level
         float slope = 0.0f;       // metres per metre, so dimensionless
         uint8_t rock = 0;         // RockType exposed at the top of the column
+
+        // How broken the ground is here, blended across cells rather than
+        // taken from whichever one dominates.
+        //
+        // The rock type cannot be blended - the average of basalt and granite
+        // is not a rock - but what the renderer wants from it is a number, and
+        // numbers blend fine. Choosing per sample instead put a hard step in
+        // the surface texture at every cell boundary, and made the texture of
+        // a whole neighbourhood jump the moment a cell's dominant parcel
+        // changed, which reads as detail flickering on and off.
+        float roughness = 1.0f;
     };
+
+    // How much relief a rock type holds at scales below the grid. Sediment is
+    // laid down by water and lies flat; lavas and granites break, joint and
+    // keep an edge.
+    static float rockRoughness(RockType rock) {
+        switch (rock) {
+            case RockType::Sediment: return 0.35f;
+            case RockType::Basalt:   return 0.85f;
+            case RockType::Granite:  return 1.00f;
+            case RockType::Andesite: return 1.15f;
+            default:                 return 1.00f;
+        }
+    }
     SurfaceSample sampleSurface(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
 
     // Sky cover at a direction, blended between cells. Read from a published

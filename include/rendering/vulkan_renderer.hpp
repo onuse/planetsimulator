@@ -177,6 +177,13 @@ public:
         float metresPerVertex = 0.0f;
     };
     PatchStats getPatchStats() const { return patchStats; }
+
+    // The planet being drawn, so the debug panel can drive the simulation.
+    // Not const: changing how fast geological time runs is the one control
+    // that makes it possible to look at anything closely - at a million years
+    // a second the continents move visibly while you are trying to focus on a
+    // hillside.
+    octree::OctreePlanet* getPlanet() const { return currentPlanet; }
     float getPlanetRadius() const { return patchCullPlanetRadius; }
     
     

@@ -289,23 +289,24 @@ float DensityField::getTerrainHeight(const glm::vec3& sphereNormal,
             1.0f - std::abs(fbmNoise(n * detailFrequency * 0.7f - offset, octaves, 1.0f, 1.0f));
         const float ridged = folded * folded * 2.0f - 1.0f;
 
-        // What the ground is made of. Sediment is deposited by water and lies
-        // flat; lavas and granites break, joint and hold an edge.
-        float hardness = 1.0f;
-        switch (static_cast<simulation::CrustGrid::RockType>(surface.rock)) {
-            case simulation::CrustGrid::RockType::Sediment: hardness = 0.35f; break;
-            case simulation::CrustGrid::RockType::Basalt:   hardness = 0.85f; break;
-            case simulation::CrustGrid::RockType::Granite:  hardness = 1.00f; break;
-            case simulation::CrustGrid::RockType::Andesite: hardness = 1.15f; break;
-            default: break;
-        }
+        // What the ground is made of, already blended across cells. Switching
+        // on the dominant cell's rock here instead put a hard step in the
+        // texture at every cell boundary and made a whole neighbourhood change
+        // character the moment that cell's dominant parcel did - which is what
+        // made the detail appear to flicker.
+        const float hardness = surface.roughness;
 
         // Steepness does two things: it decides how much relief there is at
         // all - a flood plain is flat at every scale, a mountainside is broken
         // at every scale - and it decides which of the two noises to use.
+        // Steepness decides how much relief there is and which of the two
+        // noises to use. The amplitude range is deliberately narrower than it
+        // was: slope is refitted from the simulation every time the surface
+        // moves, and a tenfold swing in amplitude turned that small wobble
+        // into a visible pulse in the texture.
         const float steepness = glm::clamp(surface.slope / 0.12f, 0.0f, 1.0f);
         const float detail = glm::mix(rolling, ridged, steepness);
-        const float amplitude = 0.25f + 2.4f * steepness;
+        const float amplitude = 0.55f + 1.5f * steepness;
 
         // Scaled to the simulation's cell spacing, not to the planet: this is
         // filling in below what the grid resolves, so that is the scale it
