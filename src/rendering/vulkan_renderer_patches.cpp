@@ -2,6 +2,7 @@
 #include "utils/log.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <iostream>
 #include <vector>
@@ -290,12 +291,30 @@ void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* c
     // background. Treating those as the same thing is what makes a planet
     // strobe: the simulation bumps its version several times a second, and if
     // that invalidates everything at once there is nothing left to draw.
+    // Budgeted in time, not in patches.
+    //
+    // A patch costs around four hundred microseconds to build - twelve hundred
+    // terrain samples, each of them a cell lookup and an interpolation - so a
+    // count that is generous on one machine or at one altitude stalls another.
+    // Fixing the count at forty-eight to make refreshes converge quickly took
+    // the frame rate from five hundred to fifty, which is the wrong trade to
+    // make silently.
+    //
+    // This is the ceiling on how fast a tectonic step can sweep the visible
+    // surface, and it is a real limit: at four hundred microseconds each,
+    // three hundred visible patches take an eighth of a second however the
+    // budget is spent. Building them on worker threads is what actually lifts
+    // it; until then this keeps the cost bounded and the frame rate honest.
+    const auto buildDeadline =
+        std::chrono::steady_clock::now() + std::chrono::microseconds(2500);
+    const auto outOfTime = [&] { return std::chrono::steady_clock::now() > buildDeadline; };
+
     constexpr int NEW_BUDGET = 24;
-    constexpr int REFRESH_BUDGET = 4;
+    constexpr int REFRESH_BUDGET = 32;
     int built = 0;
 
     for (const PatchTree::PatchKey& key : wantedPatches) {
-        if (built >= NEW_BUDGET) {
+        if (built >= NEW_BUDGET || outOfTime()) {
             break;
         }
         const uint64_t packed = packPatchKey(key);
@@ -322,14 +341,40 @@ void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* c
 
         const bool stale = it->second.builtAtCrustVersion != crustVersion ||
                            it->second.builtAtStyle != patchStyleVersion;
-        if (stale && refreshed < REFRESH_BUDGET) {
-            // Written in place, into the slot already being drawn from. That
-            // is safe in a way slot reuse is not: the patch keeps its
-            // position, so the worst a frame in flight can see is one frame of
-            // terrain that is half a tectonic step out of date, in the right
-            // place.
-            buildInto(key, it->second);
-            refreshed++;
+        if (stale && refreshed < REFRESH_BUDGET && !outOfTime()) {
+            // Into a fresh slot, never over the one being drawn from.
+            //
+            // Writing in place looks safe here in a way that reusing a slot
+            // for a different patch is not, because the patch keeps its
+            // position - the worst a frame in flight could see is terrain half
+            // a tectonic step out of date, in the right place. That reasoning
+            // is wrong, and it is wrong in a way that shows.
+            //
+            // A frame in flight is reading those vertices while the memcpy
+            // runs. It does not see all of one version or all of the other; it
+            // sees some of each, and a triangle with one corner at the old
+            // elevation and another at the new stretches between them into a
+            // long thin spike. A tectonic step moves plates a hundred
+            // kilometres, so the two versions are nowhere near each other.
+            //
+            // The old slot keeps its old contents and keeps being drawn until
+            // the frames referencing it have retired, which is what the
+            // pending list is for. It costs one spare slot per refresh in
+            // flight.
+            const uint32_t replacementSlot = acquirePatchSlot();
+            if (replacementSlot != UINT32_MAX) {
+                GpuPatch replacement = it->second;
+                replacement.slot = replacementSlot;
+                buildInto(key, replacement);
+
+                if (replacement.indexCount > 0) {
+                    releasePatchSlot(it->second.slot);
+                    it->second = replacement;
+                } else {
+                    releasePatchSlot(replacementSlot);   // build produced nothing
+                }
+                refreshed++;
+            }
         }
     }
 
