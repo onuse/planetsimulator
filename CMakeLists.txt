@@ -62,6 +62,7 @@ add_library(planetsim STATIC
     src/simulation/crust_grid.cpp
     src/simulation/erosion.cpp
     src/simulation/plate_dynamics.cpp
+    src/rendering/patch_tree.cpp   # surface geometry; no Vulkan, so it is testable
 )
 target_include_directories(planetsim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(planetsim PUBLIC glm::glm Threads::Threads)
@@ -77,7 +78,6 @@ endif()
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/rendering/imgui_manager.cpp
-    src/rendering/patch_tree.cpp
     src/rendering/vulkan_renderer.cpp
     src/rendering/vulkan_renderer_commands.cpp
     src/rendering/vulkan_renderer_cpu_upload.cpp
@@ -161,6 +161,7 @@ planet_test(test_planet_math       tests/test_planet_math_simple.cpp) # planet-s
 planet_test(test_mesh_connectivity tests/test_mesh_connectivity.cpp)  # mesh topology
 planet_test(test_chunk_boundaries  tests/test_chunk_boundaries.cpp)   # voxel chunk seams
 planet_test(test_camera_drag       tests/test_camera_drag.cpp)        # dragging the planet
+planet_test(test_patch_seams       tests/test_patch_seams.cpp)        # cracks between patches
 
 message(STATUS "")
 message(STATUS "=== PlanetSimulator ===")

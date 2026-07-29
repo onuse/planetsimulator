@@ -355,6 +355,98 @@ void CrustGrid::buildGeodesicGrid(int subdivisions) {
     for (const auto& list : adjacency) {
         neighbourIndices.insert(neighbourIndices.end(), list.begin(), list.end());
     }
+
+    // Keep the triangulation. Adjacency alone says which cells are next to
+    // each other but not which three bound a given patch of sphere, and that
+    // is what reconstructing a value between cell centres needs.
+    triangles.assign(faces.begin(), faces.end());
+
+    std::vector<std::vector<int>> incident(verts.size());
+    for (size_t f = 0; f < triangles.size(); f++) {
+        incident[triangles[f].x].push_back(static_cast<int>(f));
+        incident[triangles[f].y].push_back(static_cast<int>(f));
+        incident[triangles[f].z].push_back(static_cast<int>(f));
+    }
+
+    cellTriangleStart.resize(verts.size() + 1);
+    cellTriangleStart[0] = 0;
+    for (size_t i = 0; i < verts.size(); i++) {
+        cellTriangleStart[i + 1] = cellTriangleStart[i] + static_cast<int>(incident[i].size());
+    }
+    cellTriangleIndices.reserve(cellTriangleStart.back());
+    for (const auto& list : incident) {
+        cellTriangleIndices.insert(cellTriangleIndices.end(), list.begin(), list.end());
+    }
+}
+
+bool CrustGrid::barycentricCells(const glm::vec3& sphereNormal, int outCells[3],
+                                 float outWeights[3]) const {
+    if (cells.empty() || triangles.empty()) {
+        return false;
+    }
+
+    const glm::vec3 n = glm::normalize(sphereNormal);
+    const int centre = findNearestCell(n);
+    if (centre < 0) {
+        return false;
+    }
+
+    // The nearest cell centre is a corner of whichever triangle contains the
+    // point, so only the five or six triangles meeting there need testing.
+    const int first = cellTriangleStart[centre];
+    const int last = cellTriangleStart[centre + 1];
+
+    int bestTriangle = -1;
+    float bestPenalty = std::numeric_limits<float>::max();
+    glm::vec3 bestWeights(0.0f);
+
+    for (int t = first; t < last; t++) {
+        const glm::ivec3& tri = triangles[cellTriangleIndices[t]];
+        const glm::vec3& a = cellPositions[tri.x];
+        const glm::vec3& b = cellPositions[tri.y];
+        const glm::vec3& c = cellPositions[tri.z];
+
+        // Barycentric coordinates of where the ray along n crosses the plane
+        // of the triangle, as the signed volumes of the three tetrahedra it
+        // makes with the origin. No plane intersection or division needed to
+        // find out whether the point is inside - only the signs matter.
+        glm::vec3 w(glm::dot(glm::cross(b, c), n),
+                    glm::dot(glm::cross(c, a), n),
+                    glm::dot(glm::cross(a, b), n));
+
+        const float total = w.x + w.y + w.z;
+        if (std::abs(total) < 1e-20f) {
+            continue;
+        }
+        w /= total;
+
+        // Inside when no coordinate is negative. Tracking how far outside the
+        // nearest miss is means a point that lands exactly on an edge, or in
+        // the sliver left by the sphere's curvature, still resolves to the
+        // triangle it belongs to instead of failing.
+        const float penalty = -std::min(std::min(w.x, w.y), std::min(w.z, 0.0f));
+        if (penalty < bestPenalty) {
+            bestPenalty = penalty;
+            bestTriangle = cellTriangleIndices[t];
+            bestWeights = w;
+            if (penalty <= 0.0f) {
+                break;
+            }
+        }
+    }
+
+    if (bestTriangle < 0) {
+        return false;
+    }
+
+    const glm::ivec3& tri = triangles[bestTriangle];
+    outCells[0] = tri.x;
+    outCells[1] = tri.y;
+    outCells[2] = tri.z;
+    outWeights[0] = bestWeights.x;
+    outWeights[1] = bestWeights.y;
+    outWeights[2] = bestWeights.z;
+    return true;
 }
 
 int CrustGrid::binIndex(const glm::vec3& n) const {
@@ -1258,70 +1350,52 @@ std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
 }
 
 float CrustGrid::sampleElevation(const Snapshot& snapshot, const glm::vec3& sphereNormal) const {
-    const glm::vec3 n = glm::normalize(sphereNormal);
-    const int centre = findNearestCell(n);
-    if (centre < 0 || snapshot.elevation.empty()) {
+    if (snapshot.elevation.empty()) {
         return 0.0f;
     }
 
-    // Same inverse-square interpolation as the live sampler, but reading the
-    // published elevations instead of the grid. Touches only the snapshot and
-    // the fixed geometry, so the simulation thread can be mid-step.
-    double weightSum = 0.0;
-    double valueSum = 0.0;
-
-    auto accumulate = [&](int index) {
-        if (index < 0 || index >= static_cast<int>(snapshot.elevation.size())) {
-            return;
-        }
-        const float cosAngle = glm::clamp(glm::dot(cellPositions[index], n), -1.0f, 1.0f);
-        const float angle = std::acos(cosAngle);
-        const double weight = 1.0 / (static_cast<double>(angle) * angle + 1e-9);
-        weightSum += weight;
-        valueSum += weight * snapshot.elevation[index];
-    };
-
-    accumulate(centre);
-    for (int k = 0; k < neighbourCount(centre); k++) {
-        accumulate(neighbourAt(centre, k));
+    // Same reconstruction as the live sampler, reading published elevations
+    // instead of the grid. Touches only the snapshot and the fixed topology,
+    // so the simulation thread can be mid-step.
+    int corner[3];
+    float weight[3];
+    if (!barycentricCells(sphereNormal, corner, weight)) {
+        return 0.0f;
     }
 
-    return weightSum > 0.0 ? static_cast<float>(valueSum / weightSum)
-                           : snapshot.elevation[centre];
+    float elevation = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        if (corner[i] < 0 || corner[i] >= static_cast<int>(snapshot.elevation.size())) {
+            return 0.0f;
+        }
+        elevation += weight[i] * snapshot.elevation[corner[i]];
+    }
+    return elevation;
 }
 
 float CrustGrid::sampleElevation(const glm::vec3& sphereNormal) const {
-    const glm::vec3 n = glm::normalize(sphereNormal);
-    const int centre = findNearestCell(n);
-    if (centre < 0) {
+    // Reconstruct between cell centres, not at them. The grid is a
+    // discretisation of the crust, not a mosaic the crust is made of, so the
+    // surface between two cells has to be the blend of them.
+    //
+    // Weighting the cell and its ring by inverse square angular distance was
+    // meant to do this and very nearly does, but the weight is singular at a
+    // cell centre: approach one and it dominates the sum completely, so each
+    // cell ends up surrounded by a plateau of its own value with a step at the
+    // edge. That is the honeycomb this was written to avoid, an interpolation
+    // scheme later rather than a nearest-cell lookup. Barycentric weights over
+    // the containing triangle are linear between corners and have no such
+    // singularity.
+    int corner[3];
+    float weight[3];
+    if (!barycentricCells(sphereNormal, corner, weight)) {
         return -seaLevel;
     }
 
-    // Interpolate across the cell and its neighbours by inverse square angular
-    // distance. Taking the nearest cell's value alone would make every cell a
-    // flat facet, which at render resolution covers the planet in a visible
-    // honeycomb - the grid is a discretisation of the crust, not a mosaic it
-    // is actually made of.
-    double weightSum = 0.0;
-    double valueSum = 0.0;
-
-    auto accumulate = [&](int index) {
-        const float cosAngle = glm::clamp(glm::dot(cells[index].position, n), -1.0f, 1.0f);
-        const float angle = std::acos(cosAngle);
-        const double weight = 1.0 / (static_cast<double>(angle) * angle + 1e-9);
-        weightSum += weight;
-        valueSum += weight * cells[index].elevation;
-    };
-
-    accumulate(centre);
-    for (int k = 0; k < neighbourCount(centre); k++) {
-        accumulate(neighbourAt(centre, k));
+    float elevation = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        elevation += weight[i] * cells[corner[i]].elevation;
     }
-
-    const float elevation = weightSum > 0.0
-        ? static_cast<float>(valueSum / weightSum)
-        : cells[centre].elevation;
-
     return elevation - seaLevel;
 }
 

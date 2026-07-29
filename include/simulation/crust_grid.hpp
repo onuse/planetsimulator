@@ -423,6 +423,23 @@ public:
     // Nearest cell to a direction, via the spatial accelerator.
     int findNearestCell(const glm::vec3& sphereNormal) const;
 
+    // The three cells surrounding a direction, and how much each contributes.
+    //
+    // Cell centres are the vertices of a triangulation of the sphere, so any
+    // direction falls inside one triangle and the value there is the linear
+    // blend of its corners. Weights sum to one and each goes to one exactly at
+    // its own cell, which is what makes the reconstruction continuous across
+    // the whole sphere with no flat spots anywhere.
+    //
+    // This replaced weighting the nearest cell and its ring by inverse square
+    // angular distance. That weight is singular at a cell centre, so every
+    // cell got a plateau of its own value with a step at the edge, and the
+    // grid showed through the rendered surface as hexagons.
+    //
+    // Returns false only if the direction is degenerate or the grid is empty.
+    bool barycentricCells(const glm::vec3& sphereNormal, int outCells[3],
+                          float outWeights[3]) const;
+
     const std::vector<Cell>& getCells() const { return cells; }
     const std::vector<Plate>& getPlates() const { return plates; }
     const std::vector<Marker>& getMarkers() const { return markers; }
@@ -568,6 +585,15 @@ private:
     // Flattened adjacency: neighbours of cell i are
     // neighbourIndices[neighbourStart[i] .. neighbourStart[i+1])
     std::vector<int> neighbourIndices;
+
+    // The triangulation the cell centres are the vertices of, kept so the
+    // surface can be reconstructed between them rather than only at them,
+    // along with the triangles meeting at each cell. A point's nearest cell is
+    // always a corner of the triangle containing it, so those few are the only
+    // ones that ever have to be tested.
+    std::vector<glm::ivec3> triangles;
+    std::vector<int> cellTriangleStart;
+    std::vector<int> cellTriangleIndices;
     std::vector<int> neighbourStart;
 
     // Latitude/longitude bin accelerator over the fixed cell positions.

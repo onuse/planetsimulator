@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace rendering {
 
@@ -164,6 +165,8 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
     std::vector<float> smooth(N * N);
 
     double maxRadius = 0.0;
+    double minSurfaceRadius = std::numeric_limits<double>::max();
+    double maxSurfaceRadius = 0.0;
 
     for (int j = 0; j < N; j++) {
         for (int i = 0; i < N; i++) {
@@ -188,8 +191,11 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
             // where the level changes.
             smooth[j * N + i] = field.getLargeScaleElevation(n);
 
-            world[j * N + i] = dir * (static_cast<double>(planetRadius) + surface);
+            const double radius = static_cast<double>(planetRadius) + surface;
+            world[j * N + i] = dir * radius;
             maxRadius = std::max(maxRadius, glm::length(world[j * N + i] - patch.centre));
+            minSurfaceRadius = std::min(minSurfaceRadius, radius);
+            maxSurfaceRadius = std::max(maxSurfaceRadius, radius);
         }
     }
     patch.boundingRadius = static_cast<float>(maxRadius);
@@ -291,7 +297,26 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
 
     // Skirt: drop a copy of each edge vertex inward along its own radius and
     // join it to the edge with a strip of triangles.
-    const float skirtDepth = static_cast<float>(patchWorldSize(key, planetRadius)) * 0.06f;
+    //
+    // How deep it has to hang is set by the terrain, not by the patch. Two
+    // patches meeting at different levels sample the shared edge at different
+    // vertex spacings, and how far their edges then part company depends on
+    // how much the ground rises and falls across them - a flat plain agrees to
+    // within centimetres at any level, a mountain ridge disagrees by hundreds
+    // of metres.
+    //
+    // This used to be a fixed fraction of the patch width, which reads as
+    // plausible and fails in a very specific way: patches shrink with level
+    // while relief does not. At the top of the tree a patch is a thousand
+    // kilometres across and the skirt is kilometres deep, so everything is
+    // covered; fourteen levels down the patch is under a hundred metres across
+    // and the skirt is a few metres, which a mountainside walks straight
+    // through. That is why the seams held from orbit and opened on approach.
+    const float relief = static_cast<float>(maxSurfaceRadius - minSurfaceRadius);
+    const float skirtDepth =
+        std::max(relief * 1.5f,
+                 static_cast<float>(patchWorldSize(key, planetRadius)) * 0.02f);
+    patch.skirtDepth = skirtDepth;
 
     const auto addSkirt = [&](const std::vector<int>& edge) {
         const uint32_t base = static_cast<uint32_t>(patch.vertices.size());

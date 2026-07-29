@@ -62,6 +62,12 @@ public:
         glm::dvec3 centre{0.0};
         float boundingRadius = 0.0f;
 
+        // How far the edge skirt hangs below the surface. Recorded because it
+        // is what has to exceed the mismatch between this patch and a
+        // neighbour at a different level, and that is worth being able to
+        // check rather than assume.
+        float skirtDepth = 0.0f;
+
         std::vector<algorithms::MeshVertex> vertices;
         std::vector<uint32_t> indices;
 

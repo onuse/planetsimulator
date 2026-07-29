@@ -691,6 +691,98 @@ void testStratigraphy() {
     check(std::fabs(deep.volume - placed) < 1e-6, "merging deep episodes loses no rock");
 }
 
+void testSurfaceReconstruction() {
+    std::printf("Surface reconstructs between cells, not just at them\n");
+    simulation::CrustGrid grid(1000000.0f, 42, 5, 10);
+
+    const auto& cells = grid.getCells();
+    int corner[3];
+    float weight[3];
+
+    // At a cell centre the answer must be that cell alone. Anything else means
+    // the reconstruction does not honour the data it is built from.
+    bool exactAtCentres = true;
+    bool weightsSumToOne = true;
+    bool weightsNonNegative = true;
+
+    for (size_t i = 0; i < cells.size(); i += 197) {
+        if (!grid.barycentricCells(cells[i].position, corner, weight)) {
+            exactAtCentres = false;
+            break;
+        }
+        const float sum = weight[0] + weight[1] + weight[2];
+        if (std::abs(sum - 1.0f) > 1e-3f) {
+            weightsSumToOne = false;
+        }
+        for (int k = 0; k < 3; k++) {
+            if (weight[k] < -1e-3f) {
+                weightsNonNegative = false;
+            }
+        }
+
+        float own = 0.0f;
+        for (int k = 0; k < 3; k++) {
+            if (corner[k] == static_cast<int>(i)) {
+                own = weight[k];
+            }
+        }
+        if (own < 0.999f) {
+            exactAtCentres = false;
+        }
+    }
+
+    check(weightsSumToOne, "weights sum to one");
+    check(weightsNonNegative, "no negative weights");
+    check(exactAtCentres, "a cell centre resolves to that cell alone");
+
+    // The one that matters, and the one the old inverse-square weighting
+    // failed. Walking from one cell centre to a neighbour, the contribution
+    // should hand over linearly. Under a weight that is singular at the
+    // centres it instead sticks near 1 for most of the way and then steps
+    // across - which is what drew the hexagons.
+    const int a = 0;
+    const int b = grid.neighbourAt(a, 0);
+    const glm::vec3 from = cells[a].position;
+    const glm::vec3 to = cells[b].position;
+
+    float worstError = 0.0f;
+    for (int step = 1; step < 10; step++) {
+        const float t = static_cast<float>(step) / 10.0f;
+        const glm::vec3 p = glm::normalize(from * (1.0f - t) + to * t);
+
+        if (!grid.barycentricCells(p, corner, weight)) {
+            worstError = 1.0f;
+            break;
+        }
+        float towardsB = 0.0f;
+        for (int k = 0; k < 3; k++) {
+            if (corner[k] == b) {
+                towardsB = weight[k];
+            }
+        }
+        worstError = std::max(worstError, std::abs(towardsB - t));
+    }
+
+    std::printf("    worst departure from linear along an edge: %.4f\n", worstError);
+    check(worstError < 0.02f, "contribution hands over linearly between cells");
+
+    // And the consequence, measured the way it is seen: sampling across a few
+    // cells must not produce runs of identical values.
+    int plateauRun = 0;
+    int worstRun = 0;
+    float previous = grid.sampleElevation(cells[a].position);
+    for (int step = 1; step <= 400; step++) {
+        const float t = static_cast<float>(step) / 400.0f;
+        const glm::vec3 p = glm::normalize(from * (1.0f - t) + to * t * 4.0f);
+        const float here = grid.sampleElevation(p);
+        plateauRun = (std::abs(here - previous) < 1e-4f) ? plateauRun + 1 : 0;
+        worstRun = std::max(worstRun, plateauRun);
+        previous = here;
+    }
+    std::printf("    longest run of identical samples: %d of 400\n", worstRun);
+    check(worstRun < 40, "no flat plateaus across the surface");
+}
+
 void testStepPerformance() {
     std::printf("A step is fast enough to run interactively\n");
     simulation::CrustGrid grid(1000000.0f, 42, 6, 12);
@@ -712,6 +804,7 @@ int main() {
 
     testGridTopology();
     testNearestCellLookup();
+    testSurfaceReconstruction();
     testIsostasyPredictsRealElevations();
     testSeaLevelRespondsToCrust();
     testPlatesActuallyMove();
