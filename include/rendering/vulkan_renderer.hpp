@@ -149,7 +149,31 @@ public:
     uint32_t getTriangleCount() const { 
         return meshIndexCount / 3; // From GPU mesh
     }
-    int getLODLevel() const { return currentLODLevel; }  // Get current LOD level
+
+    // What the surface renderer is actually doing this frame.
+    //
+    // The panel used to report a global level of detail and the triangle count
+    // a table said that level implied. There has been no global level since
+    // the surface became a quadtree - each patch decides for itself - so the
+    // number was of something that no longer exists, and the triangle count
+    // was a prediction rather than a measurement. Reporting a plausible
+    // invention is worse than reporting nothing: it is what you check a change
+    // against.
+    struct PatchStats {
+        uint32_t drawn = 0;          // patches actually submitted
+        uint32_t selected = 0;       // patches selection asked for
+        uint32_t culledHorizon = 0;  // behind the planet's own curve
+        uint32_t culledFrustum = 0;  // outside the view
+        uint32_t cached = 0;
+        uint32_t inFlight = 0;       // being built right now
+        uint32_t poolSlots = 0;
+        uint32_t workers = 0;
+        uint32_t triangles = 0;
+        uint32_t finestLevel = 0;    // deepest subdivision on screen
+        float metresPerVertex = 0.0f;
+    };
+    PatchStats getPatchStats() const { return patchStats; }
+    float getPlanetRadius() const { return patchCullPlanetRadius; }
     
     
     // MASTER PIPELINE SWITCH - THE ONE BOOL TO RULE THEM ALL
@@ -326,6 +350,7 @@ private:
     // will use, or patches get rejected while still on screen.
     glm::mat4 patchCullMatrix{1.0f};
     float patchCullPlanetRadius = 0.0f;
+    PatchStats patchStats;
 
     static uint64_t packPatchKey(const PatchTree::PatchKey& key);
     void createPatchPools();
@@ -368,7 +393,6 @@ private:
     VkDeviceMemory meshIndexBufferMemory = VK_NULL_HANDLE;
     uint32_t meshVertexCount = 0;
     uint32_t meshIndexCount = 0;
-    int currentLODLevel = 5;  // Track current LOD level for display
     
     // GPU mesh generation
     

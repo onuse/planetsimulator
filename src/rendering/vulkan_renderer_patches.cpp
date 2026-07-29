@@ -402,6 +402,29 @@ void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* c
 
 
     evictUnusedPatches();
+
+    // Recorded rather than inferred: everything here is a count of something
+    // that happened this frame.
+    patchStats.selected = static_cast<uint32_t>(visiblePatches.size());
+    patchStats.cached = static_cast<uint32_t>(patchCache.size());
+    patchStats.inFlight = static_cast<uint32_t>(inFlightPatches.size());
+    patchStats.poolSlots = MAX_PATCHES;
+    patchStats.workers = static_cast<uint32_t>(patchBuilder.workerCount());
+
+    uint32_t finest = 0;
+    for (const PatchTree::PatchKey& key : visiblePatches) {
+        finest = std::max(finest, static_cast<uint32_t>(key.level));
+    }
+    patchStats.finestLevel = finest;
+
+    // How far apart the vertices are at the sharpest patch on screen. This is
+    // the number that says what the surface can actually resolve, which is
+    // what a level on its own never told anyone.
+    PatchTree::PatchKey finestKey;
+    finestKey.level = static_cast<uint8_t>(finest);
+    patchStats.metresPerVertex =
+        static_cast<float>(PatchTree::patchWorldSize(finestKey, planetRadius) /
+                           PatchTree::GRID);
 }
 
 void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
@@ -495,6 +518,10 @@ void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
     }
 
     meshIndexCount = drawn * PATCH_INDEX_COUNT;   // so the stats overlay stays honest
+    patchStats.drawn = drawn;
+    patchStats.culledHorizon = culledByHorizon;
+    patchStats.culledFrustum = culledByFrustum;
+    patchStats.triangles = drawn * (PATCH_INDEX_COUNT / 3);
 
     static uint64_t lastReport = 0;
     if (patchFrameCounter - lastReport > 600) {

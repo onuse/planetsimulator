@@ -155,17 +155,16 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
             float frameTime = renderer->getFrameTime();
             float fps = frameTime > 0.0f ? 1.0f / frameTime : 0.0f;  // frameTime is in seconds
             ImGui::Text("FPS: %.1f", fps);
-            ImGui::Text("LOD: %d", renderer->getLODLevel());
-            
-            // Color-coded LOD indicator with more levels
-            int lod = renderer->getLODLevel();
-            ImVec4 lodColor;
-            if (lod <= 2) lodColor = ImVec4(1.0f, 0.2f, 0.2f, 1.0f); // Red for very low LOD
-            else if (lod <= 4) lodColor = ImVec4(1.0f, 0.6f, 0.2f, 1.0f); // Orange for low
-            else if (lod <= 6) lodColor = ImVec4(1.0f, 1.0f, 0.2f, 1.0f); // Yellow for medium
-            else if (lod <= 8) lodColor = ImVec4(0.6f, 1.0f, 0.2f, 1.0f); // Yellow-green
-            else lodColor = ImVec4(0.2f, 1.0f, 0.2f, 1.0f); // Green for high LOD
-            ImGui::TextColored(lodColor, "● LOD %d", lod);
+
+            // There is no single level of detail to report - the surface is a
+            // quadtree and every patch chooses for itself - so this is how
+            // many patches are on screen and how fine the sharpest one is.
+            const VulkanRenderer::PatchStats patches = renderer->getPatchStats();
+            ImGui::Text("| %u patches, %u tris", patches.drawn, patches.triangles);
+            if (patches.inFlight > 0) {
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f),
+                                   "| building %u", patches.inFlight);
+            }
         }
         
         ImGui::EndMainMenuBar();
@@ -181,11 +180,13 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
     }
     
     // Show camera window with actual camera data if available
-    if (uiState.showCamera) {
+    if (uiState.showCamera && renderer) {
         if (camera) {
-            renderCameraWindow(camera->getPosition(), camera->getForward(), camera);
+            renderCameraWindow(camera->getPosition(), camera->getForward(), camera,
+                               renderer->getPlanetRadius());
         } else {
-            renderCameraWindow(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), nullptr);
+            renderCameraWindow(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), nullptr,
+                               renderer->getPlanetRadius());
         }
     }
     
@@ -197,49 +198,49 @@ void ImGuiManager::renderDebugUI(const VulkanRenderer* renderer, const core::Cam
 
 void ImGuiManager::renderStatsWindow(const VulkanRenderer* renderer, float fps, uint32_t chunkCount, uint32_t triangleCount) {
     ImGui::SetNextWindowPos(ImVec2(10, 30), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_FirstUseEver);
-    
+    ImGui::SetNextWindowSize(ImVec2(400, 340), ImGuiCond_FirstUseEver);
+
     if (ImGui::Begin("Statistics", &uiState.showStats)) {
         ImGui::Text("Performance");
         ImGui::Separator();
         ImGui::Text("FPS: %.1f", fps);
         ImGui::Text("Frame Time: %.3f ms", fps > 0.0f ? 1000.0f / fps : 0.0f);
         
+        const VulkanRenderer::PatchStats patches = renderer->getPatchStats();
+
         ImGui::Separator();
-        ImGui::Text("LOD System");
-        ImGui::Text("Current LOD Level: %d", renderer->getLODLevel());
-        int lodLevel = renderer->getLODLevel();
-        const char* lodDesc = "";
-        int expectedTriangles = 0;
-        switch(lodLevel) {
-            case 1: lodDesc = "Extreme distance"; expectedTriangles = 20; break;
-            case 2: lodDesc = "Very far"; expectedTriangles = 80; break;
-            case 3: lodDesc = "Far"; expectedTriangles = 320; break;
-            case 4: lodDesc = "Medium-far"; expectedTriangles = 1280; break;
-            case 5: lodDesc = "Medium"; expectedTriangles = 5120; break;
-            case 6: lodDesc = "Medium-close"; expectedTriangles = 20480; break;
-            case 7: lodDesc = "Close"; expectedTriangles = 81920; break;
-            case 8: lodDesc = "Very close"; expectedTriangles = 327680; break;
-            case 9: lodDesc = "Extremely close"; expectedTriangles = 1310720; break;
-            case 10: lodDesc = "Surface level"; expectedTriangles = 5242880; break;
-            case 11: lodDesc = "Maximum detail"; expectedTriangles = 20971520; break;
-            default: lodDesc = "Unknown"; break;
+        ImGui::Text("Surface");
+
+        // Every line here is a count of something that happened this frame.
+        // What was here before reported a global level of detail, which the
+        // surface has not had since it became a quadtree - each patch decides
+        // for itself - along with the triangle count a table said that level
+        // implied, which was a prediction rather than a measurement and was
+        // out by two orders of magnitude.
+        ImGui::Text("Patches drawn: %u of %u selected", patches.drawn, patches.selected);
+        ImGui::Text("  culled: %u over horizon, %u off screen",
+                    patches.culledHorizon, patches.culledFrustum);
+        ImGui::Text("Triangles: %u", patches.triangles);
+
+        // The level on its own says nothing without knowing the planet, so
+        // what it comes to in metres is the number worth reading.
+        if (patches.metresPerVertex >= 1000.0f) {
+            ImGui::Text("Finest detail: level %u, %.1f km between vertices",
+                        patches.finestLevel, patches.metresPerVertex / 1000.0f);
+        } else {
+            ImGui::Text("Finest detail: level %u, %.1f m between vertices",
+                        patches.finestLevel, patches.metresPerVertex);
         }
-        ImGui::Text("Description: %s", lodDesc);
-        ImGui::Text("Expected triangles: %s", 
-            expectedTriangles >= 1000000 ? 
-            (std::to_string(expectedTriangles / 1000000) + "M").c_str() :
-            expectedTriangles >= 1000 ? 
-            (std::to_string(expectedTriangles / 1000) + "K").c_str() :
-            std::to_string(expectedTriangles).c_str());
-        ImGui::ProgressBar(lodLevel / 11.0f, ImVec2(0, 0), "LOD");
-        
+
         ImGui::Spacing();
-        ImGui::Text("Rendering");
+        ImGui::Text("Patch cache");
         ImGui::Separator();
-        ImGui::Text("Active Chunks: %u", chunkCount);
-        ImGui::Text("Triangles: %u", triangleCount);
-        ImGui::Text("Vertices: %u", triangleCount * 3);
+        ImGui::Text("Cached: %u of %u slots", patches.cached, patches.poolSlots);
+        ImGui::ProgressBar(patches.poolSlots > 0
+                               ? static_cast<float>(patches.cached) / patches.poolSlots
+                               : 0.0f,
+                           ImVec2(0, 0), "pool");
+        ImGui::Text("Building: %u on %u threads", patches.inFlight, patches.workers);
         
         // Frame time graph
         static float frameTimeHistory[120] = {0};
@@ -254,7 +255,8 @@ void ImGuiManager::renderStatsWindow(const VulkanRenderer* renderer, float fps, 
     ImGui::End();
 }
 
-void ImGuiManager::renderCameraWindow(const glm::vec3& position, const glm::vec3& forward, const core::Camera* camera) {
+void ImGuiManager::renderCameraWindow(const glm::vec3& position, const glm::vec3& forward,
+                                      const core::Camera* camera, float planetRadius) {
     ImGui::SetNextWindowPos(ImVec2(10, 240), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(380, 320), ImGuiCond_FirstUseEver);
     
@@ -264,12 +266,18 @@ void ImGuiManager::renderCameraWindow(const glm::vec3& position, const glm::vec3
         
         ImGui::Text("Camera Pos: (%.3e, %.3e, %.3e)", position.x, position.y, position.z);
         
-        float distanceToOrigin = glm::length(position);
-        float planetRadius = 6371000.0f; // Earth radius
-        float distanceToSurface = distanceToOrigin - planetRadius;
-        
-        ImGui::Text("Distance to origin: %.3e m", distanceToOrigin);
-        ImGui::Text("Distance to surface: %.3e m", distanceToSurface);
+        // The radius here used to be Earth's, written in as a constant while
+        // the planet being simulated was a sixth of that - so the altitude
+        // read several thousand kilometres below the ground at all times.
+        const float distanceToOrigin = glm::length(position);
+        const float altitude = distanceToOrigin - planetRadius;
+
+        ImGui::Text("Distance to centre: %.1f km", distanceToOrigin / 1000.0f);
+        if (std::abs(altitude) >= 1000.0f) {
+            ImGui::Text("Altitude: %.1f km", altitude / 1000.0f);
+        } else {
+            ImGui::Text("Altitude: %.0f m", altitude);
+        }
         
         ImGui::Separator();
         ImGui::Text("Clipping & FOV:");
