@@ -176,6 +176,7 @@ CrustGrid::CrustGrid(float planetRadius, uint32_t seed, int subdivisions, int pl
     seedMarkers();
     updateIsostasy();
     solveSeaLevel();
+    refreshElevationField();
     initialCrustVolume = computeCrustVolume();
 }
 
@@ -377,6 +378,134 @@ void CrustGrid::buildGeodesicGrid(int subdivisions) {
     for (const auto& list : incident) {
         cellTriangleIndices.insert(cellTriangleIndices.end(), list.begin(), list.end());
     }
+}
+
+void CrustGrid::refreshElevationField() {
+    elevationField.resize(cells.size());
+    for (size_t i = 0; i < cells.size(); i++) {
+        elevationField[i] = cells[i].elevation;
+    }
+
+    elevationGradient.resize(cells.size());
+    for (size_t i = 0; i < cells.size(); i++) {
+        elevationGradient[i] = estimateGradient(static_cast<int>(i), elevationField);
+    }
+}
+
+glm::vec3 CrustGrid::estimateGradient(int cell, const std::vector<float>& values) const {
+    // Least squares fit of a plane to the neighbours, in the tangent plane at
+    // this cell.
+    //
+    // Each neighbour gives one equation: the slope along the direction towards
+    // it must account for the difference in value. Five or six of those
+    // overdetermine a two-component gradient, and solving them together rather
+    // than averaging pairs is what stops the result depending on which way the
+    // neighbours happen to be arranged.
+    const glm::vec3 up = cellPositions[cell];
+
+    // Any pair of axes spanning the tangent plane will do; the gradient that
+    // comes out is returned in world space and does not depend on the choice.
+    const glm::vec3 reference =
+        std::abs(up.y) > 0.9f ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+    const glm::vec3 e1 = glm::normalize(glm::cross(reference, up));
+    const glm::vec3 e2 = glm::cross(up, e1);
+
+    double a11 = 0.0, a12 = 0.0, a22 = 0.0, b1 = 0.0, b2 = 0.0;
+
+    for (int k = 0; k < neighbourCount(cell); k++) {
+        const int other = neighbourAt(cell, k);
+        const glm::vec3 delta = cellPositions[other] - up;
+
+        // Flattened into the tangent plane. Over one cell spacing the sphere
+        // barely curves, so the error in doing so is far below the noise in
+        // the values themselves.
+        const glm::vec2 offset(glm::dot(delta, e1), glm::dot(delta, e2));
+        const double lengthSquared = static_cast<double>(glm::dot(offset, offset));
+        if (lengthSquared < 1e-20) {
+            continue;
+        }
+
+        const double difference = static_cast<double>(values[other] - values[cell]);
+        a11 += offset.x * offset.x;
+        a12 += offset.x * offset.y;
+        a22 += offset.y * offset.y;
+        b1 += offset.x * difference;
+        b2 += offset.y * difference;
+    }
+
+    const double determinant = a11 * a22 - a12 * a12;
+    if (std::abs(determinant) < 1e-24) {
+        return glm::vec3(0.0f);
+    }
+
+    const double g1 = (b1 * a22 - b2 * a12) / determinant;
+    const double g2 = (a11 * b2 - a12 * b1) / determinant;
+
+    // Back to world space, still tangent to the sphere. Note this is per unit
+    // of chord length on the unit sphere, so a displacement measured the same
+    // way can be dotted with it directly.
+    return e1 * static_cast<float>(g1) + e2 * static_cast<float>(g2);
+}
+
+float CrustGrid::reconstruct(const glm::vec3& sphereNormal, const std::vector<float>& values,
+                             const std::vector<glm::vec3>& gradients) const {
+    int corner[3];
+    float weight[3];
+    if (!barycentricCells(sphereNormal, corner, weight)) {
+        return 0.0f;
+    }
+
+    if (gradients.size() != values.size()) {
+        float flat = 0.0f;
+        for (int i = 0; i < 3; i++) {
+            flat += weight[i] * values[corner[i]];
+        }
+        return flat;
+    }
+
+    // A cubic Bezier triangle through the three corner values, with the two
+    // control points along each edge placed so the surface leaves each corner
+    // at the slope measured there.
+    //
+    // Linear weights reproduce the corners and nothing else, so the surface is
+    // a flat plane inside every triangle with a crease at every edge - the
+    // faceting that replaced the honeycomb. This matches the slope as well as
+    // the height at each corner, so neighbouring triangles leave their shared
+    // corners heading the same way and the creases go.
+    const glm::vec3& a = cellPositions[corner[0]];
+    const glm::vec3& b = cellPositions[corner[1]];
+    const glm::vec3& c = cellPositions[corner[2]];
+
+    const float fa = values[corner[0]];
+    const float fb = values[corner[1]];
+    const float fc = values[corner[2]];
+
+    // Directional derivative along each edge, a third of the way in - which is
+    // where a cubic Bezier's inner control points sit.
+    const auto along = [&](int from, const glm::vec3& toward, float value) {
+        return value + glm::dot(gradients[corner[from]], toward - cellPositions[corner[from]]) / 3.0f;
+    };
+
+    const float b210 = along(0, b, fa);
+    const float b120 = along(1, a, fb);
+    const float b021 = along(1, c, fb);
+    const float b012 = along(2, b, fc);
+    const float b102 = along(2, a, fc);
+    const float b201 = along(0, c, fa);
+
+    // The centre control point, set so a plane stays a plane.
+    const float b111 = (b210 + b120 + b021 + b012 + b102 + b201) / 4.0f -
+                       (fa + fb + fc) / 6.0f;
+
+    const float u = weight[0];
+    const float v = weight[1];
+    const float w = weight[2];
+
+    return fa * u * u * u + fb * v * v * v + fc * w * w * w +
+           3.0f * (b210 * u * u * v + b120 * u * v * v +
+                   b021 * v * v * w + b012 * v * w * w +
+                   b102 * u * w * w + b201 * u * u * w) +
+           6.0f * b111 * u * v * w;
 }
 
 bool CrustGrid::barycentricCells(const glm::vec3& sphereNormal, int outCells[3],
@@ -1304,6 +1433,7 @@ void CrustGrid::stepOnce(float millionYears) {
     }
 
     solveSeaLevel();
+    refreshElevationField();
 
     simulationTime += millionYears;
     version++;
@@ -1316,6 +1446,7 @@ void CrustGrid::stepOnce(float millionYears) {
 std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
     auto snapshot = std::make_shared<Snapshot>();
     snapshot->elevation.resize(cells.size());
+    snapshot->elevationGradient.resize(cells.size());
     snapshot->plateId.resize(cells.size());
     snapshot->crustAge.resize(cells.size());
     snapshot->crustThickness.resize(cells.size());
@@ -1341,6 +1472,11 @@ std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
         }
         snapshot->surfaceRock[i] = rock;
     }
+    // Subtracting sea level shifts every cell by the same amount, and a
+    // constant offset does not change a slope - so the gradients already
+    // fitted for the live field describe the snapshot's elevations too.
+    snapshot->elevationGradient = elevationGradient;
+
     snapshot->minElevation = minElevation;
     snapshot->maxElevation = maxElevation;
     snapshot->seaLevel = seaLevel;
@@ -1354,23 +1490,10 @@ float CrustGrid::sampleElevation(const Snapshot& snapshot, const glm::vec3& sphe
         return 0.0f;
     }
 
-    // Same reconstruction as the live sampler, reading published elevations
-    // instead of the grid. Touches only the snapshot and the fixed topology,
-    // so the simulation thread can be mid-step.
-    int corner[3];
-    float weight[3];
-    if (!barycentricCells(sphereNormal, corner, weight)) {
-        return 0.0f;
-    }
-
-    float elevation = 0.0f;
-    for (int i = 0; i < 3; i++) {
-        if (corner[i] < 0 || corner[i] >= static_cast<int>(snapshot.elevation.size())) {
-            return 0.0f;
-        }
-        elevation += weight[i] * snapshot.elevation[corner[i]];
-    }
-    return elevation;
+    // Reads only the snapshot and the fixed topology, so the simulation
+    // thread can be mid-step and several renderer threads can be in here at
+    // once.
+    return reconstruct(sphereNormal, snapshot.elevation, snapshot.elevationGradient);
 }
 
 float CrustGrid::sampleElevation(const glm::vec3& sphereNormal) const {
@@ -1386,17 +1509,10 @@ float CrustGrid::sampleElevation(const glm::vec3& sphereNormal) const {
     // scheme later rather than a nearest-cell lookup. Barycentric weights over
     // the containing triangle are linear between corners and have no such
     // singularity.
-    int corner[3];
-    float weight[3];
-    if (!barycentricCells(sphereNormal, corner, weight)) {
+    if (elevationField.size() != cells.size()) {
         return -seaLevel;
     }
-
-    float elevation = 0.0f;
-    for (int i = 0; i < 3; i++) {
-        elevation += weight[i] * cells[corner[i]].elevation;
-    }
-    return elevation - seaLevel;
+    return reconstruct(sphereNormal, elevationField, elevationGradient) - seaLevel;
 }
 
 CrustGrid::Stats CrustGrid::computeStats() const {

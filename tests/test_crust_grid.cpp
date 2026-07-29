@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <vector>
 
 namespace {
 
@@ -781,6 +782,61 @@ void testSurfaceReconstruction() {
     }
     std::printf("    longest run of identical samples: %d of 400\n", worstRun);
     check(worstRun < 40, "no flat plateaus across the surface");
+
+    // The surface must not crease where one triangle meets the next.
+    //
+    // Blending three corner values linearly reproduces them exactly and is
+    // flat everywhere in between, so the slope changes abruptly at every edge
+    // - which is what makes a rendered planet look like a faceted shell. That
+    // shows up here as a spike in the second difference along a path, and it
+    // is invisible to any test that only checks values at and between cells.
+    //
+    // Measured against the typical bend of the field itself, so the number
+    // means "how much sharper is the worst kink than ordinary terrain".
+    const glm::vec3 axis = glm::normalize(glm::cross(from, glm::vec3(0.0f, 0.0f, 1.0f)));
+    constexpr int STEPS = 3000;
+
+    // Measured against the flat blend rather than against a number picked out
+    // of the air, because what matters is whether curving between cells
+    // actually removed the creases the flat blend leaves.
+    std::vector<float> curved(STEPS);
+    std::vector<float> flat(STEPS);
+
+    for (int i = 0; i < STEPS; i++) {
+        // A quarter of the way round the planet, crossing many cells.
+        const float angle = (static_cast<float>(i) / STEPS) * 1.57f;
+        const glm::vec3 p = glm::normalize(from * std::cos(angle) + axis * std::sin(angle));
+        curved[i] = grid.sampleElevation(p);
+
+        int corner[3];
+        float weight[3];
+        flat[i] = 0.0f;
+        if (grid.barycentricCells(p, corner, weight)) {
+            for (int k = 0; k < 3; k++) {
+                flat[i] += weight[k] * cells[corner[k]].elevation;
+            }
+        }
+    }
+
+    const auto sharpnessOf = [](const std::vector<float>& walk) {
+        double total = 0.0;
+        double worst = 0.0;
+        for (size_t i = 1; i + 1 < walk.size(); i++) {
+            const double bend = std::abs(walk[i + 1] - 2.0 * walk[i] + walk[i - 1]);
+            total += bend;
+            worst = std::max(worst, bend);
+        }
+        const double mean = total / (walk.size() - 2);
+        return mean > 1e-9 ? worst / mean : 0.0;
+    };
+
+    const double flatSharpness = sharpnessOf(flat);
+    const double curvedSharpness = sharpnessOf(curved);
+
+    std::printf("    worst kink: %.1fx average bend flat, %.1fx curved\n",
+                flatSharpness, curvedSharpness);
+    check(curvedSharpness < flatSharpness * 0.5,
+          "curving between cells at least halves the worst crease");
 }
 
 void testStepPerformance() {

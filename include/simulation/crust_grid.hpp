@@ -391,6 +391,20 @@ public:
     struct Snapshot {
         std::vector<float> elevation;   // per cell, metres relative to sea level
 
+        // How elevation is changing at each cell, in metres per metre, as a
+        // vector lying in the sphere's tangent plane there.
+        //
+        // Blending three cell values across a triangle reproduces the values
+        // but not the shape between them: the result is flat inside every
+        // triangle and creased along every edge, so the surface reads as a
+        // faceted shell rather than as ground. Knowing the slope at each
+        // corner as well as the height is what lets the surface curve.
+        //
+        // Computed once when the snapshot is taken, because it is the same
+        // for every one of the millions of samples the renderer will draw
+        // from it.
+        std::vector<glm::vec3> elevationGradient;
+
         // Carried so the renderer can show what the simulation is thinking,
         // not just what the surface looks like. Being able to colour the
         // planet by plate is the difference between "that island looks odd"
@@ -439,6 +453,23 @@ public:
     // Returns false only if the direction is degenerate or the grid is empty.
     bool barycentricCells(const glm::vec3& sphereNormal, int outCells[3],
                           float outWeights[3]) const;
+
+    // Elevation as a flat array, with its slope at every cell, refreshed
+    // whenever the surface moves. Kept because both the renderer's snapshot
+    // and the live sampler want the same gradients, and fitting them is
+    // O(cells) once against millions of samples read from them.
+    std::vector<float> elevationField;
+    std::vector<glm::vec3> elevationGradient;
+    void refreshElevationField();
+
+    // Slope of a per-cell field at one cell, fitted from its neighbour ring.
+    glm::vec3 estimateGradient(int cell, const std::vector<float>& values) const;
+
+    // A per-cell field sampled anywhere on the sphere, curving between cells
+    // rather than blending flat across them. Falls back to the flat blend if
+    // no gradients are supplied.
+    float reconstruct(const glm::vec3& sphereNormal, const std::vector<float>& values,
+                      const std::vector<glm::vec3>& gradients) const;
 
     const std::vector<Cell>& getCells() const { return cells; }
     const std::vector<Plate>& getPlates() const { return plates; }
