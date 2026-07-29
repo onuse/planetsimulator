@@ -224,19 +224,72 @@ float DensityField::getTerrainHeight(const glm::vec3& sphereNormal) const {
     // on a small planet the relief is already proportionally larger than
     // Earth's without any help.
     if (crustGrid != nullptr) {
-        const float simulated = crustSnapshot != nullptr
-            ? crustGrid->sampleElevation(*crustSnapshot, n)
-            : crustGrid->sampleElevation(n);
+        const simulation::CrustGrid::SurfaceSample surface =
+            crustSnapshot != nullptr ? crustGrid->sampleSurface(*crustSnapshot, n)
+                                     : crustGrid->sampleSurface(n);
+        const float simulated = surface.elevation;
 
-        const float detail =
-            fbmNoise(n * tp.detailFrequency + glm::vec3(71.7f, 93.2f, 19.4f), 3, 1.0f, 1.0f);
+        // Relief below the simulation's own resolution, derived from what the
+        // simulation knows rather than sprayed on uniformly.
+        //
+        // One noise field everywhere gives an abyssal plain the same texture
+        // as a mountainside, which is what made the planet read as a shape
+        // with a pattern on it. Ground is rough for reasons, and two of those
+        // reasons are already in the simulation: how steep it is, and what it
+        // is made of.
+        // Below the grid, and only below it.
+        //
+        // Noise frequency is in cycles per planet radius, so the size of what
+        // it makes is the radius over the frequency. At the fixed 12 this used
+        // it produced features about eighty kilometres across on a grid whose
+        // cells are seventeen apart - five times coarser than the thing it was
+        // supposed to be filling in. That is not detail, it is a second and
+        // much cruder terrain model arguing with the simulation about where
+        // the hills go.
+        //
+        // Tied to the cell spacing instead, so the first octave starts exactly
+        // where the simulation stops resolving and the rest go finer.
+        const float cellSpacing = std::max(crustGrid->cellSpacing(), 1.0f);
+        const float detailFrequency = planetRadius / cellSpacing;
 
-        // Roughness is damped below sea level so ocean basins stay smooth, and
-        // scaled to the simulation's cell spacing rather than to the planet.
-        const float subGrid = crustGrid->cellSpacing() * 0.035f;
-        const float wetness = simulated < 0.0f ? 0.25f : 1.0f;
+        const glm::vec3 offset(71.7f, 93.2f, 19.4f);
+        const float rolling = fbmNoise(n * detailFrequency + offset, 4, 1.0f, 1.0f);
 
-        return simulated + detail * subGrid * wetness;
+        // Ridged noise for anywhere steep. Folding smooth noise at zero turns
+        // its zero crossings into creases, which is what a divide between two
+        // catchments is - so slopes get ridges and spurs instead of dunes.
+        const float folded =
+            1.0f - std::abs(fbmNoise(n * detailFrequency * 0.7f - offset, 4, 1.0f, 1.0f));
+        const float ridged = folded * folded * 2.0f - 1.0f;
+
+        // What the ground is made of. Sediment is deposited by water and lies
+        // flat; lavas and granites break, joint and hold an edge.
+        float hardness = 1.0f;
+        switch (static_cast<simulation::CrustGrid::RockType>(surface.rock)) {
+            case simulation::CrustGrid::RockType::Sediment: hardness = 0.35f; break;
+            case simulation::CrustGrid::RockType::Basalt:   hardness = 0.85f; break;
+            case simulation::CrustGrid::RockType::Granite:  hardness = 1.00f; break;
+            case simulation::CrustGrid::RockType::Andesite: hardness = 1.15f; break;
+            default: break;
+        }
+
+        // Steepness does two things: it decides how much relief there is at
+        // all - a flood plain is flat at every scale, a mountainside is broken
+        // at every scale - and it decides which of the two noises to use.
+        const float steepness = glm::clamp(surface.slope / 0.12f, 0.0f, 1.0f);
+        const float detail = glm::mix(rolling, ridged, steepness);
+        const float amplitude = 0.25f + 2.4f * steepness;
+
+        // Scaled to the simulation's cell spacing, not to the planet: this is
+        // filling in below what the grid resolves, so that is the scale it
+        // belongs at.
+        const float subGrid = cellSpacing * 0.035f;
+
+        // Seafloor roughness is real but four kilometres of water hides it,
+        // and letting it through mottles every ocean.
+        const float exposed = simulated < 0.0f ? 0.2f : 1.0f;
+
+        return simulated + detail * subGrid * amplitude * hardness * exposed;
     }
 
     // Offsets decorrelate the layers; without them every octave lines up.

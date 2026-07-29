@@ -508,6 +508,90 @@ float CrustGrid::reconstruct(const glm::vec3& sphereNormal, const std::vector<fl
            6.0f * b111 * u * v * w;
 }
 
+CrustGrid::SurfaceSample CrustGrid::sampleSurface(const Snapshot& snapshot,
+                                                  const glm::vec3& sphereNormal) const {
+    SurfaceSample sample;
+
+    int corner[3];
+    float weight[3];
+    if (!barycentricCells(sphereNormal, corner, weight)) {
+        return sample;
+    }
+
+    sample.elevation = reconstruct(sphereNormal, snapshot.elevation, snapshot.elevationGradient);
+
+    // Slope is blended, because the ground genuinely does get steeper and
+    // gentler continuously; the rock is not, because a point is made of one
+    // thing or another and averaging basalt with granite means nothing. It
+    // comes from whichever cell dominates.
+    if (snapshot.elevationGradient.size() == snapshot.elevation.size()) {
+        glm::vec3 gradient(0.0f);
+        for (int i = 0; i < 3; i++) {
+            gradient += weight[i] * snapshot.elevationGradient[corner[i]];
+        }
+        // The gradient is per unit of chord on the unit sphere, and one such
+        // unit is a planet radius of ground.
+        sample.slope = glm::length(gradient) / std::max(planetRadius, 1.0f);
+    }
+
+    int dominant = corner[0];
+    float best = weight[0];
+    for (int i = 1; i < 3; i++) {
+        if (weight[i] > best) {
+            best = weight[i];
+            dominant = corner[i];
+        }
+    }
+    if (dominant < static_cast<int>(snapshot.surfaceRock.size())) {
+        sample.rock = snapshot.surfaceRock[dominant];
+    }
+    return sample;
+}
+
+CrustGrid::SurfaceSample CrustGrid::sampleSurface(const glm::vec3& sphereNormal) const {
+    SurfaceSample sample;
+
+    int corner[3];
+    float weight[3];
+    if (!barycentricCells(sphereNormal, corner, weight) ||
+        elevationField.size() != cells.size()) {
+        return sample;
+    }
+
+    sample.elevation = reconstruct(sphereNormal, elevationField, elevationGradient) - seaLevel;
+
+    glm::vec3 gradient(0.0f);
+    for (int i = 0; i < 3; i++) {
+        gradient += weight[i] * elevationGradient[corner[i]];
+    }
+    sample.slope = glm::length(gradient) / std::max(planetRadius, 1.0f);
+
+    int dominant = corner[0];
+    float best = weight[0];
+    for (int i = 1; i < 3; i++) {
+        if (weight[i] > best) {
+            best = weight[i];
+            dominant = corner[i];
+        }
+    }
+
+    // The live grid keeps its rock in the markers rather than in a published
+    // array, so this is the type of the largest parcel sitting on the cell.
+    uint8_t rock = static_cast<uint8_t>(RockType::Basalt);
+    double biggest = 0.0;
+    if (dominant < static_cast<int>(cellMarkers.size())) {
+        for (int index : cellMarkers[dominant]) {
+            const Marker& marker = markers[index];
+            if (marker.layerCount > 0 && marker.volume > biggest) {
+                biggest = marker.volume;
+                rock = static_cast<uint8_t>(marker.layers[marker.layerCount - 1].rock);
+            }
+        }
+    }
+    sample.rock = rock;
+    return sample;
+}
+
 bool CrustGrid::barycentricCells(const glm::vec3& sphereNormal, int outCells[3],
                                  float outWeights[3]) const {
     if (cells.empty() || triangles.empty()) {

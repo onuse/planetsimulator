@@ -434,6 +434,22 @@ public:
     // grid's fixed topology.
     float sampleElevation(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
 
+    // Everything about the surface at one point that the renderer needs in
+    // order to decide what the ground between cells should look like.
+    //
+    // Relief below the simulation's own resolution has to come from somewhere,
+    // and generic noise everywhere is the wrong somewhere - it gives a
+    // mountainside and an abyssal plain the same texture. What the simulation
+    // already knows is enough to condition it: how steep the ground is, and
+    // what it is made of.
+    struct SurfaceSample {
+        float elevation = 0.0f;   // metres relative to sea level
+        float slope = 0.0f;       // metres per metre, so dimensionless
+        uint8_t rock = 0;         // RockType exposed at the top of the column
+    };
+    SurfaceSample sampleSurface(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
+    SurfaceSample sampleSurface(const glm::vec3& sphereNormal) const;
+
     // Nearest cell to a direction, via the spatial accelerator.
     int findNearestCell(const glm::vec3& sphereNormal) const;
 
