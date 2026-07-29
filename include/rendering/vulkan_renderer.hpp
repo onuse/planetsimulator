@@ -291,6 +291,7 @@ private:
     void* patchIndexPoolMapped = nullptr;
     std::vector<uint32_t> freePatchSlots;
     std::vector<PatchTree::PatchKey> wantedPatches;
+    std::vector<PatchTree::PatchKey> staleVisible;
 
     // A slot cannot be handed to a different patch the moment its old owner is
     // dropped: a command buffer still in flight may be drawing that slot, and

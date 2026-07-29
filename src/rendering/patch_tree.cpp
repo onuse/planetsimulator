@@ -160,6 +160,25 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
     patch.indices.clear();
     patch.indices.reserve(GRID * GRID * 6 + 4 * GRID * 6);
 
+    // Sampled one ring wider than the patch actually needs.
+    //
+    // A normal is a central difference of its neighbours, and at the edge of
+    // the grid there is no neighbour on one side. Clamping to a one-sided
+    // difference there - the obvious thing - gives the edge vertex a different
+    // normal from the one the patch next door computes for the very same
+    // point, because that patch is missing its neighbour on the opposite side
+    // and leans the other way. The two disagree about which way the ground
+    // faces, so every patch boundary shades as a hard straight line with a
+    // step in brightness across it, permanently and everywhere, whether or not
+    // the levels of detail match.
+    //
+    // The ring outside the patch is sampled and used for the differences, then
+    // thrown away. Both patches then compute the same normal from the same six
+    // neighbours and the seam has nothing to show. Twelve per cent more
+    // samples, for the difference between a planet and a tiled floor.
+    constexpr int EXT = N + 2;
+    std::vector<glm::dvec3> extended(EXT * EXT);
+
     std::vector<glm::dvec3> world(N * N);
     std::vector<float> elevation(N * N);
     std::vector<float> smooth(N * N);
@@ -168,19 +187,31 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
     double minSurfaceRadius = std::numeric_limits<double>::max();
     double maxSurfaceRadius = 0.0;
 
-    for (int j = 0; j < N; j++) {
-        for (int i = 0; i < N; i++) {
-            const double u = static_cast<double>(i) / GRID;
-            const double v = static_cast<double>(j) / GRID;
+    const float seaLevel = field.getSeaLevelHeight();
+
+    for (int b = 0; b < EXT; b++) {
+        for (int a = 0; a < EXT; a++) {
+            // The extended grid is offset by one, so a = 1 is the patch's
+            // first column and a = 0 is the borrowed ring outside it.
+            const double u = static_cast<double>(a - 1) / GRID;
+            const double v = static_cast<double>(b - 1) / GRID;
             const glm::dvec3 dir = patchDirection(key, u, v);
 
             const glm::vec3 n(dir);
             const float h = field.getTerrainHeight(n);
-            const float seaLevel = field.getSeaLevelHeight();
 
             // Oceans render as a flat surface at sea level; the floor beneath
             // is real geometry but is not what is being looked at.
             const float surface = std::max(h, seaLevel);
+            const double radius = static_cast<double>(planetRadius) + surface;
+            extended[b * EXT + a] = dir * radius;
+
+            const int i = a - 1;
+            const int j = b - 1;
+            if (i < 0 || i >= N || j < 0 || j >= N) {
+                continue;   // borrowed ring: only ever used for normals
+            }
+
             elevation[j * N + i] = h;
 
             // Kept separately for colouring the sea. Sub-grid roughness
@@ -191,8 +222,7 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
             // where the level changes.
             smooth[j * N + i] = field.getLargeScaleElevation(n);
 
-            const double radius = static_cast<double>(planetRadius) + surface;
-            world[j * N + i] = dir * radius;
+            world[j * N + i] = extended[b * EXT + a];
             maxRadius = std::max(maxRadius, glm::length(world[j * N + i] - patch.centre));
             minSurfaceRadius = std::min(minSurfaceRadius, radius);
             maxSurfaceRadius = std::max(maxSurfaceRadius, radius);
@@ -213,14 +243,19 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
 
     // Normals from the grid itself rather than from the sphere, so slopes
     // actually catch the light.
+    //
+    // Always a central difference, including on the edges, because the ring
+    // outside the patch was sampled for exactly this. Every vertex is treated
+    // the same way whether it is in the middle of a patch or on its boundary,
+    // which is what makes two patches agree about a point they share.
     for (int j = 0; j < N; j++) {
         for (int i = 0; i < N; i++) {
-            const int i0 = std::max(i - 1, 0), i1 = std::min(i + 1, N - 1);
-            const int j0 = std::max(j - 1, 0), j1 = std::min(j + 1, N - 1);
-            const glm::vec3 du = patch.vertices[j * N + i1].position -
-                                 patch.vertices[j * N + i0].position;
-            const glm::vec3 dv = patch.vertices[j1 * N + i].position -
-                                 patch.vertices[j0 * N + i].position;
+            const int a = i + 1;
+            const int b = j + 1;
+            const glm::vec3 du =
+                glm::vec3(extended[b * EXT + (a + 1)] - extended[b * EXT + (a - 1)]);
+            const glm::vec3 dv =
+                glm::vec3(extended[(b + 1) * EXT + a] - extended[(b - 1) * EXT + a]);
             glm::vec3 n = glm::cross(du, dv);
             const float len = glm::length(n);
             const glm::vec3 outward = glm::vec3(glm::normalize(world[j * N + i]));
@@ -235,7 +270,6 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
     // Colour from the same fields the simulation produced.
     const float maxElevation = std::max(field.getMaxElevation(), 1.0f);
     const float maxDepth = std::max(field.getMaxOceanDepth(), 1.0f);
-    const float seaLevel = field.getSeaLevelHeight();
 
     for (int j = 0; j < N; j++) {
         for (int i = 0; i < N; i++) {
@@ -332,9 +366,17 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
     // the departure grows with the square of the span, so four times over. The
     // factor below is that, doubled, and no more - the skirt is only ever seen
     // when it is too deep.
+    //
+    // The floor is not slack. Where the ground is flat the bend is nearly
+    // zero, and a skirt sized only from it vanishes - but two patches at
+    // different levels still fail to meet, because their edges differ
+    // sideways as well as in height: the finer one follows the sphere while
+    // the coarser one cuts the chord. That gap scales with the patch, not with
+    // the terrain, so it needs a term that does too. Dropping this floor to a
+    // thirtieth left a staircase of hairline cracks over flat ground.
     const float skirtDepth =
         std::max(worstBend * 8.0f,
-                 static_cast<float>(patchWorldSize(key, planetRadius)) * 0.002f);
+                 static_cast<float>(patchWorldSize(key, planetRadius)) * 0.05f);
     patch.skirtDepth = skirtDepth;
 
     const auto addSkirt = [&](const std::vector<int>& edge) {

@@ -331,7 +331,16 @@ void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* c
         built++;
     }
 
-    int refreshed = 0;
+    // Oldest first, not first-come.
+    //
+    // Staleness is not uniform. A patch that has been on screen throughout is
+    // one step behind; one the camera turned away from and came back to can be
+    // many, and a continent will have moved in between - so it draws ocean
+    // where its neighbours draw land, standing proud of them with its side
+    // wall showing. Those are the ones worth the budget, and refreshing in
+    // whatever order selection happened to emit made them queue behind patches
+    // that were nearly right already.
+    staleVisible.clear();
     for (const PatchTree::PatchKey& key : visiblePatches) {
         auto it = patchCache.find(packPatchKey(key));
         if (it == patchCache.end()) {
@@ -339,9 +348,25 @@ void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* c
         }
         it->second.lastUsedFrame = patchFrameCounter;
 
-        const bool stale = it->second.builtAtCrustVersion != crustVersion ||
-                           it->second.builtAtStyle != patchStyleVersion;
-        if (stale && refreshed < REFRESH_BUDGET && !outOfTime()) {
+        if (it->second.builtAtCrustVersion != crustVersion ||
+            it->second.builtAtStyle != patchStyleVersion) {
+            staleVisible.push_back(key);
+        }
+    }
+    std::sort(staleVisible.begin(), staleVisible.end(),
+              [this](const PatchTree::PatchKey& a, const PatchTree::PatchKey& b) {
+                  return patchCache[packPatchKey(a)].builtAtCrustVersion <
+                         patchCache[packPatchKey(b)].builtAtCrustVersion;
+              });
+
+    int refreshed = 0;
+    for (const PatchTree::PatchKey& key : staleVisible) {
+        auto it = patchCache.find(packPatchKey(key));
+        if (it == patchCache.end()) {
+            continue;
+        }
+
+        if (refreshed < REFRESH_BUDGET && !outOfTime()) {
             // Into a fresh slot, never over the one being drawn from.
             //
             // Writing in place looks safe here in a way that reusing a slot
