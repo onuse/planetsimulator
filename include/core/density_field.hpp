@@ -27,7 +27,19 @@ public:
 
     // Terrain elevation in metres relative to the reference sphere, for a
     // point on the unit sphere. Positive is above sea level.
-    float getTerrainHeight(const glm::vec3& sphereNormal) const;
+    // Terrain height, resolved down to a chosen scale.
+    //
+    // finestScale is the smallest feature the caller can represent, in metres.
+    // Relief is fractal: each octave halves the wavelength and quarters the
+    // amplitude, so the question is only where to stop, and the answer is
+    // wherever the caller stops being able to see the difference. A patch with
+    // vertices three metres apart wants octaves down to three metres; the same
+    // ground viewed from orbit wants none of them, and generating them anyway
+    // costs time to produce detail that lands between samples and aliases.
+    //
+    // Zero means the old fixed handful of octaves, for callers with no
+    // particular scale in mind.
+    float getTerrainHeight(const glm::vec3& sphereNormal, float finestScale = 0.0f) const;
 
     // Elevation without the sub-grid roughness - the shape the simulation
     // actually resolves. Use this where the fine detail is not observable,

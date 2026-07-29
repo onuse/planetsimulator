@@ -121,7 +121,11 @@ layout(binding = 0) uniform UniformBufferObject {
     vec3 viewPos;
     float time;
     vec3 lightDir;
-    float padding;
+    // World size of one pixel at one metre from the eye. Multiplying by the
+    // distance to a fragment gives how much ground that pixel covers, which is
+    // what decides whether a detail is worth drawing or is about to turn into
+    // noise.
+    float pixelWorldScale;
     vec4 planetParams;   // radius, sea level, highest land, atmosphere scale height
 } ubo;
 
@@ -134,6 +138,84 @@ const vec3 RAYLEIGH = vec3(0.36, 1.00, 2.62);
 
 const vec3 SUN_COLOUR = vec3(1.00, 0.97, 0.92);
 
+// Detail below the mesh.
+//
+// Geometry can only carry features larger than the gap between its vertices,
+// and that gap is set by how many triangles are affordable - so the ground
+// between vertices is a flat ramp however close you get, which is what reads
+// as polygons rather than as a planet. Perturbing the normal per fragment
+// breaks that link: the lighting responds to relief the geometry never had,
+// and it costs the same whether there are ten triangles on screen or a
+// million.
+//
+// This is not a substitute for real relief - the silhouette is still the mesh
+// and a hill will not hide anything behind it. It is what makes a surface look
+// like it is made of something.
+
+float hash13(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.zyx + 31.32);
+    return fract((p.x + p.y) * p.z);
+}
+
+float valueNoise(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);   // smooth, so the lattice does not show
+
+    float n000 = hash13(i + vec3(0.0, 0.0, 0.0));
+    float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+    float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+    float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+    float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+    float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+    float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+    float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+
+    return mix(mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+               mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y), f.z) * 2.0 - 1.0;
+}
+
+vec3 detailNormal(vec3 up, vec3 normal, float roughness, float groundPerPixel) {
+    // Two directions across the surface to take differences along.
+    vec3 helper = abs(normal.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent = normalize(cross(normal, helper));
+    vec3 bitangent = cross(normal, tangent);
+
+    vec3 slope = vec3(0.0);
+
+    // Noise is sampled against the unit direction rather than the absolute
+    // position. Positions on a planet are millions of metres and float runs
+    // out of bits long before it reaches the scales this works at; a direction
+    // is order one and keeps its precision all the way down.
+    float wavelength = 900.0;    // metres
+    float amplitude = 0.09;      // as a fraction of the wavelength
+
+    for (int octave = 0; octave < 4; octave++) {
+        // Stop when a feature is down to a couple of pixels. Past that it is
+        // not detail any more - it is noise that crawls as the camera moves.
+        float fade = smoothstep(1.5, 5.0, wavelength / max(groundPerPixel, 0.001));
+
+        if (fade > 0.002) {
+            float scale = ubo.planetParams.x / wavelength;
+            vec3 p = up * scale;
+            float step = 0.35;
+
+            float h = valueNoise(p);
+            float du = valueNoise(p + tangent * step) - h;
+            float dv = valueNoise(p + bitangent * step) - h;
+
+            slope += (tangent * du + bitangent * dv) * amplitude * fade;
+        }
+
+        wavelength *= 0.28;
+        amplitude *= 0.82;
+    }
+
+    return normalize(normal - slope * roughness);
+}
+
+
 void main() {
     const float planetRadius = ubo.planetParams.x;
     const float seaLevel = ubo.planetParams.y;
@@ -141,6 +223,9 @@ void main() {
 
     vec3 normal = normalize(fragNormal);
     vec3 viewDir = normalize(fragViewDir);
+
+    // How much ground one pixel covers here.
+    float groundPerPixel = fragEyeDistance * ubo.pixelWorldScale;
 
     // Up is away from the planet's centre, not along any world axis. Every
     // term below that has an up in it means this one.
@@ -156,6 +241,11 @@ void main() {
     // ground. The transition is over a couple of metres, which puts a soft
     // edge on the shoreline instead of a hard one.
     float water = 1.0 - smoothstep(0.0, 2.0, altitude);
+
+    // Rock is textured, water is not - open water really is smooth at this
+    // scale, and the ripples that belong on it are the job of a wave model
+    // there is not one of yet.
+    normal = detailNormal(up, normal, 1.0 - water, groundPerPixel);
 
     // Sunlight, with a terminator softened over the angle the sun actually
     // subtends. A hard cutoff at ninety degrees reads as a drawn line around

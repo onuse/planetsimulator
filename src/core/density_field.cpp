@@ -211,7 +211,8 @@ float DensityField::getLargeScaleElevation(const glm::vec3& sphereNormal) const 
     return getTerrainHeight(sphereNormal) - getSeaLevelHeight();
 }
 
-float DensityField::getTerrainHeight(const glm::vec3& sphereNormal) const {
+float DensityField::getTerrainHeight(const glm::vec3& sphereNormal,
+                                     float finestScale) const {
     const TerrainParams& tp = terrainParams;
 
     // Sample on the unit sphere. Frequencies are cycles per radius, so the
@@ -252,14 +253,33 @@ float DensityField::getTerrainHeight(const glm::vec3& sphereNormal) const {
         const float cellSpacing = std::max(crustGrid->cellSpacing(), 1.0f);
         const float detailFrequency = planetRadius / cellSpacing;
 
+        // How far down to carry the cascade.
+        //
+        // Four octaves took the finest features to about an eighth of a cell,
+        // which is a couple of kilometres - so below that the ground was
+        // perfectly smooth however close the camera got, and a planet with
+        // nothing between two kilometres and bare geometry reads as a shape,
+        // not as terrain. Each further octave halves the wavelength, so the
+        // count is just how many halvings separate the cell spacing from the
+        // smallest thing the caller can draw.
+        //
+        // Bounded at both ends: below four the large-scale relief loses its
+        // roughness, and above twelve the amplitude has fallen by a factor of
+        // four thousand and the octaves cost time to add nothing visible.
+        int octaves = 4;
+        if (finestScale > 0.0f) {
+            const float halvings = std::log2(cellSpacing / std::max(finestScale, 0.5f));
+            octaves = glm::clamp(static_cast<int>(std::ceil(halvings)), 4, 12);
+        }
+
         const glm::vec3 offset(71.7f, 93.2f, 19.4f);
-        const float rolling = fbmNoise(n * detailFrequency + offset, 4, 1.0f, 1.0f);
+        const float rolling = fbmNoise(n * detailFrequency + offset, octaves, 1.0f, 1.0f);
 
         // Ridged noise for anywhere steep. Folding smooth noise at zero turns
         // its zero crossings into creases, which is what a divide between two
         // catchments is - so slopes get ridges and spurs instead of dunes.
         const float folded =
-            1.0f - std::abs(fbmNoise(n * detailFrequency * 0.7f - offset, 4, 1.0f, 1.0f));
+            1.0f - std::abs(fbmNoise(n * detailFrequency * 0.7f - offset, octaves, 1.0f, 1.0f));
         const float ridged = folded * folded * 2.0f - 1.0f;
 
         // What the ground is made of. Sediment is deposited by water and lies

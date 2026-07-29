@@ -176,6 +176,14 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
     // thrown away. Both patches then compute the same normal from the same six
     // neighbours and the seam has nothing to show. Twelve per cent more
     // samples, for the difference between a planet and a tiled floor.
+    // How fine this patch can actually represent detail: half the distance
+    // between its vertices, which is the smallest wavelength a grid can carry.
+    // Asking the terrain for anything finer produces features that fall
+    // between samples, which does not add detail - it adds noise that changes
+    // as the camera moves.
+    const float finestScale =
+        static_cast<float>(patchWorldSize(key, planetRadius)) / (GRID * 2.0f);
+
     constexpr int EXT = N + 2;
     std::vector<glm::dvec3> extended(EXT * EXT);
 
@@ -198,7 +206,7 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
             const glm::dvec3 dir = patchDirection(key, u, v);
 
             const glm::vec3 n(dir);
-            const float h = field.getTerrainHeight(n);
+            const float h = field.getTerrainHeight(n, finestScale);
 
             // Oceans render as a flat surface at sea level; the floor beneath
             // is real geometry but is not what is being looked at.

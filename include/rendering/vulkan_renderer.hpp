@@ -60,7 +60,11 @@ struct UniformBufferObject {
     alignas(16) glm::vec3 viewPos;   // Single precision view position (camera-relative origin)
     float time;
     alignas(16) glm::vec3 lightDir;
-    float padding;
+
+    // World size of one pixel at one metre from the eye, so a fragment can
+    // work out how much ground it covers and stop adding detail finer than
+    // that. Was an unused padding float.
+    float pixelWorldScale;
 
     // The planet's own scale, so shading can be written in terms of the world
     // rather than in tuned constants. Height above sea level decides water

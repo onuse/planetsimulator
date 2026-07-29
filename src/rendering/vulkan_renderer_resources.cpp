@@ -351,6 +351,12 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     // Simple directional light (sun)
     ubo.lightDir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.3f));
 
+    // How much ground one pixel covers, per metre of distance. The shader
+    // multiplies by the distance to a fragment to find out whether a detail is
+    // worth drawing or is about to alias into crawling noise.
+    ubo.pixelWorldScale =
+        2.0f * std::tan(glm::radians(fov) * 0.5f) / static_cast<float>(swapChainExtent.height);
+
     if (currentPlanet != nullptr) {
         const core::DensityField& field = currentPlanet->getDensityField();
         const float radius = currentPlanet->getRadius();
