@@ -122,6 +122,16 @@ void VulkanRenderer::createPatchPools() {
 
     util::vlog() << "[patches] pool: " << MAX_PATCHES << " slots, "
                  << (vertexBytes + indexBytes) / (1024 * 1024) << " MB\n";
+
+    // Workers write straight into the mapped pool. Slots are uniform and each
+    // is owned by one job, so no two workers ever touch the same bytes and
+    // none of this needs a lock.
+    PatchBuilder::Pool builderPool;
+    builderPool.vertices = patchVertexPoolMapped;
+    builderPool.indices = patchIndexPoolMapped;
+    builderPool.verticesPerPatch = PATCH_VERTEX_COUNT;
+    builderPool.indicesPerPatch = PATCH_INDEX_COUNT;
+    patchBuilder.start(builderPool);
 }
 
 void VulkanRenderer::releasePatchSlot(uint32_t slot) {
@@ -172,7 +182,12 @@ uint32_t VulkanRenderer::acquirePatchSlot() {
 }
 
 void VulkanRenderer::destroyAllPatches() {
+    // Workers first: they write into the pool, so it cannot be unmapped while
+    // any of them is still running.
+    patchBuilder.stop();
+
     vkDeviceWaitIdle(device);
+    inFlightPatches.clear();
     patchCache.clear();
     freePatchSlots.clear();
     pendingPatchSlots.clear();
@@ -193,34 +208,6 @@ void VulkanRenderer::destroyAllPatches() {
         patchIndexPoolMemory = VK_NULL_HANDLE;
         patchIndexPoolMapped = nullptr;
     }
-}
-
-void VulkanRenderer::uploadPatch(const PatchTree::Patch& patch, GpuPatch& gpu) {
-    if (gpu.slot == UINT32_MAX || patch.vertices.empty() || patch.indices.empty()) {
-        return;
-    }
-
-    // Slots are only interchangeable if every patch really is the same size.
-    // If build() ever changes shape, this is where it must be noticed.
-    if (patch.vertices.size() != PATCH_VERTEX_COUNT ||
-        patch.indices.size() != PATCH_INDEX_COUNT) {
-        util::vlog() << "[patches] unexpected patch size " << patch.vertices.size()
-                     << "/" << patch.indices.size() << ", skipped\n";
-        return;
-    }
-
-    auto* vertexDst = static_cast<algorithms::MeshVertex*>(patchVertexPoolMapped) +
-                      static_cast<size_t>(gpu.slot) * PATCH_VERTEX_COUNT;
-    auto* indexDst = static_cast<uint32_t*>(patchIndexPoolMapped) +
-                     static_cast<size_t>(gpu.slot) * PATCH_INDEX_COUNT;
-
-    std::memcpy(vertexDst, patch.vertices.data(), PATCH_VERTEX_COUNT * kVertexStride);
-    // Indices are patch-local; the draw supplies the slot's vertex offset.
-    std::memcpy(indexDst, patch.indices.data(), PATCH_INDEX_COUNT * kIndexStride);
-
-    gpu.indexCount = PATCH_INDEX_COUNT;
-    gpu.centre = patch.centre;
-    gpu.boundingRadius = patch.boundingRadius;
 }
 
 void VulkanRenderer::evictUnusedPatches() {
@@ -271,64 +258,95 @@ void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* c
     };
     patchTree.select(cameraPosition, planetRadius, isReady, visiblePatches, wantedPatches);
 
-    const core::DensityField& field = planet->getDensityField();
+    // Work goes to the builder; nothing is built on this thread.
+    //
+    // Keep the workers pointed at the newest surface. Jobs already running
+    // keep the one they started against, so a patch is always internally
+    // consistent even if it lands a version late - and lands stale, which the
+    // refresh pass then picks up like any other staleness.
+    if (crustVersion != sourceCrustVersion) {
+        sourceCrustVersion = crustVersion;
+        patchBuilder.setSource(planet->getDensityField(), planet->getRenderSnapshot(),
+                               planetRadius);
+    }
 
-    const auto buildInto = [&](const PatchTree::PatchKey& key, GpuPatch& gpu) {
-        PatchTree::Patch patch;
-        patch.key = key;
-        PatchTree::build(patch, field, planetRadius);
-        uploadPatch(patch, gpu);
-        gpu.lastUsedFrame = patchFrameCounter;
-        gpu.builtAtCrustVersion = crustVersion;
-        gpu.builtAtStyle = patchStyleVersion;
+    // File whatever finished since last frame. The geometry is already in the
+    // pool by now; all that is left is deciding whether it is still wanted.
+    patchBuilder.collect(builtPatches);
+    for (const PatchBuilder::Result& result : builtPatches) {
+        const uint64_t packed = packPatchKey(result.key);
+        inFlightPatches.erase(packed);
+
+        if (!result.usable) {
+            releasePatchSlot(result.slot);
+            continue;
+        }
+
+        auto it = patchCache.find(packed);
+        if (it == patchCache.end()) {
+            GpuPatch gpu;
+            gpu.slot = result.slot;
+            gpu.indexCount = result.indexCount;
+            gpu.centre = result.centre;
+            gpu.boundingRadius = result.boundingRadius;
+            gpu.lastUsedFrame = patchFrameCounter;
+            gpu.builtAtCrustVersion = result.crustVersion;
+            gpu.builtAtStyle = result.styleVersion;
+            patchCache.emplace(packed, gpu);
+            continue;
+        }
+
+        // A refresh that finished after something newer already replaced this
+        // patch is thrown away rather than allowed to move it backwards.
+        if (result.crustVersion < it->second.builtAtCrustVersion) {
+            releasePatchSlot(result.slot);
+            continue;
+        }
+
+        releasePatchSlot(it->second.slot);   // retired, not freed: still in flight
+        it->second.slot = result.slot;
+        it->second.indexCount = result.indexCount;
+        it->second.centre = result.centre;
+        it->second.boundingRadius = result.boundingRadius;
+        it->second.builtAtCrustVersion = result.crustVersion;
+        it->second.builtAtStyle = result.styleVersion;
+    }
+
+    // How much to keep in flight.
+    //
+    // Enough that no worker idles, and not so much that the queue outlives the
+    // decision that filled it - the camera moves, and a patch nobody wants any
+    // more still costs a slot and a build. A couple of jobs per worker is the
+    // balance.
+    const size_t workerDepth = std::max<size_t>(16, patchBuilder.workerCount() * 3);
+    const auto hasRoom = [&] { return inFlightPatches.size() < workerDepth; };
+
+    const auto request = [&](const PatchTree::PatchKey& key, bool isRefresh,
+                             uint32_t slot) {
+        PatchBuilder::Job job;
+        job.key = key;
+        job.slot = slot;
+        job.crustVersion = crustVersion;
+        job.styleVersion = patchStyleVersion;
+        job.isRefresh = isRefresh;
+        inFlightPatches.insert(packPatchKey(key));
+        patchBuilder.submit(job);
     };
 
-    // Two budgets, and the split matters.
-    //
-    // Wanted patches are what the camera is waiting on to sharpen, so they get
-    // the larger share. Stale patches already draw correctly - they just show
-    // the surface as it was a moment ago - so they are refreshed slowly in the
-    // background. Treating those as the same thing is what makes a planet
-    // strobe: the simulation bumps its version several times a second, and if
-    // that invalidates everything at once there is nothing left to draw.
-    // Budgeted in time, not in patches.
-    //
-    // A patch costs around four hundred microseconds to build - twelve hundred
-    // terrain samples, each of them a cell lookup and an interpolation - so a
-    // count that is generous on one machine or at one altitude stalls another.
-    // Fixing the count at forty-eight to make refreshes converge quickly took
-    // the frame rate from five hundred to fifty, which is the wrong trade to
-    // make silently.
-    //
-    // This is the ceiling on how fast a tectonic step can sweep the visible
-    // surface, and it is a real limit: at four hundred microseconds each,
-    // three hundred visible patches take an eighth of a second however the
-    // budget is spent. Building them on worker threads is what actually lifts
-    // it; until then this keeps the cost bounded and the frame rate honest.
-    const auto buildDeadline =
-        std::chrono::steady_clock::now() + std::chrono::microseconds(2500);
-    const auto outOfTime = [&] { return std::chrono::steady_clock::now() > buildDeadline; };
-
-    constexpr int NEW_BUDGET = 24;
-    constexpr int REFRESH_BUDGET = 32;
-    int built = 0;
-
+    // Missing patches first: those are the ones holding the surface coarse.
     for (const PatchTree::PatchKey& key : wantedPatches) {
-        if (built >= NEW_BUDGET || outOfTime()) {
+        if (!hasRoom()) {
             break;
         }
         const uint64_t packed = packPatchKey(key);
-        if (patchCache.count(packed)) {
-            continue;   // queued more than once this frame
+        if (patchCache.count(packed) || inFlightPatches.count(packed)) {
+            continue;
         }
-        GpuPatch gpu;
-        gpu.slot = acquirePatchSlot();
-        if (gpu.slot == UINT32_MAX) {
+        const uint32_t slot = acquirePatchSlot();
+        if (slot == UINT32_MAX) {
             break;      // pool under pressure; slots free up in a few frames
         }
-        buildInto(key, gpu);
-        patchCache.emplace(packed, gpu);
-        built++;
+        request(key, false, slot);
     }
 
     // Oldest first, not first-come.
@@ -359,49 +377,29 @@ void VulkanRenderer::updatePatches(octree::OctreePlanet* planet, core::Camera* c
                          patchCache[packPatchKey(b)].builtAtCrustVersion;
               });
 
-    int refreshed = 0;
     for (const PatchTree::PatchKey& key : staleVisible) {
-        auto it = patchCache.find(packPatchKey(key));
-        if (it == patchCache.end()) {
+        if (!hasRoom()) {
+            break;
+        }
+        const uint64_t packed = packPatchKey(key);
+        if (inFlightPatches.count(packed)) {
             continue;
         }
 
-        if (refreshed < REFRESH_BUDGET && !outOfTime()) {
-            // Into a fresh slot, never over the one being drawn from.
-            //
-            // Writing in place looks safe here in a way that reusing a slot
-            // for a different patch is not, because the patch keeps its
-            // position - the worst a frame in flight could see is terrain half
-            // a tectonic step out of date, in the right place. That reasoning
-            // is wrong, and it is wrong in a way that shows.
-            //
-            // A frame in flight is reading those vertices while the memcpy
-            // runs. It does not see all of one version or all of the other; it
-            // sees some of each, and a triangle with one corner at the old
-            // elevation and another at the new stretches between them into a
-            // long thin spike. A tectonic step moves plates a hundred
-            // kilometres, so the two versions are nowhere near each other.
-            //
-            // The old slot keeps its old contents and keeps being drawn until
-            // the frames referencing it have retired, which is what the
-            // pending list is for. It costs one spare slot per refresh in
-            // flight.
-            const uint32_t replacementSlot = acquirePatchSlot();
-            if (replacementSlot != UINT32_MAX) {
-                GpuPatch replacement = it->second;
-                replacement.slot = replacementSlot;
-                buildInto(key, replacement);
-
-                if (replacement.indexCount > 0) {
-                    releasePatchSlot(it->second.slot);
-                    it->second = replacement;
-                } else {
-                    releasePatchSlot(replacementSlot);   // build produced nothing
-                }
-                refreshed++;
-            }
+        // Into a fresh slot, never over the one being drawn from. A frame in
+        // flight is reading those vertices; overwriting them gives it some of
+        // the old version and some of the new, and a triangle with one corner
+        // at each stretches between them into a long thin spike. A tectonic
+        // step moves plates a hundred kilometres, so the two are nowhere near
+        // each other. The old slot keeps its contents until the frames
+        // referencing it retire.
+        const uint32_t replacementSlot = acquirePatchSlot();
+        if (replacementSlot == UINT32_MAX) {
+            break;
         }
+        request(key, true, replacementSlot);
     }
+
 
     evictUnusedPatches();
 }

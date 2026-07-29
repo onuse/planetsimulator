@@ -140,6 +140,18 @@ public:
     // rebuild their meshes.
     uint64_t getCrustVersion() const;
 
+    // The surface picture the renderer is currently sampling, as shared
+    // ownership rather than the bare pointer the density field holds.
+    //
+    // Anything reading terrain off the render thread needs this. The bare
+    // pointer is swapped once a frame when a newer snapshot arrives, and the
+    // one it replaces is freed as soon as nothing else holds it - which is
+    // fine for a reader that runs between frames and fatal for one that does
+    // not. Holding this for the length of a read keeps it alive.
+    std::shared_ptr<const simulation::CrustGrid::Snapshot> getRenderSnapshot() const {
+        return renderSnapshot;
+    }
+
     // How much geological time we would like per second of wall clock.
     void setSimulationRate(float millionYearsPerSecond) { simulationRate = millionYearsPerSecond; }
     float getSimulationRate() const { return simulationRate; }

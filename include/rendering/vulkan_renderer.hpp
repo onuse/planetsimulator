@@ -11,10 +11,12 @@
 #include <chrono>
 
 #include <unordered_map>
+#include <unordered_set>
 
 #include "core/octree.hpp"
 #include "core/camera.hpp"
 #include "rendering/imgui_manager.hpp"
+#include "rendering/patch_builder.hpp"
 #include "rendering/patch_tree.hpp"
 // REMOVED: CPU-based renderers - using GPU mesh generation only
 
@@ -293,6 +295,13 @@ private:
     std::vector<PatchTree::PatchKey> wantedPatches;
     std::vector<PatchTree::PatchKey> staleVisible;
 
+    // Geometry is built on worker threads. The render thread only decides
+    // what to ask for, hands out slots, and files what comes back.
+    PatchBuilder patchBuilder;
+    std::vector<PatchBuilder::Result> builtPatches;
+    std::unordered_set<uint64_t> inFlightPatches;
+    uint64_t sourceCrustVersion = UINT64_MAX;
+
     // A slot cannot be handed to a different patch the moment its old owner is
     // dropped: a command buffer still in flight may be drawing that slot, and
     // it was recorded with the old patch's position. Overwriting the geometry
@@ -315,7 +324,6 @@ private:
     void releasePatchSlot(uint32_t slot);
     void reclaimPendingSlots();
     void updatePatches(octree::OctreePlanet* planet, core::Camera* camera);
-    void uploadPatch(const PatchTree::Patch& patch, GpuPatch& gpu);
     void evictUnusedPatches();
     void renderPatches(const glm::dvec3& cameraPosition);
     void destroyAllPatches();

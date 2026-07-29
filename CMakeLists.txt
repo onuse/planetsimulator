@@ -83,6 +83,7 @@ add_executable(${PROJECT_NAME}
     src/rendering/vulkan_renderer_cpu_upload.cpp
     src/rendering/vulkan_renderer_device.cpp
     src/rendering/vulkan_renderer_material.cpp
+    src/rendering/patch_builder.cpp
     src/rendering/vulkan_renderer_patches.cpp
     src/rendering/vulkan_renderer_pipeline.cpp
     src/rendering/vulkan_renderer_resources.cpp
