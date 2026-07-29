@@ -45,7 +45,7 @@ layout(push_constant) uniform PatchConstants {
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec3 fragWorldPos;
-layout(location = 3) out float fragAltitude;
+layout(location = 3) out float fragEyeDistance;
 layout(location = 4) out vec3 fragViewDir;
 
 void main() {
@@ -61,9 +61,13 @@ void main() {
     // Direction from the surface point back towards the eye.
     fragViewDir = normalize(-relPos);
 
-    // The planet radius is not in the UBO, so true altitude cannot be
-    // computed here. The active fragment path shades from vertex colour and
-    // ignores this; it is passed through only to satisfy the interface.
-    fragAltitude = 0.0;
+    // How far this point is from the eye, in metres.
+    //
+    // Computed here rather than in the fragment shader, because there it
+    // would have to come from subtracting two absolute planetary positions -
+    // both of order ten million - and the difference would lose everything
+    // below a few metres. Here it is the length of a vector that is already
+    // camera-relative and small.
+    fragEyeDistance = length(relPos);
 }
 // GLSL_END

@@ -96,6 +96,7 @@ void VulkanRenderer::render(octree::OctreePlanet* planet, core::Camera* camera) 
     // itself whether it is close enough to be worth splitting, so triangles go
     // where the camera is looking rather than being spread evenly over a whole
     // planet most of which is behind you or over the horizon.
+    currentPlanet = planet;
     updatePatches(planet, camera);
 
     // Draw the frame

@@ -350,6 +350,19 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     
     // Simple directional light (sun)
     ubo.lightDir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.3f));
+
+    if (currentPlanet != nullptr) {
+        const core::DensityField& field = currentPlanet->getDensityField();
+        const float radius = currentPlanet->getRadius();
+        ubo.planetParams = glm::vec4(
+            radius,
+            field.getSeaLevelHeight(),
+            std::max(field.getMaxElevation(), 1.0f),
+            // Earth's air thins by a factor of e every 8.5 km on a 6371 km
+            // radius. Kept as that proportion so the haze reads the same on a
+            // planet of any size.
+            radius * 0.0013f);
+    }
     
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }

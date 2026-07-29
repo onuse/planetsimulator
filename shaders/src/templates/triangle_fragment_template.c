@@ -110,10 +110,10 @@ vec4 fragment_main(
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec3 fragWorldPos;
-layout(location = 3) in float fragAltitude;
+layout(location = 3) in float fragEyeDistance;
 layout(location = 4) in vec3 fragViewDir;
 
-// Uniform buffer
+// Uniform buffer - must match struct UniformBufferObject in vulkan_renderer.hpp
 layout(binding = 0) uniform UniformBufferObject {
     mat4 view;
     mat4 proj;
@@ -122,137 +122,142 @@ layout(binding = 0) uniform UniformBufferObject {
     float time;
     vec3 lightDir;
     float padding;
+    vec4 planetParams;   // radius, sea level, highest land, atmosphere scale height
 } ubo;
 
-// Output color
 layout(location = 0) out vec4 outColor;
 
-// Altitude-based coloring thresholds (scaled for 1000m radius test planet)
-const float OCEAN_DEPTH = -40.0;
-const float SEA_LEVEL = 0.0;
-const float BEACH_HEIGHT = 5.0;
-const float GRASS_HEIGHT = 20.0;
-const float ROCK_HEIGHT = 35.0;
-const float SNOW_HEIGHT = 50.0;
+// Rayleigh scattering goes as the inverse fourth power of wavelength, which is
+// why the sky is blue and why a distant mountain is bluer than a near one.
+// These are that ratio for red, green and blue, normalised so green is one.
+const vec3 RAYLEIGH = vec3(0.36, 1.00, 2.62);
 
-// Material colors
-const vec3 DEEP_OCEAN = vec3(0.02, 0.15, 0.35);
-const vec3 SHALLOW_OCEAN = vec3(0.05, 0.25, 0.45);
-const vec3 BEACH_SAND = vec3(0.9, 0.85, 0.65);
-const vec3 GRASS_GREEN = vec3(0.2, 0.5, 0.15);
-const vec3 FOREST_GREEN = vec3(0.1, 0.35, 0.08);
-const vec3 ROCK_BROWN = vec3(0.4, 0.3, 0.2);
-const vec3 MOUNTAIN_GRAY = vec3(0.5, 0.45, 0.4);
-const vec3 SNOW_WHITE = vec3(0.95, 0.95, 0.98);
-
-vec3 getTerrainColor(float altitude) {
-    vec3 color;
-    
-    if (altitude < OCEAN_DEPTH) {
-        color = DEEP_OCEAN;
-    } else if (altitude < SEA_LEVEL) {
-        // Interpolate ocean depth
-        float t = (altitude - OCEAN_DEPTH) / (SEA_LEVEL - OCEAN_DEPTH);
-        color = mix(DEEP_OCEAN, SHALLOW_OCEAN, t);
-    } else if (altitude < BEACH_HEIGHT) {
-        // Beach transition
-        float t = altitude / BEACH_HEIGHT;
-        color = mix(SHALLOW_OCEAN, BEACH_SAND, smoothstep(0.0, 1.0, t));
-    } else if (altitude < GRASS_HEIGHT) {
-        // Grassland/forest
-        float t = (altitude - BEACH_HEIGHT) / (GRASS_HEIGHT - BEACH_HEIGHT);
-        color = mix(GRASS_GREEN, FOREST_GREEN, t);
-    } else if (altitude < ROCK_HEIGHT) {
-        // Rocky terrain
-        float t = (altitude - GRASS_HEIGHT) / (ROCK_HEIGHT - GRASS_HEIGHT);
-        color = mix(FOREST_GREEN, ROCK_BROWN, smoothstep(0.0, 1.0, t));
-    } else if (altitude < SNOW_HEIGHT) {
-        // Mountain slopes
-        float t = (altitude - ROCK_HEIGHT) / (SNOW_HEIGHT - ROCK_HEIGHT);
-        color = mix(ROCK_BROWN, MOUNTAIN_GRAY, t);
-    } else {
-        // Snow caps
-        float t = min((altitude - SNOW_HEIGHT) / 1000.0, 1.0);
-        color = mix(MOUNTAIN_GRAY, SNOW_WHITE, smoothstep(0.0, 1.0, t));
-    }
-    
-    // Mix in a small amount of vertex color for variation
-    color = mix(color, fragColor, 0.1); // 10% vertex color
-    
-    return color;
-}
-
-vec3 atmosphericScattering(vec3 color, float distance) {
-    // Simple atmospheric scattering
-    const vec3 atmosphereColor = vec3(0.5, 0.7, 1.0);
-    const float atmosphereDensity = 0.0000002; // Reduced 10x for clearer colors at 1000km scale
-    
-    float scatterAmount = 1.0 - exp(-distance * atmosphereDensity);
-    scatterAmount = pow(scatterAmount, 1.5); // Adjust falloff
-    
-    return mix(color, atmosphereColor, scatterAmount * 0.4);
-}
+const vec3 SUN_COLOUR = vec3(1.00, 0.97, 0.92);
 
 void main() {
-    // DEBUG MODE: Show raw vertex colors without any post-processing
-    #if 1  // Set to 0 to re-enable full lighting pipeline
-    
-    // Just output the raw vertex color with minimal lighting
-    vec3 normal = normalize(fragNormal);
-    vec3 sunDir = normalize(vec3(0.5, 0.8, 0.3));
-    float NdotL = max(dot(normal, sunDir), 0.3); // Minimum 0.3 ambient
-    
-    vec3 color = fragColor * NdotL;
-    outColor = vec4(color, 1.0);
-    
-    #else
-    // ORIGINAL LIGHTING PIPELINE
+    const float planetRadius = ubo.planetParams.x;
+    const float seaLevel = ubo.planetParams.y;
+    const float scaleHeight = ubo.planetParams.w;
+
     vec3 normal = normalize(fragNormal);
     vec3 viewDir = normalize(fragViewDir);
-    
-    // Primary light source (sun)
-    vec3 sunDir = normalize(vec3(0.5, 0.8, 0.3));
-    vec3 sunColor = vec3(1.0, 0.95, 0.8);
-    
-    // Diffuse lighting
-    float NdotL = max(dot(normal, sunDir), 0.0);
-    vec3 diffuse = sunColor * NdotL;
-    
-    // Specular lighting for water
-    vec3 specular = vec3(0.0);
-    if (fragAltitude < SEA_LEVEL) {
-        vec3 halfDir = normalize(sunDir + viewDir);
-        float spec = pow(max(dot(normal, halfDir), 0.0), 32.0);
-        specular = sunColor * spec * 0.5;
-    }
-    
-    // Ambient lighting with sky color
-    vec3 skyColor = vec3(0.4, 0.6, 0.9);
-    vec3 groundColor = vec3(0.2, 0.15, 0.1);
-    float skyFactor = normal.y * 0.5 + 0.5;
-    vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.3;
-    
-    // Use vertex color directly (from voxel materials) instead of altitude-based coloring
-    vec3 terrainColor = fragColor; // getTerrainColor(fragAltitude);
-    
-    // Combine lighting
-    vec3 color = terrainColor * (ambient + diffuse * 0.8) + specular;
-    
-    // Rim lighting for atmosphere effect
-    float rim = 1.0 - max(dot(normal, viewDir), 0.0);
-    rim = pow(rim, 2.0);
-    color += skyColor * rim * 0.05; // Reduced rim lighting
-    
-    // Apply atmospheric scattering
-    float distance = length(fragWorldPos - ubo.viewPos);
-    color = atmosphericScattering(color, distance);
-    
-    // Tone mapping and gamma correction
-    color = color / (color + vec3(1.0)); // Reinhard tone mapping
-    color = pow(color, vec3(1.0/2.2));   // Gamma correction
-    
-    outColor = vec4(color, 1.0);
-    #endif
+
+    // Up is away from the planet's centre, not along any world axis. Every
+    // term below that has an up in it means this one.
+    vec3 up = normalize(fragWorldPos);
+    float altitude = length(fragWorldPos) - (planetRadius + seaLevel);
+
+    // ubo.lightDir points the way the light travels, so the direction towards
+    // the sun is its negation.
+    vec3 sunDir = normalize(-ubo.lightDir);
+
+    // Water is not a material flag: the ocean is built as a flat surface at
+    // sea level, so anything at that height is water and anything above it is
+    // ground. The transition is over a couple of metres, which puts a soft
+    // edge on the shoreline instead of a hard one.
+    float water = 1.0 - smoothstep(0.0, 2.0, altitude);
+
+    // Sunlight, with a terminator softened over the angle the sun actually
+    // subtends. A hard cutoff at ninety degrees reads as a drawn line around
+    // the planet rather than as a curved body turning away from its star.
+    float NdotL = dot(normal, sunDir);
+    float sunlight = smoothstep(-0.05, 0.15, NdotL);
+
+    // Sky light. The ground is lit from the whole dome, not from a point, so
+    // surfaces facing up pick up blue and those facing down pick up bounce
+    // from the terrain. Without this the unlit side is flat black and the
+    // shadowed slopes lose all their shape.
+    float dome = dot(normal, up) * 0.5 + 0.5;
+    vec3 skyLight = mix(vec3(0.12, 0.11, 0.10), vec3(0.22, 0.32, 0.48), dome);
+
+    // How much of the sky is actually lit here - the ambient has to go out
+    // with the sun, or the night side glows.
+    float dayness = smoothstep(-0.25, 0.25, dot(up, sunDir));
+    skyLight *= 0.25 + 0.75 * dayness;
+
+    // Into linear light before anything is done to it.
+    //
+    // The colours the surface is built with are the ones intended to appear on
+    // screen, which is a gamma-encoded space. Multiplying those by a light
+    // level and then encoding for display a second time brightens everything
+    // and washes the colour out of it - green hills come back nearly white.
+    // Lighting is a physical sum and only means anything in linear light.
+    vec3 albedo = pow(fragColor, vec3(2.2));
+
+    // Land.
+    vec3 lit = albedo * (SUN_COLOUR * sunlight + skyLight);
+
+    // Water, over the top of it.
+    //
+    // Two things make water read as water rather than as blue ground: it gets
+    // brighter as you look along it, and the sun leaves a glint. The first is
+    // Fresnel - reflectance climbs to almost one at grazing angles, which is
+    // why a lake is a mirror from the shore and transparent from above.
+    float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
+
+    // The lobe has to be very tight. Open ocean is smooth at this scale and
+    // the surface curves away slowly, so a broad exponent spreads the
+    // highlight over hundreds of kilometres and burns out as a white disc
+    // rather than reading as the sun on water.
+    vec3 halfway = normalize(sunDir + viewDir);
+    float glint = pow(max(dot(normal, halfway), 0.0), 6000.0);
+
+    vec3 skyReflection = mix(vec3(0.18, 0.28, 0.45), vec3(0.35, 0.50, 0.75), dayness);
+    vec3 waterLit = albedo * (SUN_COLOUR * sunlight * 0.5 + skyLight);
+    waterLit = mix(waterLit, skyReflection * (0.3 + 0.7 * dayness), fresnel * 0.75);
+    // Weighted by Fresnel like any other reflection - the sun's image is
+    // strongest where the water is behaving most like a mirror.
+    waterLit += SUN_COLOUR * glint * sunlight * fresnel * 12.0;
+
+    vec3 colour = mix(lit, waterLit, water);
+
+    // Air between here and the eye.
+    //
+    // What matters is how much air the ray passed through, which is not the
+    // same as how far it travelled. From orbit almost the entire distance is
+    // vacuum - using it directly extinguished blue completely and left the
+    // planet olive under a wash of haze.
+    //
+    // Air thins exponentially with height, so a ray leaving the surface at
+    // some angle from vertical passes through a column of about 1/cos(angle)
+    // times the vertical one, however far it then continues through nothing.
+    // Close up that overestimates, because the ray stops before clearing the
+    // atmosphere, so the shorter of the two is the one to take.
+    float density = exp(-max(altitude, 0.0) / scaleHeight);
+    float viewZenith = max(dot(up, viewDir), 0.02);
+    float slantColumn = density / viewZenith;
+    float travelled = fragEyeDistance * density / scaleHeight;
+    float airMass = min(slantColumn, travelled);
+
+    // Optical depth of one vertical column at sea level, for green. The other
+    // two follow from the wavelength ratio.
+    const float ZENITH_DEPTH = 0.10;
+    vec3 transmittance = exp(-RAYLEIGH * airMass * ZENITH_DEPTH);
+
+    // Air scatters sunlight towards the eye, and more of it when looking
+    // along the sun's direction than across it.
+    float cosSun = dot(viewDir, sunDir);
+    float phase = 0.75 * (1.0 + cosSun * cosSun);
+    vec3 skyTint = vec3(0.16, 0.36, 0.78);
+
+    colour = colour * transmittance +
+             skyTint * SUN_COLOUR * phase * dayness * (1.0 - transmittance);
+
+    // The limb. Looking at the edge of the planet the line of sight grazes the
+    // surface and travels through far more air than it does looking straight
+    // down, so the edge glows and softens against space.
+    float grazing = 1.0 - max(dot(normal, viewDir), 0.0);
+    colour += skyTint * pow(grazing, 5.0) * dayness * 0.5;
+
+    // Exposure and tone mapping, so the glint and the lit limb roll off
+    // instead of clipping to white.
+    colour *= 1.35;
+    colour = colour / (colour + vec3(1.0));
+
+    // Left in linear light on purpose. The swap chain is an sRGB format, so
+    // the hardware encodes for display on write; doing it here as well was
+    // the second of two gamma encodes and is what bleached the terrain.
+    outColor = vec4(colour, 1.0);
 }
 // GLSL_END
 

@@ -61,6 +61,15 @@ struct UniformBufferObject {
     float time;
     alignas(16) glm::vec3 lightDir;
     float padding;
+
+    // The planet's own scale, so shading can be written in terms of the world
+    // rather than in tuned constants. Height above sea level decides water
+    // from land and how much air a ray has come through; without the radius
+    // here, a fragment only knows an absolute position of order 10^6 and
+    // cannot recover either.
+    //   x: planet radius        z: highest land
+    //   y: sea level            w: atmosphere scale height
+    alignas(16) glm::vec4 planetParams;
 };
 
 // Instance data must match shader expectations exactly
@@ -344,6 +353,7 @@ private:
     
     // Current camera (for debug display)
     core::Camera* currentCamera = nullptr;
+    octree::OctreePlanet* currentPlanet = nullptr;
     
     // REMOVED: CPU-based renderers - using GPU mesh generation only
     
