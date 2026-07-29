@@ -245,6 +245,8 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
             vertex.position = glm::vec3(world[j * N + i] - patch.centre);
             vertex.normal = glm::vec3(glm::normalize(world[j * N + i]));
             vertex.color = glm::vec3(0.5f);
+            vertex.cloudCover =
+                field.getCloudCover(glm::vec3(glm::normalize(world[j * N + i])));
             patch.vertices.push_back(vertex);
         }
     }

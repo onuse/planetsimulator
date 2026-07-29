@@ -34,10 +34,10 @@ if %errorlevel% equ 0 (
 
 echo Using glslc: %GLSLC%
 
-REM The renderer draws with exactly one pipeline, so there are exactly two
-REM shaders. Both are transpiled from C templates, which keeps them testable as
-REM plain C and - more importantly - keeps them in version control, which is
-REM where the vertex shader went missing from once already.
+REM Two pipelines: the ground, and the cloud layer drawn from the same
+REM geometry. All four shaders are transpiled from C templates, which keeps
+REM them in version control - which is where the vertex shader went missing
+REM from once already.
 
 echo Transpiling triangle_vertex_template.c to triangle.vert...
 python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\triangle_vertex_template.c %SRC_VERTEX%\triangle.vert
@@ -59,6 +59,38 @@ echo Compiling triangle.vert...
 "%GLSLC%" %SRC_VERTEX%\triangle.vert -o triangle.vert.spv
 if %errorlevel% neq 0 (
     echo ERROR: Failed to compile triangle.vert
+    popd
+    exit /b 1
+)
+
+echo Transpiling cloud_vertex_template.c to cloud.vert...
+python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\cloud_vertex_template.c %SRC_VERTEX%\cloud.vert
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to transpile cloud vertex template
+    popd
+    exit /b 1
+)
+
+echo Transpiling cloud_fragment_template.c to cloud.frag...
+python %TOOLS%\extract_simple_glsl.py %SRC_TEMPLATES%\cloud_fragment_template.c %SRC_FRAGMENT%\cloud.frag
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to transpile cloud fragment template
+    popd
+    exit /b 1
+)
+
+echo Compiling cloud.vert...
+"%GLSLC%" %SRC_VERTEX%\cloud.vert -o cloud.vert.spv
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to compile cloud.vert
+    popd
+    exit /b 1
+)
+
+echo Compiling cloud.frag...
+"%GLSLC%" %SRC_FRAGMENT%\cloud.frag -o cloud.frag.spv
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to compile cloud.frag
     popd
     exit /b 1
 )

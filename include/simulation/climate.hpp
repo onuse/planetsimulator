@@ -85,6 +85,15 @@ public:
         std::vector<float> temperature;    // degrees C at the surface
         std::vector<float> precipitation;  // metres of water per year
         std::vector<glm::vec3> wind;       // unit tangent vector, prevailing
+
+        // How much of the sky is covered, 0 to 1.
+        //
+        // Cloud is not a separate thing to model - it is the moisture already
+        // being carried, seen against how much the air at that temperature can
+        // hold. Air at eighty per cent of saturation is hazy; air at a hundred
+        // is raining. The transport already computes both numbers and threw
+        // the first away.
+        std::vector<float> cloudCover;
         float meanTemperature = 0.0f;      // degrees C, area-weighted
         float iceFraction = 0.0f;          // of the whole surface
     };
@@ -114,6 +123,18 @@ private:
     void solveTemperature();
     void solveWind();
     void solvePrecipitation();
+
+    // Cloud from how much water is condensing, relative to the planet's mean.
+    //
+    // Not from surface humidity, which is the obvious choice and is useless
+    // here: the ocean is held at saturation by definition, so humidity is one
+    // over seventy per cent of the planet and the sky comes out uniformly
+    // overcast. Cloud is condensed water - the same water that goes on to
+    // fall - so where it is condensing is where the cloud is. That puts cloud
+    // in the convergence zones and on windward slopes and leaves the
+    // subtropics and the lee sides clear, which is the pattern a photograph of
+    // a planet actually shows.
+    float cloudFromCondensation(float condensing, float mean) const;
 
     // Water the air can hold at a given temperature, in g/m^3.
     float saturationCapacity(float temperatureC) const;

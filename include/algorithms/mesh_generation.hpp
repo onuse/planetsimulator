@@ -12,7 +12,13 @@ struct MeshVertex {
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec3 color;
-    
+
+    // What the climate says about the sky over this point, 0 to 1. Carried on
+    // the vertex because the cloud layer is drawn from the same geometry as
+    // the ground - the patches are already selected, culled and pooled, and
+    // building a second set of them to hold one float would double all of it.
+    float cloudCover = 0.0f;
+
     MeshVertex() = default;
     MeshVertex(const glm::vec3& pos, const glm::vec3& norm, const glm::vec3& col)
         : position(pos), normal(norm), color(col) {}

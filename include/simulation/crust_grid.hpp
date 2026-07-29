@@ -422,6 +422,7 @@ public:
         std::vector<float> crustAge;      // My
         std::vector<float> crustThickness;// m
         std::vector<uint8_t> surfaceRock; // RockType at the top of the column
+        std::vector<float> cloudCover;    // 0 to 1, from the climate model
 
         float minElevation = 0.0f;
         float maxElevation = 0.0f;
@@ -457,6 +458,11 @@ public:
         uint8_t rock = 0;         // RockType exposed at the top of the column
     };
     SurfaceSample sampleSurface(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
+
+    // Sky cover at a direction, blended between cells. Read from a published
+    // snapshot so the renderer's worker threads can ask while the simulation
+    // is mid-step.
+    float sampleCloudCover(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
     SurfaceSample sampleSurface(const glm::vec3& sphereNormal) const;
 
     // Nearest cell to a direction, via the spatial accelerator.

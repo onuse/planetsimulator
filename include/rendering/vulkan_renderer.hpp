@@ -364,6 +364,9 @@ private:
     void updatePatches(octree::OctreePlanet* planet, core::Camera* camera);
     void evictUnusedPatches();
     void renderPatches(const glm::dvec3& cameraPosition);
+
+    // The cloud layer, drawn from the same patches after the ground.
+    void renderClouds(const glm::dvec3& cameraPosition);
     void destroyAllPatches();
     bool wireframeEnabled = false;
     // Removed parallel rendering paths
@@ -436,6 +439,10 @@ private:
     
     // Triangle mesh pipeline for Transvoxel rendering
     VkPipeline trianglePipeline = VK_NULL_HANDLE;
+
+    // Same geometry, same layout - it differs only in lifting each vertex to
+    // the cloud shell, blending instead of overwriting, and not writing depth.
+    VkPipeline cloudPipeline = VK_NULL_HANDLE;
     // REMOVED: Test NDC pipeline - using only triangle mesh rendering
     VkDescriptorSetLayout hierarchicalDescriptorSetLayout = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> hierarchicalDescriptorSets;

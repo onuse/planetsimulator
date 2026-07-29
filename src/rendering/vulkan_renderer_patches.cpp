@@ -533,4 +533,73 @@ void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
     }
 }
 
+void VulkanRenderer::renderClouds(const glm::dvec3& cameraPosition) {
+    if (!currentCommandBuffer || cloudPipeline == VK_NULL_HANDLE ||
+        hierarchicalDescriptorSets.empty() || patchVertexPool == VK_NULL_HANDLE) {
+        return;
+    }
+
+    // Exactly the draws the ground just made, through a pipeline that lifts
+    // each vertex onto a shell and blends. Nothing here is culled differently
+    // and nothing is built: the sky costs a second pass over buffers that are
+    // already resident.
+    //
+    // The one thing that would be wrong to reuse is the horizon test. Cloud
+    // sits kilometres above the ground, so it stays visible past the point
+    // where the surface under it has gone over the edge - culling it with the
+    // surface would clip the deck short of the limb, which is where a planet's
+    // clouds are most obvious.
+    vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, cloudPipeline);
+    vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            hierarchicalPipelineLayout, 0, 1,
+                            &hierarchicalDescriptorSets[currentFrame], 0, nullptr);
+
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, &patchVertexPool, offsets);
+    vkCmdBindIndexBuffer(currentCommandBuffer, patchIndexPool, 0, VK_INDEX_TYPE_UINT32);
+
+    const Frustum frustum = frustumFrom(patchCullMatrix);
+    const double cameraDistance = glm::length(cameraPosition);
+
+    // Everything the surface pass would have rejected for being behind the
+    // planet, allowing for the shell standing above it.
+    const double cloudAltitude = patchCullPlanetRadius * 0.006;
+    const double occluderRadius = patchCullPlanetRadius * 0.985;
+    const bool horizonCulling = patchCullPlanetRadius > 0.0f &&
+                                cameraDistance > occluderRadius;
+    const double horizonThreshold = occluderRadius * occluderRadius;
+
+    for (const PatchTree::PatchKey& key : visiblePatches) {
+        auto it = patchCache.find(packPatchKey(key));
+        if (it == patchCache.end() || it->second.indexCount == 0) {
+            continue;
+        }
+        const GpuPatch& gpu = it->second;
+
+        if (horizonCulling &&
+            glm::dot(gpu.centre, cameraPosition) +
+                    (gpu.boundingRadius + cloudAltitude) * cameraDistance <
+                horizonThreshold) {
+            continue;
+        }
+
+        PatchPushConstants push;
+        push.patchOffset = glm::vec3(gpu.centre - cameraPosition);
+
+        // A generous radius: the vertices move outward to the shell, so where
+        // they end up is not inside the bound the surface patch was measured
+        // with.
+        if (!frustum.containsSphere(push.patchOffset,
+                                    gpu.boundingRadius + static_cast<float>(cloudAltitude))) {
+            continue;
+        }
+
+        vkCmdPushConstants(currentCommandBuffer, hierarchicalPipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PatchPushConstants), &push);
+        vkCmdDrawIndexed(currentCommandBuffer, gpu.indexCount, 1,
+                         gpu.slot * PATCH_INDEX_COUNT,
+                         static_cast<int32_t>(gpu.slot * PATCH_VERTEX_COUNT), 0);
+    }
+}
+
 } // namespace rendering

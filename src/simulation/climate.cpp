@@ -28,6 +28,23 @@ float legendreP2(float x) {
 // instead, by which time the planet exists.
 Climate::Climate(const CrustGrid& grid) : grid(grid) {}
 
+float Climate::cloudFromCondensation(float condensing, float mean) const {
+    if (mean <= 0.0f) {
+        return 0.0f;
+    }
+    // Saturating rather than linear: a sky cannot be more than covered, so
+    // twice the condensation of an already cloudy place adds very little.
+    // Most of the planet sits well below the mean, which is what leaves the
+    // subtropical deserts and the continental interiors clear.
+    // The coefficient decides how cloudy an average place is. At 0.5, ground
+    // condensing at the planetary mean is about a third covered and it takes
+    // several times the mean to approach overcast - which leaves most of the
+    // planet with visible sky. Higher values look plausible cell by cell and
+    // produce a world under permanent total cloud, because the mean is itself
+    // dragged up by the oceans, where condensation never stops.
+    return 1.0f - std::exp(-0.5f * condensing / mean);
+}
+
 float Climate::saturationCapacity(float temperatureC) const {
     // Clausius-Clapeyron, as a doubling every ten degrees. The exact
     // exponential matters less than the fact that it is exponential: it is why
@@ -278,6 +295,12 @@ void Climate::solvePrecipitation() {
         total += rain[i];
     }
     meanPrecipitation = static_cast<float>(total / n);
+
+    // Cloud is the water on its way down, seen from above.
+    fields.cloudCover.resize(n);
+    for (size_t i = 0; i < n; i++) {
+        fields.cloudCover[i] = cloudFromCondensation(rain[i], meanPrecipitation);
+    }
 }
 
 void Climate::update() {
@@ -291,6 +314,7 @@ void Climate::update() {
         fields.temperature.assign(n, 15.0f);
         fields.precipitation.assign(n, 1.0f);
         fields.wind.assign(n, glm::vec3(0.0f));
+        fields.cloudCover.assign(n, 0.0f);
     }
     if (n == 0) {
         return;

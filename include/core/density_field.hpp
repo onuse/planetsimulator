@@ -146,6 +146,10 @@ public:
     // Sea level in metres, relative to the reference sphere.
     float getSeaLevelHeight() const;
 
+    // How much of the sky is covered here, 0 to 1. Zero with no simulation
+    // attached, which is what the standalone tools and tests see.
+    float getCloudCover(const glm::vec3& sphereNormal) const;
+
     // Elevation above sea level, in metres, at which snow lies at this point.
     // Falls towards the poles, which is what forms ice caps. Shared so mesh
     // colour and voxel materials cannot disagree about where snow is.

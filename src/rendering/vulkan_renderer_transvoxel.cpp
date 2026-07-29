@@ -218,7 +218,7 @@ void VulkanRenderer::createTrianglePipeline() {
     bindingDescription.stride = sizeof(algorithms::MeshVertex);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+    std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
 
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;   // inPosition
@@ -234,6 +234,13 @@ void VulkanRenderer::createTrianglePipeline() {
     attributeDescriptions[2].location = 2;   // inNormal
     attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescriptions[2].offset = offsetof(algorithms::MeshVertex, normal);
+
+    // Cloud cover, so the sky can be drawn from the same geometry as the
+    // ground rather than from a second set of patches built to hold it.
+    attributeDescriptions[3].binding = 0;
+    attributeDescriptions[3].location = 3;
+    attributeDescriptions[3].format = VK_FORMAT_R32_SFLOAT;
+    attributeDescriptions[3].offset = offsetof(algorithms::MeshVertex, cloudCover);
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -329,6 +336,61 @@ void VulkanRenderer::createTrianglePipeline() {
     if (result != VK_SUCCESS) {
         std::cerr << "vkCreateGraphicsPipelines failed with error code: " << result << std::endl;
         throw std::runtime_error("Failed to create triangle graphics pipeline!");
+    }
+
+    // The cloud layer, from the same state and the same geometry.
+    //
+    // Clouds are drawn by taking each surface vertex, throwing away its
+    // elevation and putting it back on a sphere a few kilometres up. That
+    // reuses the patch tree, the culling, the buffer pool and the draw calls
+    // exactly as they are - the alternative was a second set of patches
+    // holding nothing but an altitude, which would double the memory and the
+    // build cost to express one number.
+    //
+    // Only three pieces of state differ. It blends rather than overwrites,
+    // because a cloud is not opaque. It does not write depth, because writing
+    // it would let a nearer cloud hide a further one and turn an overcast sky
+    // into a single flat shell. And it draws after the ground, so there is
+    // something behind it to blend with.
+    {
+        std::vector<char> cloudVert = readFile("shaders/cloud.vert.spv");
+        std::vector<char> cloudFrag = readFile("shaders/cloud.frag.spv");
+        VkShaderModule cloudVertModule = createShaderModule(cloudVert);
+        VkShaderModule cloudFragModule = createShaderModule(cloudFrag);
+
+        VkPipelineShaderStageCreateInfo cloudStages[2] = {vertShaderStageInfo, fragShaderStageInfo};
+        cloudStages[0].module = cloudVertModule;
+        cloudStages[1].module = cloudFragModule;
+
+        VkPipelineColorBlendAttachmentState cloudBlend = colorBlendAttachment;
+        cloudBlend.blendEnable = VK_TRUE;
+        cloudBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        cloudBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        cloudBlend.colorBlendOp = VK_BLEND_OP_ADD;
+        cloudBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        cloudBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        cloudBlend.alphaBlendOp = VK_BLEND_OP_ADD;
+
+        VkPipelineColorBlendStateCreateInfo cloudBlending = colorBlending;
+        cloudBlending.pAttachments = &cloudBlend;
+
+        VkPipelineDepthStencilStateCreateInfo cloudDepth = depthStencil;
+        cloudDepth.depthWriteEnable = VK_FALSE;
+
+        VkGraphicsPipelineCreateInfo cloudInfo = pipelineInfo;
+        cloudInfo.pStages = cloudStages;
+        cloudInfo.pColorBlendState = &cloudBlending;
+        cloudInfo.pDepthStencilState = &cloudDepth;
+
+        result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &cloudInfo, nullptr,
+                                           &cloudPipeline);
+        if (result != VK_SUCCESS) {
+            std::cerr << "Cloud pipeline creation failed: " << result << std::endl;
+            cloudPipeline = VK_NULL_HANDLE;
+        }
+
+        vkDestroyShaderModule(device, cloudFragModule, nullptr);
+        vkDestroyShaderModule(device, cloudVertModule, nullptr);
     }
     
     util::vlog() << "Pipeline creation returned: " << result << ", handle: 0x" << std::hex << reinterpret_cast<uint64_t>(trianglePipeline) << std::dec << std::endl;

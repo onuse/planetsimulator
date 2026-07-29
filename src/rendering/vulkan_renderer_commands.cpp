@@ -125,6 +125,10 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         currentCommandBuffer = commandBuffer;
         renderPatches(glm::dvec3(currentCamera ? currentCamera->getPosition()
                                               : glm::vec3(0.0f)));
+
+        // After the ground, so there is something behind it to blend against.
+        renderClouds(glm::dvec3(currentCamera ? currentCamera->getPosition()
+                                              : glm::vec3(0.0f)));
         currentCommandBuffer = VK_NULL_HANDLE;
         
         static int frameCount = 0;

@@ -512,6 +512,25 @@ float CrustGrid::reconstruct(const glm::vec3& sphereNormal, const std::vector<fl
            6.0f * b111 * u * v * w;
 }
 
+float CrustGrid::sampleCloudCover(const Snapshot& snapshot,
+                                  const glm::vec3& sphereNormal) const {
+    if (snapshot.cloudCover.size() != cells.size()) {
+        return 0.0f;
+    }
+    int corner[3];
+    float weight[3];
+    if (!barycentricCells(sphereNormal, corner, weight)) {
+        return 0.0f;
+    }
+    // Blended flat rather than curved. Cloud has no slope worth reconstructing
+    // and the detail that matters at close range comes from noise anyway.
+    float cover = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        cover += weight[i] * snapshot.cloudCover[corner[i]];
+    }
+    return glm::clamp(cover, 0.0f, 1.0f);
+}
+
 CrustGrid::SurfaceSample CrustGrid::sampleSurface(const Snapshot& snapshot,
                                                   const glm::vec3& sphereNormal) const {
     SurfaceSample sample;
@@ -1549,6 +1568,8 @@ std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
     snapshot->crustAge.resize(cells.size());
     snapshot->crustThickness.resize(cells.size());
     snapshot->surfaceRock.resize(cells.size());
+    snapshot->cloudCover = climate.getFields().cloudCover;
+    snapshot->cloudCover.resize(cells.size(), 0.0f);
 
     for (size_t i = 0; i < cells.size(); i++) {
         snapshot->elevation[i] = cells[i].elevation - seaLevel;
