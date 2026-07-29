@@ -59,6 +59,7 @@ add_library(planetsim STATIC
     src/core/density_field.cpp
     src/core/material_table.cpp
     src/core/octree.cpp
+    src/simulation/climate.cpp
     src/simulation/crust_grid.cpp
     src/simulation/erosion.cpp
     src/simulation/plate_dynamics.cpp

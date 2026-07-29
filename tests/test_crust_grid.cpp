@@ -839,6 +839,129 @@ void testSurfaceReconstruction() {
           "curving between cells at least halves the worst crease");
 }
 
+void testClimate() {
+    std::printf("Climate follows from where the continents are\n");
+    simulation::CrustGrid grid(1000000.0f, 5, 5, 12);
+
+    const auto& climate = grid.getClimate();
+    const auto& fields = climate.getFields();
+    const auto& cells = grid.getCells();
+
+    // Temperatures have to be a planet's, not a number that came out of an
+    // equation. The energy balance is solved, not fitted, so this is a real
+    // check on the coefficients rather than a restatement of them.
+    float coldest = 1e9f;
+    float warmest = -1e9f;
+    double tropicSum = 0.0, polarSum = 0.0;
+    int tropicCount = 0, polarCount = 0;
+
+    for (size_t i = 0; i < cells.size(); i++) {
+        const float t = fields.temperature[i];
+        coldest = std::min(coldest, t);
+        warmest = std::max(warmest, t);
+
+        const float absLatitude = std::abs(cells[i].position.y);
+        if (absLatitude < 0.34f) {           // within 20 degrees of the equator
+            tropicSum += t;
+            tropicCount++;
+        } else if (absLatitude > 0.94f) {    // beyond 70 degrees
+            polarSum += t;
+            polarCount++;
+        }
+    }
+
+    const float tropics = static_cast<float>(tropicSum / std::max(tropicCount, 1));
+    const float poles = static_cast<float>(polarSum / std::max(polarCount, 1));
+
+    std::printf("  mean %.1f C, range %.1f to %.1f, tropics %.1f, poles %.1f\n",
+                fields.meanTemperature, coldest, warmest, tropics, poles);
+    std::printf("  ice covers %.1f%% of the surface\n", fields.iceFraction * 100.0f);
+
+    check(fields.meanTemperature > -20.0f && fields.meanTemperature < 40.0f,
+          "global mean temperature is habitable, not frozen or boiling");
+    check(tropics > poles + 20.0f, "the tropics are much warmer than the poles");
+    check(fields.iceFraction > 0.005f && fields.iceFraction < 0.60f,
+          "ice caps exist without swallowing the planet");
+
+    // The reason any of this was built. Air climbing a range rains on the way
+    // up and arrives dry on the far side, so the two flanks of a mountain get
+    // different amounts of water - and therefore erode at different rates.
+    // With a single precipitation number they eroded identically, which is the
+    // one thing real mountains never do.
+    double rainTotal = 0.0;
+    for (size_t i = 0; i < cells.size(); i++) {
+        rainTotal += fields.precipitation[i];
+    }
+    const float meanRain = static_cast<float>(rainTotal / cells.size());
+
+    int sampled = 0;
+    int windwardWetter = 0;
+    double ratioSum = 0.0;
+
+    for (size_t i = 0; i < cells.size(); i++) {
+        if (cells[i].elevation - grid.getSeaLevel() < 500.0f) {
+            continue;   // only where there is relief to lift the air over
+        }
+        const glm::vec3 wind = fields.wind[i];
+        if (glm::dot(wind, wind) < 0.5f) {
+            continue;
+        }
+
+        // The neighbour the wind comes from, and the one it goes to.
+        int upwind = -1, downwind = -1;
+        float bestUp = 0.3f, bestDown = 0.3f;
+        for (int k = 0; k < grid.neighbourCount(static_cast<int>(i)); k++) {
+            const int j = grid.neighbourAt(static_cast<int>(i), k);
+            const glm::vec3 toward = glm::normalize(cells[j].position - cells[i].position);
+            const float alignment = glm::dot(toward, wind);
+            if (alignment > bestDown) { bestDown = alignment; downwind = j; }
+            if (-alignment > bestUp)  { bestUp = -alignment;  upwind = j; }
+        }
+        if (upwind < 0 || downwind < 0) {
+            continue;
+        }
+
+        const float wet = fields.precipitation[upwind];
+        const float dry = fields.precipitation[downwind];
+
+        // Deep in a continent the air arrives with nothing left and both
+        // sides are dry, which says nothing about rain shadows either way.
+        // Counting those as failures is what dragged the first version of
+        // this measurement below chance.
+        if (wet + dry < 0.05f * meanRain) {
+            continue;
+        }
+
+        sampled++;
+        if (wet > dry) {
+            windwardWetter++;
+        }
+        ratioSum += (wet + 1e-6) / (dry + 1e-6);
+    }
+
+    const float share = sampled > 0 ? static_cast<float>(windwardWetter) / sampled : 0.0f;
+    std::printf("  of %d upland cells, %.0f%% are wetter upwind than downwind\n",
+                sampled, share * 100.0f);
+
+    check(sampled > 50, "there is upland terrain to test rain shadows on");
+    check(share > 0.6f, "high ground is wetter on its windward side");
+
+    // And the consequence: erosion has to see it. Rainfall varies across the
+    // planet by more than the roughly two-fold that a uniform field would
+    // give, or nothing downstream can tell the difference.
+    float driest = 1e9f;
+    float wettest = 0.0f;
+    for (size_t i = 0; i < cells.size(); i++) {
+        if (cells[i].elevation - grid.getSeaLevel() < 0.0f) {
+            continue;
+        }
+        driest = std::min(driest, climate.relativePrecipitation(static_cast<int>(i)));
+        wettest = std::max(wettest, climate.relativePrecipitation(static_cast<int>(i)));
+    }
+    std::printf("  land rainfall spans %.2fx to %.2fx the planetary mean\n", driest, wettest);
+    check(wettest > driest * 4.0f, "rainfall varies enough across land to shape erosion");
+}
+
 void testStepPerformance() {
     std::printf("A step is fast enough to run interactively\n");
     simulation::CrustGrid grid(1000000.0f, 42, 6, 12);
@@ -877,6 +1000,7 @@ int main() {
     testErosionLimitsMountains();
     testStratigraphy();
     testRigidRotationPreservesContrast();
+    testClimate();
     testStepPerformance();
 
     std::printf("\n");

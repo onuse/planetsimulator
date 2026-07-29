@@ -121,8 +121,14 @@ void CrustGrid::erodeSurface(float dt) {
 
     std::vector<double> drainage(n, 0.0);
     for (int i = 0; i < n; i++) {
-        // Every cell contributes its own catch of rain.
-        drainage[i] = static_cast<double>(cellArea) * k.precipitation;
+        // Every cell contributes its own catch of rain - and how much rain
+        // that is now varies across the planet. A range in the westerlies
+        // gathers a river system on its windward flank and almost nothing on
+        // its lee, so the two faces wear down at different rates and the
+        // divide migrates. With one number everywhere both sides eroded
+        // identically, which is the one thing real mountains never do.
+        drainage[i] = static_cast<double>(cellArea) * k.precipitation *
+                      climate.relativePrecipitation(i);
     }
     for (int i : order) {
         if (receiver[i] >= 0) {

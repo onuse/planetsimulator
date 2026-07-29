@@ -168,7 +168,7 @@ double CrustGrid::Marker::consumeProportionally(double wanted) {
 }
 
 CrustGrid::CrustGrid(float planetRadius, uint32_t seed, int subdivisions, int plateCount)
-    : planetRadius(planetRadius), seed(seed) {
+    : planetRadius(planetRadius), seed(seed), climate(*this) {
     buildGeodesicGrid(subdivisions);
     buildAccelerator();
     assignPlates(plateCount);
@@ -177,6 +177,10 @@ CrustGrid::CrustGrid(float planetRadius, uint32_t seed, int subdivisions, int pl
     updateIsostasy();
     solveSeaLevel();
     refreshElevationField();
+
+    // Constructed with the grid, but the surface only exists now - so this is
+    // the first point at which asking what climate it produces means anything.
+    climate.update();
     initialCrustVolume = computeCrustVolume();
 }
 
@@ -1496,6 +1500,16 @@ void CrustGrid::stepOnce(float millionYears) {
     // downhill, and that is decided by how the columns float.
     updateIsostasy();
     solveSeaLevel();
+
+    // Continents move slowly, so the climate they produce changes slowly too.
+    // Resolving it every sub-step would cost as much as the tectonics and
+    // change almost nothing between them.
+    climateAge += millionYears;
+    if (climateAge >= constants.climateInterval) {
+        climateAge = 0.0f;
+        climate.update();
+    }
+
     erodeSurface(millionYears);
 
     rebalanceMarkers();

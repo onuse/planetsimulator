@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#include "simulation/climate.hpp"
+
 namespace simulation {
 
 // Plate tectonics on a geodesic grid.
@@ -197,9 +199,16 @@ public:
         // cell; it is here for completeness rather than effect.
         float hillslopeDiffusivity = 5.0e4f;   // m^2/My
 
-        // Multiplies erosion everywhere. This is where climate plugs in: it
-        // should become a precipitation field rather than one number.
+        // Sets the overall scale of erosion. Where the rain actually falls
+        // now comes from the climate model, which returns a multiplier on
+        // this per cell - so this carries the absolute rate and climate
+        // carries the pattern.
         float precipitation = 1.0f;
+
+        // How often to re-solve the climate. Continents move slowly, so what
+        // they do to the winds changes slowly; resolving it every sub-step
+        // would cost as much as the tectonics and change almost nothing.
+        float climateInterval = 10.0f;   // My
 
         // How quickly ground held by two plates at once is resolved - the
         // dense side descending, the buoyant side docking. Not instant,
@@ -502,6 +511,12 @@ public:
 
     float getPlanetRadius() const { return planetRadius; }
     float getSeaLevel() const { return seaLevel; }
+
+    // The climate the current arrangement of continents produces. Read by
+    // erosion, and worth showing: where the rain falls is visible in the shape
+    // of the mountains it wears down.
+    const Climate& getClimate() const { return climate; }
+    Climate& getClimate() { return climate; }
     float getSimulationTime() const { return simulationTime; }
 
     // Typical distance between neighbouring cells, in metres. This is the
@@ -615,6 +630,12 @@ private:
     float planetRadius;
     uint32_t seed;
     Constants constants;
+
+    // Recomputed when the surface has moved enough to change where the rain
+    // falls. The atmosphere settles in weeks against steps of millions of
+    // years, so what matters is the equilibrium, not the path to it.
+    Climate climate;
+    float climateAge = 0.0f;
 
     std::vector<Cell> cells;
     std::vector<Plate> plates;
