@@ -106,22 +106,74 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     std::vector<int> receiver(n, -1);
     std::vector<float> slope(n, 0.0f);
 
+    // Steepest descent, with the channel the river is already in given the
+    // advantage its own depth earns it.
+    //
+    // The incumbent receiver is remembered from the last time this ran, and a
+    // rival has to be lower by more than the channel is deep to take the flow.
+    // Depth comes from the discharge that cut it, so a headwater stream is
+    // nearly free to wander and a trunk river is not. Without this the routing
+    // has no memory at all and a millimetre of difference moves a whole river:
+    // ninety-two per cent of the network changed receiver inside one million
+    // year, which is churn rather than reorganisation.
+    const bool haveHistory = lastFlowsInto.size() == static_cast<size_t>(n) &&
+                             lastDischarge.size() == static_cast<size_t>(n);
+    const float cellFootprint = cellArea;
+
     for (int i = 0; i < n; i++) {
         if (filled[i] <= 0.0f) {
             continue;   // already at or below sea level
         }
+
+        // What it would cost to abandon the existing channel.
+        float entrenchment = 0.0f;
+        int incumbent = -1;
+        if (haveHistory) {
+            incumbent = lastFlowsInto[i];
+            if (incumbent >= 0 && incumbent < n) {
+                const float catchments =
+                    lastDischarge[i] / std::max(cellFootprint, 1.0f);
+                if (catchments > 1.0f) {
+                    entrenchment = k.channelDepthPerCatchment *
+                                   std::pow(catchments, k.channelDepthExponent);
+                }
+            } else {
+                incumbent = -1;
+            }
+        }
+
         int best = -1;
         float steepest = 0.0f;
+
+        // The incumbent first, so it holds ties as well as near-ties.
+        if (incumbent >= 0) {
+            const float drop = filled[i] - filled[incumbent];
+            if (drop > 0.0f) {
+                steepest = drop + entrenchment;
+                best = incumbent;
+            }
+        }
+
         for (int m = 0; m < neighbourCount(i); m++) {
             const int j = neighbourAt(i, m);
+            if (j == incumbent) {
+                continue;
+            }
             const float drop = filled[i] - filled[j];
             if (drop > steepest) {
                 steepest = drop;
                 best = j;
             }
         }
+
         receiver[i] = best;
-        slope[i] = best >= 0 ? steepest / spacing : 0.0f;
+
+        // The slope that drives incision is the real one, not the one the
+        // entrenchment bonus produced - that bonus decides where the water
+        // goes, and inventing gradient from it would make rivers cut faster
+        // for having stayed put.
+        const float trueDrop = best >= 0 ? std::max(0.0f, filled[i] - filled[best]) : 0.0f;
+        slope[i] = best >= 0 ? trueDrop / spacing : 0.0f;
     }
 
     timings.erosionRoute = lap();

@@ -247,6 +247,27 @@ public:
         // nothing.
         float networkInterval = 2.0f;       // My
 
+        // How deeply a river is entrenched in the channel it has already cut,
+        // as metres per upstream cell to the power below. This is what makes a
+        // drainage network persist.
+        //
+        // Routing by steepest descent alone has no memory, so a millimetre of
+        // difference between two neighbours moves the whole river. Measured,
+        // that rewired ninety-two per cent of the network in a single million
+        // years - which is not a network reorganising, it is a network failing
+        // to exist. Trunk rivers on Earth hold their courses for tens of
+        // millions of years.
+        //
+        // A real river sits in a valley it has cut, and to change course it has
+        // to climb out of it. So a rival neighbour has to be lower than the
+        // current one by more than the channel is deep before the water will
+        // leave - and because the channel was cut by the discharge that has
+        // been passing through it, the depth follows that discharge. Small
+        // headwater streams wander; a trunk river does not, until something
+        // genuinely cuts below it.
+        float channelDepthPerCatchment = 2.2f;   // m
+        float channelDepthExponent = 0.32f;
+
         // How often to re-solve the climate. Continents move slowly, so what
         // they do to the winds changes slowly; resolving it every sub-step
         // would cost as much as the tectonics and change almost nothing.

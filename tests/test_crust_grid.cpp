@@ -7,6 +7,7 @@
 #include "simulation/crust_grid.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -1070,6 +1071,110 @@ void testClimate() {
     check(wettest > driest * 4.0f, "rainfall varies enough across land to shape erosion");
 }
 
+void testDrainageReorganises() {
+    std::printf("Whether drainage networks reorganise on their own\n");
+    simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
+
+    // Long enough for relief to exist to drain.
+    for (int i = 0; i < 6; i++) {
+        grid.step(1.0f);
+    }
+
+    // Steps short enough for the routed erosion model, so incision is
+    // discharge-driven and the network is rebuilt from the ground it just cut.
+    const float slice = grid.getConstants().routedErosionBelow * 0.5f;
+
+    auto first = grid.publishSnapshot();
+    std::vector<int32_t> receiverBefore = first->flowsInto;
+    std::vector<float> dischargeBefore = first->discharge;
+
+    const size_t n = grid.getCells().size();
+
+    // Changes per step, early and late, rather than how many cells ever
+    // changed.
+    //
+    // The cumulative count cannot tell a network settling once from a network
+    // churning forever, and those are opposite findings. Introducing channel
+    // entrenchment shifts every course that was being held only by a
+    // millimetre of gradient - once - and a metric that counts each cell once
+    // reports that single settling as though it were permanent instability.
+    const auto churnPerStep = [&](simulation::CrustGrid& g, int steps, int sampleLast) {
+        auto snap = g.publishSnapshot();
+        std::vector<int32_t> previous = snap->flowsInto;
+
+        int earlyChanges = 0, earlySteps = 0;
+        int lateChanges = 0, lateSteps = 0;
+
+        for (int s = 0; s < steps; s++) {
+            g.step(slice);
+            auto now = g.publishSnapshot();
+
+            int changes = 0;
+            for (size_t i = 0; i < previous.size(); i++) {
+                if (now->flowsInto[i] >= 0 && previous[i] >= 0 &&
+                    now->flowsInto[i] != previous[i]) {
+                    changes++;
+                }
+            }
+            if (s < 3) {
+                earlyChanges += changes;
+                earlySteps++;
+            } else if (s >= steps - sampleLast) {
+                lateChanges += changes;
+                lateSteps++;
+            }
+            previous = now->flowsInto;
+        }
+
+        int draining = 0;
+        for (int32_t r : previous) {
+            if (r >= 0) draining++;
+        }
+        return std::array<float, 3>{
+            earlySteps > 0 ? static_cast<float>(earlyChanges) / earlySteps : 0.0f,
+            lateSteps > 0 ? static_cast<float>(lateChanges) / lateSteps : 0.0f,
+            static_cast<float>(draining)};
+    };
+
+    constexpr int STEPS = 40;
+    const auto moving = churnPerStep(grid, STEPS, 8);
+
+    std::printf("  crust moving:      %.0f changes/step early, %.0f late, of %.0f draining\n",
+                moving[0], moving[1], moving[2]);
+
+    check(moving[2] > 0.0f, "there is a network to reorganise");
+
+    // The same measurement with the crust held still.
+    //
+    // A drainage network cannot be more persistent than the ground it drains.
+    // Plates move half a cell per step by construction, and the projection is
+    // rebuilt from the parcels each time, so the terrain itself changes by
+    // hundreds of metres in places - and a river cannot be expected to keep a
+    // course over ground that is no longer there. Stopping the crust separates
+    // a network responding to real change from a network that cannot hold a
+    // course over stable ground.
+    simulation::CrustGrid still(1000000.0f, 19, 6, 12);
+    for (int i = 0; i < 6; i++) {
+        still.step(1.0f);
+    }
+    // Far enough ahead that the crust never moves again during the measurement.
+    still.getConstants().tectonicInterval = 1.0e6f;
+
+    const auto held = churnPerStep(still, STEPS, 8);
+
+    std::printf("  crust held still:  %.0f changes/step early, %.0f late, of %.0f draining\n",
+                held[0], held[1], held[2]);
+
+    // Over ground that is not moving, a settled network should barely change at
+    // all: erosion only deepens the channels it already has. What churn there is
+    // in the early steps is the network settling into its entrenched courses
+    // once, which is a different thing from churning forever - and telling those
+    // two apart is the whole reason this measures changes per step rather than
+    // how many cells ever changed.
+    check(held[1] < held[2] * 0.02f + 1.0f,
+          "a settled network over stable ground holds its courses");
+}
+
 void testWhatMakesTheGroundJump() {
     std::printf("What a cell that jumps kilometres in one step is doing\n");
     simulation::CrustGrid grid(1000000.0f, 31, 6, 14);
@@ -1374,6 +1479,7 @@ int main() {
     testRivers();
     testClimate();
     testWhereTheTimeGoes();
+    testDrainageReorganises();
     testWhatMakesTheGroundJump();
     testResolutionChoice();
     testStepPerformance();
