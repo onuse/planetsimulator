@@ -134,3 +134,4 @@ CMakeLists_*.txt
 shaders/nul*
 shaders/[0-9]
 cw.txt
+app.txt

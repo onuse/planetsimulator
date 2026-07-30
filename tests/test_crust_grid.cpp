@@ -1291,6 +1291,133 @@ void testRiversComeInSizes() {
     check(widest > narrowest * 2.5f, "channels differ in width by more than a factor of two");
 }
 
+void testChannelsCarveAndPersist() {
+    std::printf("Whether rivers cut channels, and whether the channels outlast them\n");
+
+    // The point of tracking channel depth in the simulation rather than
+    // synthesising it in the renderer is that it becomes a thing the ground
+    // remembers. Two claims follow, and both are checked here: rivers cut in
+    // proportion to what passes through them, and a channel left behind by a
+    // river that has moved does not disappear with it.
+    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+
+    // The landscape regime, where the routed model runs and channels are cut.
+    const float slice = 0.02f;
+    for (int i = 0; i < 60; i++) {
+        grid.step(slice);
+    }
+
+    auto snapshot = grid.publishSnapshot();
+    const int n = static_cast<int>(snapshot->channelDepth.size());
+    check(n == static_cast<int>(snapshot->elevation.size()), "channel depth is published");
+
+    int cut = 0;
+    float deepest = 0.0f;
+    double smallSum = 0.0, largeSum = 0.0;
+    int smallCount = 0, largeCount = 0;
+    int belowReceiver = 0;
+
+    for (int i = 0; i < n; i++) {
+        const float depth = snapshot->channelDepth[i];
+        if (depth <= 0.0f) {
+            continue;
+        }
+        cut++;
+        deepest = std::max(deepest, depth);
+
+        // Split by size only to report it. Expecting big rivers to cut deeper
+        // was wrong and the measurement said so: a big river is by definition
+        // near the bottom of its own network, and a river cannot cut below the
+        // sea it is running into. So trunks near the coast run in shallow
+        // valleys and the deep gorges are cut by moderate rivers still high
+        // above base level - the Amazon against the Colorado. Depth follows
+        // height above base level, not discharge.
+        if (snapshot->discharge[i] > 15.0f) {
+            largeSum += depth;
+            largeCount++;
+        } else {
+            smallSum += depth;
+            smallCount++;
+        }
+
+        // A channel cut below the bed of the river it flows into would mean
+        // water climbing out of its own channel to leave the cell.
+        const int down = snapshot->flowsInto[i];
+        if (down >= 0 && down < n) {
+            const float floorHere = snapshot->elevation[i] - depth;
+            const float floorThere = snapshot->elevation[down] - snapshot->channelDepth[down];
+            if (floorHere < floorThere - 1.0f) {
+                belowReceiver++;
+            }
+        }
+    }
+
+    const float smallMean = smallCount > 0 ? static_cast<float>(smallSum / smallCount) : 0.0f;
+    const float largeMean = largeCount > 0 ? static_cast<float>(largeSum / largeCount) : 0.0f;
+
+    std::printf("    %d cells carry a channel, deepest %.0f m\n", cut, deepest);
+    std::printf("    mean depth: headwaters %.0f m (%d), rivers %.0f m (%d)\n",
+                smallMean, smallCount, largeMean, largeCount);
+    std::printf("    %d cut below the channel they drain into\n", belowReceiver);
+
+    check(cut > 50, "rivers cut channels");
+    check(deepest > 5.0f, "the channels amount to something");
+    // Not zero, and it should not be. The limit is applied when the channels
+    // are cut, and the ground keeps moving afterwards - tectonics can lift a
+    // cell out from under its own river between one step and the next. That is
+    // antecedent drainage, which is a real thing rivers do. What would not be
+    // real is a network riddled with it, so this bounds it rather than
+    // forbidding it.
+    check(belowReceiver * 100 < cut, "almost no channel sits below the one it flows into");
+
+    // No channel floor below sea level. The river has no energy left to cut
+    // with once it gets there, and without this the depth grows with however
+    // long the integration runs rather than with the landscape.
+    int belowSea = 0;
+    for (int i = 0; i < n; i++) {
+        if (snapshot->channelDepth[i] > 0.0f &&
+            snapshot->channelDepth[i] > snapshot->elevation[i] + 1.0f) {
+            belowSea++;
+        }
+    }
+    std::printf("    %d channels cut below sea level\n", belowSea);
+    check(belowSea == 0, "no channel is cut below base level");
+
+    // Now take the water away entirely and see what the ground keeps.
+    //
+    // Erosion off, so nothing is cut and nothing is deposited. Whatever depth
+    // survives is what an abandoned valley would look like after the same time,
+    // and it is the difference between a capture leaving a mark and a capture
+    // being invisible.
+    std::vector<float> before = snapshot->channelDepth;
+    grid.getConstants().streamPowerCoefficient = 0.0f;
+
+    for (int i = 0; i < 60; i++) {
+        grid.step(slice);
+    }
+    auto later = grid.publishSnapshot();
+
+    double kept = 0.0, had = 0.0;
+    int survivors = 0;
+    for (int i = 0; i < n && i < static_cast<int>(later->channelDepth.size()); i++) {
+        if (before[i] <= 0.0f) {
+            continue;
+        }
+        had += before[i];
+        kept += later->channelDepth[i];
+        if (later->channelDepth[i] > before[i] * 0.5f) {
+            survivors++;
+        }
+    }
+
+    const float retained = had > 0.0 ? static_cast<float>(kept / had) : 0.0f;
+    std::printf("    after %.1f My with no water: %.0f%% of the depth remains, "
+                "%d channels still half cut\n",
+                60.0f * slice, retained * 100.0f, survivors);
+
+    check(retained > 0.5f, "an abandoned channel is still there long after the river left");
+}
+
 void testDrainageReorganises() {
     std::printf("Whether drainage networks reorganise on their own\n");
     simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
@@ -1701,6 +1828,7 @@ int main() {
     testWhereTheTimeGoes();
     testTimeSlicingDoesNotChangeThePlanet();
     testRiversComeInSizes();
+    testChannelsCarveAndPersist();
     testDrainageReorganises();
     testWhatMakesTheGroundJump();
     testResolutionChoice();

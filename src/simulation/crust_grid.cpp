@@ -536,7 +536,8 @@ CrustGrid::RiverSample CrustGrid::sampleRiverGeometry(
     const Snapshot& snapshot, const glm::vec3& sphereNormal) const {
     RiverSample nearestRiver;
 
-    if (snapshot.discharge.size() != cells.size() ||
+    if (snapshot.channelDepth.size() != cells.size() ||
+        snapshot.discharge.size() != cells.size() ||
         snapshot.flowsInto.size() != cells.size()) {
         return nearestRiver;
     }
@@ -588,7 +589,7 @@ CrustGrid::RiverSample CrustGrid::sampleRiverGeometry(
         // the scale the simulation knows it - and a representation that only
         // shows the trunk is not showing the network.
         const float catchments = snapshot.discharge[cell];
-        if (catchments < 3.0f) {
+        if (catchments < constants.channelThreshold) {
             return;
         }
 
@@ -691,6 +692,9 @@ CrustGrid::RiverSample CrustGrid::sampleRiverGeometry(
             nearestRiver.distance = distance;
             nearestRiver.width = width;
             nearestRiver.catchments = catchments;
+            nearestRiver.depth = cell < static_cast<int>(snapshot.channelDepth.size())
+                                     ? snapshot.channelDepth[cell]
+                                     : 0.0f;
         }
     };
 
@@ -1906,6 +1910,8 @@ std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
     snapshot->flowsInto.resize(cells.size(), -1);
     snapshot->lakeDepth = lastLakeDepth;
     snapshot->lakeDepth.resize(cells.size(), 0.0f);
+    snapshot->channelDepth = channelDepth;
+    snapshot->channelDepth.resize(cells.size(), 0.0f);
     snapshot->routedSurface = lastRoutedSurface;
     snapshot->routedSurface.resize(cells.size(), 0.0f);
 

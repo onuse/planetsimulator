@@ -137,23 +137,28 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     // year, which is churn rather than reorganisation.
     const bool haveHistory = lastFlowsInto.size() == static_cast<size_t>(n) &&
                              lastDischarge.size() == static_cast<size_t>(n);
+    const bool haveChannels = channelDepth.size() == static_cast<size_t>(n);
 
     for (int i = 0; i < n; i++) {
         if (filled[i] <= 0.0f) {
             continue;   // already at or below sea level
         }
 
-        // What it would cost to abandon the existing channel.
+        // What it would cost to abandon the existing channel: exactly how deep
+        // that channel is.
+        //
+        // This used to be inferred from discharge through two fitted constants,
+        // on the reasoning that a channel is as deep as the water that cut it.
+        // The simulation now tracks the depth itself, so the inference is not
+        // needed and was never as good - a channel cut into hard rock and one
+        // cut into an alluvial fan carry the same water and are not the same
+        // depth, and only the tracked value knows the difference.
         float entrenchment = 0.0f;
         int incumbent = -1;
         if (haveHistory) {
             incumbent = lastFlowsInto[i];
             if (incumbent >= 0 && incumbent < n) {
-                const float catchments = lastDischarge[i];
-                if (catchments > 1.0f) {
-                    entrenchment = k.channelDepthPerCatchment *
-                                   std::pow(catchments, k.channelDepthExponent);
-                }
+                entrenchment = haveChannels ? channelDepth[i] : 0.0f;
             } else {
                 incumbent = -1;
             }
@@ -265,6 +270,10 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     std::vector<double> load(n, 0.0);      // sediment in transit, m^3
     std::vector<double> change(n, 0.0);    // metres of column gained or lost
 
+    // The fluvial part of that, on its own. Only what rivers do cuts channels -
+    // hillslope creep works on the whole cell and fills them in.
+    std::vector<double> fluvial(n, 0.0);
+
     double eroded = 0.0;
     double deposited = 0.0;
 
@@ -280,6 +289,7 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
             // and the floors of lakes.
             if (load[i] > 0.0) {
                 change[i] += load[i] / cellArea;
+                fluvial[i] += load[i] / cellArea;
                 deposited += load[i];
                 load[i] = 0.0;
             }
@@ -317,6 +327,7 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
         double cut = lowering * cellArea;
         if (cut > 0.0) {
             change[i] -= lowering;
+            fluvial[i] -= lowering;
             load[i] += cut;
             eroded += cut;
         }
@@ -330,6 +341,7 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
         if (load[i] > capacity) {
             const double drop = load[i] - capacity;
             change[i] += drop / cellArea;
+            fluvial[i] += drop / cellArea;
             deposited += drop;
             load[i] -= drop;
         }
@@ -342,10 +354,16 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     for (int i = 0; i < n; i++) {
         if (load[i] > 0.0) {
             change[i] += load[i] / cellArea;
+            fluvial[i] += load[i] / cellArea;
             deposited += load[i];
             load[i] = 0.0;
         }
     }
+
+    // ------------------------------------------------------------------
+    // The channel, which is below the grid
+    // ------------------------------------------------------------------
+    evolveChannels(fluvial, dt);
 
     timings.erosionIncise = lap();
 
@@ -380,7 +398,96 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     timings.erosionCreep = lap();
 
     applyErosionChange(change, eroded, deposited);
+
+    // A channel cannot be cut below the one it flows into, or the water would
+    // have to climb out of its own bed to leave the cell.
+    //
+    // Applied after the elevations have moved, not before. Clamping against the
+    // surface the routing used leaves the limit referring to ground that no
+    // longer exists by the time anything reads it, which showed up as a handful
+    // of channels sitting below their own outlet every step. Forward flood
+    // order visits every receiver before the cell draining into it, so each
+    // limit is final when it is used.
+    if (channelDepth.size() == static_cast<size_t>(n)) {
+        for (int i : popOrder) {
+            const int down = receiver[i];
+            if (down < 0) {
+                continue;
+            }
+            const float drop = std::max(0.0f, cells[i].elevation - cells[down].elevation);
+            channelDepth[i] = std::min(channelDepth[i], drop + channelDepth[down]);
+        }
+    }
+
     timings.erosionApply = lap();
+}
+
+void CrustGrid::evolveChannels(const std::vector<double>& fluvial, float dt) {
+    const int n = static_cast<int>(cells.size());
+    if (dt <= 0.0f || static_cast<int>(fluvial.size()) != n ||
+        static_cast<int>(lastDischarge.size()) != n) {
+        return;
+    }
+    channelDepth.resize(n, 0.0f);
+
+    const Constants& k = constants;
+    const float spacing = cellSpacing();
+    if (spacing <= 0.0f) {
+        return;
+    }
+
+    for (int i = 0; i < n; i++) {
+        const float catchments = lastDischarge[i];
+
+        // No channel here: this is a hillslope, and it wears down evenly.
+        if (catchments < k.channelThreshold) {
+            channelDepth[i] = 0.0f;
+            continue;
+        }
+
+        const float width = std::max(channelWidthFor(catchments), 1.0f);
+
+        // The channel is as deep as the river has cut and the hillsides have
+        // not yet filled in. That is the whole model, and it needs no factor.
+        //
+        // The first attempt multiplied the incision up by the ratio of the cell
+        // width to the channel width, reasoning that the material comes out of
+        // a narrow strip rather than off the whole cell. That double-counts:
+        // stream power already *is* the rate a channel cuts down, which is why
+        // landscape models take the grid elevation to be the valley floor. The
+        // factor was fifty for a headwater and seventeen for a trunk, so it
+        // also had small streams cutting three times deeper than big rivers,
+        // and produced gorges seven kilometres deep.
+        channelDepth[i] -= static_cast<float>(fluvial[i]);
+
+        // And it fills back in, because the valley sides creep into it.
+        //
+        // The timescale is not a number to pick - it is diffusion across the
+        // width of the valley, which the diffusivity and the width already
+        // give. A gully closes in a geological instant and a major valley
+        // outlasts the river that cut it, from one rule. This is what leaves an
+        // abandoned channel on the map after a capture, which is the only way
+        // capture is visible at all.
+        const float valleyWidth = width * 7.0f;
+        const double infillTime =
+            static_cast<double>(valleyWidth) * valleyWidth /
+            std::max(4.0 * static_cast<double>(k.hillslopeDiffusivity), 1e-6);
+        channelDepth[i] *= static_cast<float>(std::exp(-static_cast<double>(dt) / infillTime));
+
+        // Base level. A river cutting down towards the sea stops when it gets
+        // there - it has no energy left to cut with - so the channel floor
+        // cannot pass below sea level, and the depth cannot exceed the height
+        // of the ground it is cut into. This is what keeps the depth in
+        // proportion to the landscape instead of running away with the
+        // integration, and it is the reason a lowland river runs in a shallow
+        // valley while the same discharge in a highland cuts a gorge.
+        const float aboveBaseLevel = cells[i].elevation - seaLevel;
+        channelDepth[i] = std::min(channelDepth[i], std::max(0.0f, aboveBaseLevel));
+
+        if (!(channelDepth[i] > 0.0f)) {
+            channelDepth[i] = 0.0f;   // also catches any NaN
+        }
+    }
 }
 
 void CrustGrid::erodeBulk(float dt) {
@@ -450,6 +557,12 @@ void CrustGrid::erodeBulk(float dt) {
         change[i] -= lowering;
         removed += lowering * cellArea;
     }
+
+    // Channels deepen here as well. They are drawn at every speed, so if only
+    // the routed model maintained them they would freeze at whatever depth they
+    // had when the simulation was last slowed down, and a valley would stop
+    // responding to the ground moving underneath it.
+    evolveChannels(change, dt);
 
     // Everything taken off the land goes to the sea floor, weighted by depth -
     // the deeper the basin, the more room it has and the more of the load it

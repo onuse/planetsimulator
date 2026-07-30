@@ -247,26 +247,15 @@ public:
         // nothing.
         float networkInterval = 2.0f;       // My
 
-        // How deeply a river is entrenched in the channel it has already cut,
-        // as metres per upstream cell to the power below. This is what makes a
-        // drainage network persist.
+        // How much water has to gather before there is a channel at all.
         //
-        // Routing by steepest descent alone has no memory, so a millimetre of
-        // difference between two neighbours moves the whole river. Measured,
-        // that rewired ninety-two per cent of the network in a single million
-        // years - which is not a network reorganising, it is a network failing
-        // to exist. Trunk rivers on Earth hold their courses for tens of
-        // millions of years.
-        //
-        // A real river sits in a valley it has cut, and to change course it has
-        // to climb out of it. So a rival neighbour has to be lower than the
-        // current one by more than the channel is deep before the water will
-        // leave - and because the channel was cut by the discharge that has
-        // been passing through it, the depth follows that discharge. Small
-        // headwater streams wander; a trunk river does not, until something
-        // genuinely cuts below it.
-        float channelDepthPerCatchment = 2.2f;   // m
-        float channelDepthExponent = 0.32f;
+        // Below this a cell erodes as a hillslope: the material comes off the
+        // whole cell evenly and no channel is cut. Above it the same volume is
+        // taken out of a strip a few hundred metres wide, which is what makes a
+        // valley rather than a dip. One number, shared by the routing, the
+        // channel bookkeeping and the drawing, so all three agree on where
+        // rivers exist.
+        float channelThreshold = 3.0f;   // upstream cells
 
         // How often to re-solve the climate. Continents move slowly, so what
         // they do to the winds changes slowly; resolving it every sub-step
@@ -509,6 +498,12 @@ public:
         // follows the filled surface rather than the rock.
         std::vector<float> lakeDepth;
 
+        // How deep the river has cut below the mean surface of its cell, in
+        // metres. Sub-grid: the cell is seventeen kilometres across and the
+        // channel is a few hundred metres of it, so this is the part of the
+        // relief the grid cannot hold but the simulation still knows.
+        std::vector<float> channelDepth;
+
         // The surface the network was routed on, in metres relative to sea
         // level: elevation with depressions filled, at the moment the routing
         // ran.
@@ -607,6 +602,7 @@ public:
         float distance = 1e30f;    // metres to the channel centreline
         float width = 0.0f;        // channel width in metres
         float catchments = 0.0f;   // upstream cells draining through it
+        float depth = 0.0f;        // metres cut below the surrounding ground
     };
     RiverSample sampleRiverGeometry(const Snapshot& snapshot,
                                     const glm::vec3& sphereNormal) const;
@@ -646,6 +642,15 @@ public:
     // O(cells) once against millions of samples read from them.
     // The last drainage network erosion routed, kept for the renderer.
     std::vector<float> lastDischarge;
+
+    // How deep the channel is at each cell. Simulation state, not decoration:
+    // it is cut by incision, filled by deposition and by the hillslopes either
+    // side of it, and it is what a river has to climb out of to change course.
+    std::vector<float> channelDepth;
+
+    // Move that depth by one step, given how much fluvial erosion or deposition
+    // happened at each cell in metres of mean column.
+    void evolveChannels(const std::vector<double>& fluvial, float dt);
     std::vector<int32_t> lastFlowsInto;
     std::vector<float> lastLakeDepth;
     std::vector<float> lastRoutedSurface;

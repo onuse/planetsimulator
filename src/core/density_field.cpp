@@ -246,19 +246,22 @@ float DensityField::getRiverIncision(const glm::vec3& sphereNormal) const {
 
     // Rivers cut valleys, and the valley is the part you can see.
     //
-    // The simulation already erodes according to discharge, but it does it on a
-    // seventeen kilometre grid and a valley is a kilometre or two across - so
-    // the incision is real and averaged over ground a hundred times wider than
-    // the feature it makes. The network is known exactly, though: which cells
-    // carry water, how much, and where it goes. So the valley is resolved here
-    // from that, the same division of labour as sub-grid relief - the
-    // simulation decides where and how much, the renderer resolves what it
-    // looks like below the grid.
+    // How deep it is is no longer decided here. The simulation tracks the depth
+    // its own incision has cut below the mean surface of each cell, so this
+    // reads that number rather than fitting one to discharge. The difference is
+    // not cosmetic: a depth invented from discharge is a picture of where a
+    // river ought to have cut, and it vanishes the moment the water moves,
+    // whereas a depth the simulation owns was cut by rock that actually left,
+    // it resists the river changing course, and it stays in the ground after
+    // the river has gone. An abandoned valley is the only visible evidence that
+    // a capture happened.
     //
-    // Two nested profiles, because that is what a river valley is: a broad
-    // trough with a channel cut into its floor.
+    // The shape below the grid is still resolved here - the simulation knows
+    // how deep and how wide, not what the cross-section looks like. Two nested
+    // profiles, because that is what a river valley is: a broad trough with a
+    // channel cut into its floor.
     const float valleyWidth = river.width * 7.0f;
-    const float valleyDepth = 45.0f * std::pow(river.catchments, 0.42f);
+    const float valleyDepth = river.depth;
 
     const float v = glm::clamp(river.distance / valleyWidth, 0.0f, 1.0f);
     const float trough = (1.0f - v * v) * (1.0f - v * v);
