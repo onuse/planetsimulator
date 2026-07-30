@@ -317,7 +317,7 @@ void ImGuiManager::renderSimulationWindow(const VulkanRenderer* renderer) {
     }
 
     ImGui::SetNextWindowPos(ImVec2(410, 30), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(460, 290), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(540, 330), ImGuiCond_FirstUseEver);
 
     if (ImGui::Begin("Simulation", &uiState.showSimulation)) {
         // What the simulation is managing against what was asked of it. The
@@ -329,42 +329,69 @@ void ImGuiManager::renderSimulationWindow(const VulkanRenderer* renderer) {
 
         // Geological time against wall clock time.
         //
-        // The default runs a million years a second, which is the right speed
-        // for watching an ocean open and hopeless for looking at anything.
-        // Continents cross the screen while you are trying to focus on a
-        // hillside, and every patch on it is rebuilt several times a second as
-        // the ground underneath moves.
-        float rate = planet->getSimulationRate();
+        // In thousand-year units, because that is the range worth having.
+        // Millions of years is the scale of tectonics and nothing else: rivers
+        // cut and abandon channels, glaciers advance and retreat, and coasts
+        // move, all of it in thousands of years. At one million years per
+        // second every one of those is over before a frame finishes.
+        //
+        // Logarithmic because the useful span is five orders of magnitude, and
+        // a linear slider spends nine tenths of its length on speeds that are
+        // all indistinguishably too fast.
+        static float pausedRate = 1000.0f;   // kyr/s to return to
+        const float currentRate = planet->getSimulationRate();
+        const bool paused = currentRate <= 0.0f;
 
-        ImGui::Text("Geological time");
-        if (ImGui::SliderFloat("My per second", &rate, 0.0f, 5.0f, "%.3f",
-                               ImGuiSliderFlags_Logarithmic)) {
-            planet->setSimulationRate(std::max(rate, 0.0f));
+        if (ImGui::Button(paused ? "Resume" : "Pause", ImVec2(90, 0))) {
+            if (paused) {
+                planet->setSimulationRate(pausedRate * 0.001f);
+            } else {
+                pausedRate = currentRate * 1000.0f;
+                planet->setSimulationRate(0.0f);
+            }
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled(paused ? "the planet is holding still"
+                                   : "geological time is running");
+
+        float thousandYears = paused ? pausedRate : currentRate * 1000.0f;
+
+        // Zero cannot be a logarithmic slider's endpoint, which is the other
+        // reason pausing is a button rather than the bottom of the range.
+        if (ImGui::SliderFloat("thousand years / sec", &thousandYears, 0.01f, 5000.0f,
+                               "%.2f kyr/s", ImGuiSliderFlags_Logarithmic)) {
+            if (paused) {
+                pausedRate = thousandYears;
+            } else {
+                planet->setSimulationRate(thousandYears * 0.001f);
+            }
         }
 
-        // Presets, because the useful range spans six orders of magnitude and
-        // a slider cannot reach both ends of it comfortably.
-        struct Preset { const char* name; float rate; const char* what; };
+        struct Preset { const char* name; float kyr; const char* what; };
         static const Preset presets[] = {
-            {"Paused",   0.0f,      "nothing moves; look at whatever you like"},
-            {"Slow",     0.01f,     "a hillside holds still while you study it"},
-            {"Normal",   1.0f,      "an ocean opens in a minute"},
-            {"Fast",     5.0f,      "supercontinents assemble and break up"},
+            {"Rivers",    0.5f,  "channels shift and deltas build"},
+            {"Ice",       20.0f, "glaciers advance and retreat"},
+            {"Coasts",    200.0f, "shorelines move, ranges rise"},
+            {"Tectonics", 2000.0f, "oceans open and close"},
         };
 
         for (const Preset& preset : presets) {
-            if (ImGui::Button(preset.name)) {
-                planet->setSimulationRate(preset.rate);
+            if (ImGui::Button(preset.name, ImVec2(90, 0))) {
+                planet->setSimulationRate(preset.kyr * 0.001f);
             }
             ImGui::SameLine();
-            ImGui::TextDisabled("%s", preset.what);
+            ImGui::TextDisabled("%.4g kyr/s - %s", preset.kyr, preset.what);
         }
 
         ImGui::Separator();
         ImGui::TextWrapped(
             "Surface patches are rebuilt whenever the crust moves, so slowing "
             "time also settles the terrain - which is what makes it possible "
-            "to judge detail rather than watch it change.");
+            "to judge detail rather than watch it change.\n\n"
+            "Clouds fade out above a few thousand years per second. The "
+            "atmosphere is solved as an equilibrium, so at geological speeds "
+            "the weather is a still photograph of a sky that should have "
+            "changed millions of times.");
     }
     ImGui::End();
 }

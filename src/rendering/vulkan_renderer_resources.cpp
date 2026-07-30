@@ -360,10 +360,24 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     if (currentPlanet != nullptr) {
         const core::DensityField& field = currentPlanet->getDensityField();
         const float radius = currentPlanet->getRadius();
+        // How much of the weather to show.
+        //
+        // The atmosphere is solved as an equilibrium for the continents as
+        // they stand, which is the right thing to do at geological speeds and
+        // means the sky is a still photograph. Left visible while the planet
+        // runs at a million years a second, it is a cloud pattern that should
+        // have changed several million times and has not moved at all - which
+        // reads as broken rather than as an approximation. Below a few
+        // thousand years a second a frozen sky is fair, so that is where it
+        // fades in.
+        const float kyrPerSecond = currentPlanet->getSimulationRate() * 1000.0f;
+        const float weatherVisible =
+            glm::clamp(1.0f - (kyrPerSecond - 2.0f) / 18.0f, 0.0f, 1.0f);
+
         ubo.planetParams = glm::vec4(
             radius,
             field.getSeaLevelHeight(),
-            std::max(field.getMaxElevation(), 1.0f),
+            weatherVisible,
             // Earth's air thins by a factor of e every 8.5 km on a 6371 km
             // radius. Kept as that proportion so the haze reads the same on a
             // planet of any size.

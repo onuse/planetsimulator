@@ -471,9 +471,34 @@ void OctreePlanet::startSimulationThread() {
         // after each step, and sleeps if it is running ahead of the requested
         // pace. The renderer never waits for it and never touches the grid.
         while (simulationRunning.load()) {
+            const float rate = atomicSimulationRate.load();
+
+            // Paused means paused.
+            //
+            // The rate used to control only how long to sleep after a step,
+            // and the step itself was always a full stable timestep taken
+            // before the rate was even read - so asking for zero still
+            // advanced the planet a couple of million years every fiftieth of
+            // a second, and asking for a tenth of that advanced it in the same
+            // jumps with longer gaps between. The slider appeared to do
+            // nothing because nearly nothing was what it did.
+            if (rate <= 0.0f) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                continue;
+            }
+
             const auto stepStart = std::chrono::steady_clock::now();
 
-            const float slice = crust->maxStableTimestep();
+            // Step size follows the rate, so slowing time makes the planet
+            // move slowly rather than move in the same lurches further apart.
+            // Bounded above by what is numerically stable and below by what is
+            // worth the fixed cost of a step - isostasy, sea level and erosion
+            // all run once per call whatever the slice is, so slices far below
+            // this buy smoothness at a price that is all overhead.
+            const float stable = crust->maxStableTimestep();
+            const float perStep = rate * 0.05f;   // aim for a step every 50 ms
+            const float slice = glm::clamp(perStep, stable * 0.02f, stable);
+
             crust->step(slice);
 
             auto snapshot = crust->publishSnapshot();
@@ -488,15 +513,10 @@ void OctreePlanet::startSimulationThread() {
 
             // Sleep only if we are ahead of the requested pace; otherwise run
             // flat out and let the achieved rate report the shortfall.
-            const float rate = atomicSimulationRate.load();
-            if (rate > 0.0f) {
-                const float wanted = slice / rate;
-                if (wanted > spent) {
-                    std::this_thread::sleep_for(
-                        std::chrono::duration<float>(std::min(wanted - spent, 0.25f)));
-                }
-            } else {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            const float wanted = slice / rate;
+            if (wanted > spent) {
+                std::this_thread::sleep_for(
+                    std::chrono::duration<float>(std::min(wanted - spent, 0.25f)));
             }
         }
     });

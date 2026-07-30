@@ -56,9 +56,13 @@ float valueNoise(vec3 p) {
 }
 
 void main() {
+    // Weather is only shown when time is running slowly enough for a still
+    // sky to be honest. See planetParams.z, set from the simulation rate.
+    float weather = ubo.planetParams.z;
+
     // Nothing to draw over most of a planet, and the sooner that is known the
     // better - a clear sky should cost one texture-free branch.
-    if (fragCover <= 0.01) {
+    if (fragCover * weather <= 0.01) {
         discard;
     }
 
@@ -100,6 +104,6 @@ void main() {
     float grazing = abs(dot(normalize(fragUp), normalize(fragViewDir)));
     float edge = smoothstep(0.0, 0.30, grazing);
 
-    outColor = vec4(lit, density * edge * 0.92);
+    outColor = vec4(lit, density * edge * weather * 0.92);
 }
 // GLSL_END

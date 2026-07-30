@@ -71,7 +71,7 @@ struct UniformBufferObject {
     // from land and how much air a ray has come through; without the radius
     // here, a fragment only knows an absolute position of order 10^6 and
     // cannot recover either.
-    //   x: planet radius        z: highest land
+    //   x: planet radius        z: how visible the weather should be, 0 to 1
     //   y: sea level            w: atmosphere scale height
     alignas(16) glm::vec4 planetParams;
 };
