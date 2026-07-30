@@ -205,6 +205,33 @@ public:
         // carries the pattern.
         float precipitation = 1.0f;
 
+        // --- What runs at which speed ---------------------------------------
+        //
+        // Below this step length, erosion is routed in full. Above it, the
+        // bulk model runs instead. Fifty thousand years is roughly where a
+        // drainage network stops being a thing that changes within a step and
+        // starts being a thing that is simply there.
+        float routedErosionBelow = 0.05f;   // My
+
+        // Marker advection, crustal reconciliation and parcel rebalancing run
+        // on their own schedule rather than every step, and are given the
+        // accumulated time when they do.
+        //
+        // A plate at six centimetres a year moves sixty metres in a thousand
+        // years, against a cell seventeen kilometres across. Advecting parcels
+        // every step at that scale is not an approximation of anything - it is
+        // arithmetic on a third of a per cent of a cell, and it is half of what
+        // a step costs. Given the accumulated time instead, the parcels end up
+        // in exactly the same place.
+        float tectonicInterval = 0.05f;     // My
+
+        // How often to rebuild the drainage network when the routed model is
+        // not running. A river system outlives a couple of million years, and
+        // rebuilding it costs one erosion pass without the incision - so this
+        // is what keeps rivers on the map at tectonic speeds for almost
+        // nothing.
+        float networkInterval = 2.0f;       // My
+
         // How often to re-solve the climate. Continents move slowly, so what
         // they do to the winds changes slowly; resolving it every sub-step
         // would cost as much as the tectonics and change almost nothing.
@@ -434,6 +461,36 @@ public:
         std::vector<float> discharge;     // m^3-ish per step, relative units
         std::vector<int32_t> flowsInto;   // cell index, or -1 at a sink
 
+        // How deep standing water lies here, in metres.
+        //
+        // Erosion fills depressions before routing flow, because a pit with no
+        // outlet stops the routing dead - and a filled depression is a lake.
+        // The depth is what the fill added, so this is not an extra model, it
+        // is a number the routing already computed and discarded.
+        //
+        // Also the reason a cell can legitimately drain to a neighbour that is
+        // higher than it: across a lake the water surface is level, so flow
+        // follows the filled surface rather than the rock.
+        std::vector<float> lakeDepth;
+
+        // The surface the network was routed on, in metres relative to sea
+        // level: elevation with depressions filled, at the moment the routing
+        // ran.
+        //
+        // Published because the network is not rebuilt every step - it outlives
+        // a couple of million years, and rebuilding it more often costs an
+        // erosion pass for no gain. But plates move and isostasy adjusts in the
+        // meantime, so by the time anything reads the network the elevations it
+        // was routed on are no longer the current ones. Comparing the two gives
+        // cells that appear to drain uphill by several hundred metres, with
+        // nothing wrong in the routing at all.
+        //
+        // With this, flow direction can be checked against the surface it was
+        // actually derived from, which is an invariant that holds by
+        // construction rather than one that holds when the timing happens to
+        // line up.
+        std::vector<float> routedSurface;
+
         float minElevation = 0.0f;
         float maxElevation = 0.0f;
         float seaLevel = 0.0f;
@@ -550,6 +607,8 @@ public:
     // The last drainage network erosion routed, kept for the renderer.
     std::vector<float> lastDischarge;
     std::vector<int32_t> lastFlowsInto;
+    std::vector<float> lastLakeDepth;
+    std::vector<float> lastRoutedSurface;
 
     std::vector<float> elevationField;
     std::vector<glm::vec3> elevationGradient;
@@ -724,6 +783,10 @@ private:
     float climateAge = 0.0f;
     Timings timings;
 
+    // Simulated time owed to the phases that do not run every step.
+    float tectonicDebt = 0.0f;
+    float networkAge = 0.0f;
+
     std::vector<Cell> cells;
     std::vector<Plate> plates;
     std::vector<Marker> markers;
@@ -791,7 +854,37 @@ private:
     // Break up plates whose driving forces disagree, and weld together plates
     // that have locked in continental collision. Also in plate_dynamics.cpp.
     // Wear the surface down and move what comes off. In erosion.cpp.
-    void erodeSurface(float dt);
+    // Erosion at two fidelities, chosen by how long the step is.
+    //
+    // A process is only meaningful inside a range of timesteps. A delta forms
+    // over thousands of years; asking a two-million-year step to resolve one
+    // does not give a coarse delta, it gives a meaningless number. So the
+    // choice here is not a performance trade, it is about whether the answer
+    // means anything - and running the detailed model outside its range would
+    // be a category error that happens to also be slow.
+    //
+    // Routed: depressions filled into lakes, flow directed downhill, discharge
+    // accumulated, stream power incision, sediment carried to capacity and
+    // dropped. This is what makes rivers, valleys and deltas.
+    // networkOnly builds the drainage network and stops before moving any
+    // rock. The network is a property of the shape of the land, not of how
+    // long a step is, so rivers have to keep existing at speeds where the
+    // routed model has nothing to say - otherwise they vanish the moment
+    // anyone speeds the clock up, which is the least explicable thing a
+    // simulation can do.
+    void erodeSurface(float dt, bool networkOnly = false);
+
+    // Bulk: highlands wear down in proportion to how far they stand above
+    // their surroundings and how much rain falls on them, and the sediment
+    // goes to the basins. No routing, because over a million years which
+    // channel carried a grain is not a question anyone can answer, and the
+    // answer would not survive to be seen.
+    void erodeBulk(float dt);
+
+    // Move the rock the grid decided to move. Shared, so conservation cannot
+    // depend on which erosion model ran.
+    void applyErosionChange(const std::vector<double>& change,
+                            double eroded, double deposited);
 
     void reorganisePlates();
     bool trySplitPlate(uint16_t plateId);

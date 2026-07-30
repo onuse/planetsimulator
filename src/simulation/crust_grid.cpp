@@ -1733,13 +1733,37 @@ void CrustGrid::stepOnce(float millionYears) {
 
     // Crust is carried by the parcels; the grid is rebuilt from them each step
     // rather than being evolved in place, so transport error cannot accumulate.
-    advectMarkers(millionYears);
-    projectMarkersToGrid();
+    // The phases that move the crust about run on their own schedule, and are
+    // given the time they have accumulated rather than the time of this step.
+    //
+    // At a thousand years a step a plate moves sixty metres and a cell is
+    // seventeen kilometres, so advecting every step computes a third of a per
+    // cent of a cell - for half of what the whole step costs. Advecting once
+    // per accumulated interval puts the parcels in exactly the same place for
+    // a fraction of the work, and it is the same arithmetic either way: the
+    // parcels move by elapsed time, and elapsed time is elapsed time.
+    tectonicDebt += millionYears;
+
+    // Forced on the first pass however short the step is. The projection is
+    // what fills the cell-to-parcel index, and erosion reads that index - so
+    // skipping it before it has ever run leaves erosion reading an array that
+    // does not exist yet.
+    const bool projectionMissing = cellMarkers.size() != cells.size();
+    const bool moveCrust = projectionMissing || tectonicDebt >= constants.tectonicInterval;
+    const float crustDt = tectonicDebt;
+
+    if (moveCrust) {
+        tectonicDebt = 0.0f;
+        advectMarkers(crustDt);
+        projectMarkersToGrid();
+    }
     timings.advection = lap();
     continentalDeltaTransport += computeContinentalVolume() - continentalBefore;
 
-    reconcileCrust(millionYears);
-    resolvePlateOverlap(millionYears);
+    if (moveCrust) {
+        reconcileCrust(crustDt);
+        resolvePlateOverlap(crustDt);
+    }
     timings.reconcile = lap();
 
     // Isostasy before erosion, because rivers need to know which way is
@@ -1758,10 +1782,18 @@ void CrustGrid::stepOnce(float millionYears) {
     }
     timings.climate = lap();
 
-    erodeSurface(millionYears);
+    // Erosion at whichever fidelity this step length can actually resolve.
+    if (millionYears <= constants.routedErosionBelow) {
+        erodeSurface(millionYears);
+    } else {
+        erodeBulk(millionYears);
+
+    }
     timings.erosion = lap();
 
-    rebalanceMarkers();
+    if (moveCrust) {
+        rebalanceMarkers();
+    }
     updateIsostasy();
 
     // Watch for the surface moving faster than any process should move it.
@@ -1782,6 +1814,29 @@ void CrustGrid::stepOnce(float millionYears) {
     timings.rebalance = lap();
 
     solveSeaLevel();
+
+    // The drainage network, rebuilt here at the end of the step rather than in
+    // the middle of it.
+    //
+    // A network is only meaningful against the elevations it was routed on, and
+    // isostasy and the sea level solve both move elevations after erosion runs.
+    // Built earlier, the published network described a surface that no longer
+    // existed by the time anything read it - which showed up as cells draining
+    // uphill on dry ground, eight per cent of them, for no reason visible
+    // anywhere in the routing.
+    //
+    // Only needed when the routed model did not already do it, and only on its
+    // own schedule: a river system outlives a couple of million years, and this
+    // costs one erosion pass with the incision skipped.
+    if (millionYears > constants.routedErosionBelow) {
+        networkAge += millionYears;
+        if (networkAge >= constants.networkInterval ||
+            lastFlowsInto.size() != cells.size()) {
+            networkAge = 0.0f;
+            erodeSurface(millionYears, true);
+        }
+    }
+
     refreshElevationField();
     timings.gradients = lap();
     timings.total = std::chrono::duration<float, std::milli>(Clock::now() - stepBegan).count();
@@ -1808,6 +1863,10 @@ std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
     snapshot->discharge.resize(cells.size(), 0.0f);
     snapshot->flowsInto = lastFlowsInto;
     snapshot->flowsInto.resize(cells.size(), -1);
+    snapshot->lakeDepth = lastLakeDepth;
+    snapshot->lakeDepth.resize(cells.size(), 0.0f);
+    snapshot->routedSurface = lastRoutedSurface;
+    snapshot->routedSurface.resize(cells.size(), 0.0f);
 
     for (size_t i = 0; i < cells.size(); i++) {
         snapshot->elevation[i] = cells[i].elevation - seaLevel;

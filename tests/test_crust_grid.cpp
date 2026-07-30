@@ -854,10 +854,11 @@ void testRivers() {
     check(snapshot->discharge.size() == cells.size(), "the network was published");
     check(snapshot->flowsInto.size() == cells.size(), "with its flow directions");
 
-    // Every cell must send water to somewhere lower, or to nowhere at all.
-    // Erosion fills depressions before routing, so a cell draining uphill
-    // would mean the fill and the routing disagree - and a river that runs
-    // uphill is the most obvious way for this to be wrong.
+    // Every cell must send water to somewhere lower, or to nowhere at all -
+    // unless it is under a lake, where the water surface is level and flow
+    // follows that rather than the rock beneath it. Depression filling is what
+    // makes lakes, so routing "uphill" out of one is correct; routing uphill
+    // on dry ground would mean the fill and the routing disagree.
     // Against the land, not against the planet. Water on the seafloor is
     // already in the sea and has nowhere to be routed to, so most of a cell
     // count that includes ocean will never drain and should not be expected
@@ -875,12 +876,34 @@ void testRivers() {
             continue;
         }
         routed++;
-        if (cells[into].elevation > cells[i].elevation + 1.0f) {
+
+        // Checked against the surface the router actually used, not against
+        // the current elevations. The network is rebuilt every couple of
+        // million years and plates keep moving in between, so comparing it to
+        // today's ground shows hundreds of cells apparently draining uphill by
+        // hundreds of metres with nothing wrong in the routing - it is two
+        // different moments being compared.
+        //
+        // Against the routed surface this is an invariant that must hold by
+        // construction: the router chose the lowest neighbour on that surface.
+        // If it ever fails, the router is genuinely broken.
+        if (snapshot->routedSurface[into] > snapshot->routedSurface[i] + 1.0f) {
             uphill++;
+            if (uphill <= 4) {
+                std::printf("    uphill: %.1f m -> %.1f m on the routed surface\n",
+                            snapshot->routedSurface[i], snapshot->routedSurface[into]);
+            }
         }
     }
-    std::printf("  %d of %d land cells route somewhere; %d of those route uphill\n",
-                routed, land, uphill);
+
+    int lakeCells = 0;
+    for (size_t i = 0; i < cells.size(); i++) {
+        if (snapshot->lakeDepth[i] > 0.0f) {
+            lakeCells++;
+        }
+    }
+    std::printf("  %d of %d land cells route somewhere; %d lakes; %d uphill on dry ground\n",
+                routed, land, lakeCells, uphill);
     check(routed > land / 2, "most of the land drains");
     check(uphill == 0, "no cell drains uphill");
 

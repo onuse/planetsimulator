@@ -24,8 +24,8 @@
 
 namespace simulation {
 
-void CrustGrid::erodeSurface(float dt) {
-    if (dt <= 0.0f || cells.empty()) {
+void CrustGrid::erodeSurface(float dt, bool networkOnly) {
+    if (dt <= 0.0f || cells.empty() || cellMarkers.size() != cells.size()) {
         return;
     }
 
@@ -141,9 +141,18 @@ void CrustGrid::erodeSurface(float dt) {
     // system: where the water collects, and which way it goes.
     lastDischarge.resize(n);
     lastFlowsInto.resize(n);
+    lastLakeDepth.resize(n);
+    lastRoutedSurface.resize(n);
     for (int i = 0; i < n; i++) {
         lastDischarge[i] = static_cast<float>(drainage[i]);
         lastFlowsInto[i] = receiver[i];
+        // What the depression fill added: zero on a slope, positive in a lake.
+        lastLakeDepth[i] = std::max(0.0f, filled[i] - surface[i]);
+        lastRoutedSurface[i] = filled[i];
+    }
+
+    if (networkOnly) {
+        return;
     }
 
     // 4. Incise, carry, deposit
@@ -255,6 +264,115 @@ void CrustGrid::erodeSurface(float dt) {
         }
     }
 
+    // The grid decided how much moves; the parcels are what actually moves.
+    // Shared by both erosion models, because conservation is the part that must
+    // not depend on which one of them ran.
+    applyErosionChange(change, eroded, deposited);
+}
+
+void CrustGrid::erodeBulk(float dt) {
+    if (dt <= 0.0f || cells.empty() || cellMarkers.size() != cells.size()) {
+        return;
+    }
+
+    const Constants& k = constants;
+    const int n = static_cast<int>(cells.size());
+    const float cellArea = getCellArea();
+
+    // Denudation without routing.
+    //
+    // Over a million years what matters is that high ground wears down and the
+    // material ends up in basins. Which channel carried it is not a question
+    // this timestep can answer, and the channel will have moved several times
+    // before the step is over.
+    //
+    // The rate follows local relief rather than absolute height, because what
+    // drives erosion is the gradient available - a high plateau with nothing
+    // around it lower erodes slowly, and that is why plateaus exist.
+    std::vector<double> change(n, 0.0);
+    double removed = 0.0;
+
+    for (int i = 0; i < n; i++) {
+        const float here = cells[i].elevation - seaLevel;
+        if (here <= 0.0f) {
+            continue;   // already in the sea
+        }
+
+        float lowest = here;
+        for (int m = 0; m < neighbourCount(i); m++) {
+            lowest = std::min(lowest, cells[neighbourAt(i, m)].elevation - seaLevel);
+        }
+        const float relief = std::max(0.0f, here - lowest);
+        if (relief <= 0.0f) {
+            continue;
+        }
+
+        // The same stream power law, with the discharge estimated instead of
+        // routed.
+        //
+        // This is not a separate model with its own rate - that was the first
+        // attempt and it was wrong twice over. It ignored the coefficient that
+        // controls erosion, so switching erosion off left the mountains
+        // eroding anyway; and its conversion factor was guessed, which put it
+        // four orders of magnitude out and flattened the planet to under six
+        // hundred metres in a few hundred million years.
+        //
+        // Written as the physics it is approximating, the only thing left to
+        // assume is how much water passes through a cell. Routing answers that
+        // exactly; without it, a few cells' worth is the honest estimate, and
+        // it is bounded - most cells really do drain only themselves and their
+        // immediate neighbours, and the few trunks that carry far more are
+        // precisely the detail this regime cannot resolve.
+        constexpr double ASSUMED_CATCHMENT = 4.0;
+        const double discharge = static_cast<double>(cellArea) * k.precipitation *
+                                 climate.relativePrecipitation(i) * ASSUMED_CATCHMENT;
+        const double slope = static_cast<double>(relief) / std::max(cellSpacing(), 1.0f);
+
+        const double rate = k.streamPowerCoefficient *
+                            std::pow(discharge, k.drainageExponent) *
+                            std::pow(slope, k.slopeExponent) * dt;
+
+        // Never below the lowest neighbour, or the surface turns inside out.
+        const double lowering = std::min(rate, static_cast<double>(relief) * 0.5);
+        change[i] -= lowering;
+        removed += lowering * cellArea;
+    }
+
+    // Everything taken off the land goes to the sea floor, weighted by depth -
+    // the deeper the basin, the more room it has and the more of the load it
+    // takes.
+    double weight = 0.0;
+    for (int i = 0; i < n; i++) {
+        const float depth = seaLevel - cells[i].elevation;
+        if (depth > 0.0f) {
+            weight += depth;
+        }
+    }
+
+    if (weight > 0.0 && removed > 0.0) {
+        for (int i = 0; i < n; i++) {
+            const float depth = seaLevel - cells[i].elevation;
+            if (depth > 0.0f) {
+                change[i] += (removed * (depth / weight)) / cellArea;
+            }
+        }
+    }
+
+    applyErosionChange(change, removed, removed);
+}
+
+void CrustGrid::applyErosionChange(const std::vector<double>& change,
+                                   double eroded, double deposited) {
+    // Nothing to move rock into or out of until the parcels have been indexed
+    // against the cells.
+    if (cellMarkers.size() != cells.size() || change.size() != cells.size()) {
+        return;
+    }
+
+    const Constants& k = constants;
+    const int n = static_cast<int>(cells.size());
+    const float cellArea = getCellArea();
+
     // ------------------------------------------------------------------
     // 6. Apply it to the rock
     // ------------------------------------------------------------------
@@ -340,8 +458,9 @@ void CrustGrid::erodeSurface(float dt) {
         int sink = -1;
         float lowest = std::numeric_limits<float>::max();
         for (int i = 0; i < n; i++) {
-            if (!cellMarkers[i].empty() && surface[i] < lowest) {
-                lowest = surface[i];
+            const float here = cells[i].elevation - seaLevel;
+            if (!cellMarkers[i].empty() && here < lowest) {
+                lowest = here;
                 sink = i;
             }
         }
