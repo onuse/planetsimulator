@@ -292,7 +292,7 @@ bool CrustGrid::trySplitPlate(uint16_t plateId) {
             centroid += glm::dvec3(cellPositions[i]);
         }
     }
-    if (static_cast<int>(members.size()) < constants.minPlateCells * 2) {
+    if (static_cast<int>(members.size()) < minPlateCellCount() * 2) {
         return false;   // too small to be worth halving
     }
     centroid = glm::normalize(centroid);
@@ -331,7 +331,7 @@ bool CrustGrid::trySplitPlate(uint16_t plateId) {
             const bool sideA = glm::dot(cellPositions[index], normal) > 0.0f;
             (sideA ? areaA : areaB) += 1.0;
         }
-        if (areaA < constants.minPlateCells || areaB < constants.minPlateCells) {
+        if (areaA < minPlateCellCount() || areaB < minPlateCellCount()) {
             continue;
         }
 
@@ -489,8 +489,10 @@ void CrustGrid::absorbTinyPlates() {
         }
     }
 
+    const int minimum = minPlateCellCount();
+
     for (size_t p = 0; p < population.size(); p++) {
-        if (population[p] == 0 || population[p] >= constants.minPlateCells) {
+        if (population[p] == 0 || population[p] >= minimum) {
             continue;
         }
         // Give the fragment to whichever neighbour it shares most boundary
@@ -573,7 +575,7 @@ bool CrustGrid::riftSupercontinent() {
         }
     }
     if (glm::length(continentalCentroid) < 1e-9 ||
-        static_cast<int>(members.size()) < constants.minPlateCells * 2) {
+        static_cast<int>(members.size()) < minPlateCellCount() * 2) {
         return false;
     }
     continentalCentroid = glm::normalize(continentalCentroid);
@@ -603,7 +605,7 @@ bool CrustGrid::riftSupercontinent() {
                 (a ? sideA : sideB) += 1.0;
             }
         }
-        if (cellsA < constants.minPlateCells || cellsB < constants.minPlateCells) {
+        if (cellsA < minPlateCellCount() || cellsB < minPlateCellCount()) {
             continue;
         }
         const double balance = std::fabs(sideA - sideB);

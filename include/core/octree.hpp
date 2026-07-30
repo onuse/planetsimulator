@@ -136,6 +136,20 @@ public:
     simulation::CrustGrid* getCrustGrid() { return crust.get(); }
     const simulation::CrustGrid* getCrustGrid() const { return crust.get(); }
 
+    // How finely the crust is resolved, as an icosphere subdivision level.
+    //
+    // Level 6 is 40,962 cells, 17.5 km apart. Level 7 is 163,842 at 8.8 km, and
+    // costs about eight times as much per million years - four times the cells,
+    // and half the stable timestep, because a plate may not cross more than
+    // half a cell in a step. The two compound.
+    //
+    // Worth it for landscapes and not for tectonics, which is a real choice
+    // rather than a better setting: a divide cannot migrate less than one cell,
+    // so drainage capture needs the finer grid, while plate motion comes out the
+    // same either way. Set before generate().
+    void setCrustResolution(int subdivisions) { crustSubdivisions = subdivisions; }
+    int getCrustResolution() const { return crustSubdivisions; }
+
     // Bumped whenever tectonics changes the surface, so renderers know to
     // rebuild their meshes.
     uint64_t getCrustVersion() const;
@@ -213,6 +227,7 @@ private:
 
     // Geological time is stepped in fixed increments; wall-clock time is
     // banked here until a whole step is due.
+    int crustSubdivisions = 6;          // icosphere level for the crust grid
     float simulationRate = 1.0f;        // My per second of wall clock, wanted
     float achievedRate = 0.0f;          // My per second of wall clock, actual
     float simulationBudgetMs = 4.0f;    // per frame

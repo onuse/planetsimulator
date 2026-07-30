@@ -248,7 +248,7 @@ CrustGrid::Diagnostics CrustGrid::computeDiagnostics() const {
         }
     }
     for (size_t p = 0; p < plates.size(); p++) {
-        if (population[p] > 0 && population[p] < constants.minPlateCells) {
+        if (population[p] > 0 && population[p] < minPlateCellCount()) {
             d.microPlates++;
         }
         d.fastestPlateCmPerYear = std::max(

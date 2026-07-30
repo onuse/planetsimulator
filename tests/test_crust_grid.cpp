@@ -1,4 +1,4 @@
-// Tests for the plate tectonics simulation.
+﻿// Tests for the plate tectonics simulation.
 //
 // These check mechanism, not appearance: that isostasy predicts the right
 // continent/ocean elevation difference, that crust is conserved, that plates
@@ -6,6 +6,7 @@
 
 #include "simulation/crust_grid.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -1069,6 +1070,110 @@ void testClimate() {
     check(wettest > driest * 4.0f, "rainfall varies enough across land to shape erosion");
 }
 
+void testWhatMakesTheGroundJump() {
+    std::printf("What a cell that jumps kilometres in one step is doing\n");
+    simulation::CrustGrid grid(1000000.0f, 31, 6, 14);
+
+    for (int i = 0; i < 4; i++) {
+        grid.step(1.0f);
+    }
+
+    const auto& cells = grid.getCells();
+    const size_t n = cells.size();
+
+    std::vector<float> elevationBefore(n), thicknessBefore(n), densityBefore(n),
+        ageBefore(n);
+    std::vector<uint16_t> plateBefore(n);
+    for (size_t i = 0; i < n; i++) {
+        elevationBefore[i] = cells[i].elevation;
+        thicknessBefore[i] = cells[i].thickness;
+        densityBefore[i] = cells[i].density;
+        ageBefore[i] = cells[i].age;
+        plateBefore[i] = cells[i].plateId;
+    }
+
+    grid.step(1.0f);
+
+    // Rank the cells by how far the ground moved, then ask what else changed
+    // about them. A jump is only an artefact if nothing arrived to justify it.
+    std::vector<size_t> order(n);
+    for (size_t i = 0; i < n; i++) {
+        order[i] = i;
+    }
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+        return std::fabs(cells[a].elevation - elevationBefore[a]) >
+               std::fabs(cells[b].elevation - elevationBefore[b]);
+    });
+
+    std::printf("    the eight largest movements this step:\n");
+    std::printf("      %8s %10s %10s %8s\n", "d elev", "d thick", "d density", "plate");
+    for (int r = 0; r < 8; r++) {
+        const size_t i = order[r];
+        std::printf("      %8.0f %10.0f %10.1f %8s\n",
+                    cells[i].elevation - elevationBefore[i],
+                    cells[i].thickness - thicknessBefore[i],
+                    cells[i].density - densityBefore[i],
+                    cells[i].plateId == plateBefore[i] ? "same" : "changed");
+    }
+
+    // Airy isostasy says elevation is thickness times one minus the density
+    // ratio, so a change in elevation with no change in the column is the
+    // thing that would be wrong. Measured as how much of the movement the
+    // column accounts for.
+    // The whole formula, not half of it.
+    //
+    // Airy buoyancy is only one of two terms. Oceanic lithosphere also subsides
+    // as the square root of its age, by up to three kilometres between a ridge
+    // and eighty million years - and age changes when crust of a different age
+    // arrives, which is exactly what happens at a moving boundary. Predicting
+    // from thickness and density alone left a quarter of the movements looking
+    // unaccounted for, and every one of them was the term I had left out.
+    const auto& k = grid.getConstants();
+    const auto predict = [&](float thickness, float density, float age) {
+        float height = thickness * (1.0f - density / k.mantleDensity);
+        const float oceanic = std::min(
+            std::max((density - k.continentalDensity) /
+                         (k.oceanicDensity - k.continentalDensity), 0.0f), 1.0f);
+        const float capped = std::min(age, k.thermalSubsidenceMaxAge);
+        height -= oceanic * k.thermalSubsidenceRate * std::sqrt(std::max(0.0f, capped));
+        return height;
+    };
+
+    int explained = 0;
+    int unexplained = 0;
+    float worstUnexplained = 0.0f;
+
+    for (size_t i = 0; i < n; i++) {
+        const float moved = std::fabs(cells[i].elevation - elevationBefore[i]);
+        if (moved < 200.0f) {
+            continue;
+        }
+
+        const float predictedBefore =
+            predict(thicknessBefore[i], densityBefore[i], ageBefore[i]);
+        const float predictedAfter =
+            predict(cells[i].thickness, cells[i].density, cells[i].age);
+        const float fromColumn = std::fabs(predictedAfter - predictedBefore);
+
+        // Elevation is a function of the column alone, so this should match
+        // almost exactly; the tolerance is for float and for erosion having
+        // moved a little rock in between.
+        if (fromColumn > moved * 0.9f - 20.0f) {
+            explained++;
+        } else {
+            unexplained++;
+            worstUnexplained = std::max(worstUnexplained, moved);
+        }
+    }
+
+    std::printf("    of the cells that moved over 200 m: %d explained by the column, "
+                "%d not (worst %.0f m)\n", explained, unexplained, worstUnexplained);
+
+    check(explained > 0, "some cells moved because their column changed");
+    check(unexplained * 50 < explained + 1,
+          "movement is accounted for by the crust arriving, not invented");
+}
+
 void testResolutionChoice() {
     std::printf("What a finer grid costs and what it buys\n");
 
@@ -1269,6 +1374,7 @@ int main() {
     testRivers();
     testClimate();
     testWhereTheTimeGoes();
+    testWhatMakesTheGroundJump();
     testResolutionChoice();
     testStepPerformance();
 

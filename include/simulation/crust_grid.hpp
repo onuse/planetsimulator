@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <cstdint>
 #include <memory>
+#include <algorithm>
 #include <vector>
 
 #include "simulation/climate.hpp"
@@ -157,9 +158,23 @@ public:
         // supercontinent rather than just a large landmass.
         float supercontinentFraction = 0.30f;
 
-        // Below this many cells a fragment is not worth tracking as its own
-        // plate and gets absorbed by a neighbour.
-        int minPlateCells = 60;
+        // Below this share of the planet's surface a fragment is not worth
+        // tracking as its own plate and gets absorbed by a neighbour.
+        //
+        // A fraction rather than a cell count, which is what this was. Sixty
+        // cells is 0.15% of the surface at 40,962 cells and 0.04% at 163,842,
+        // so refining the grid quietly licensed plates a quarter of the area -
+        // and a small plate is a fast one. Driving force scales with a plate's
+        // perimeter and basal drag with its area, so for a compact patch the
+        // ratio goes as one over the square root of its cell count times the
+        // cell spacing: halve the spacing and a plate of the same cell count
+        // moves twice as fast.
+        //
+        // That is how a resolution change turned into a runaway. A microplate
+        // reaching metres per year sets the stable timestep for the whole
+        // planet, because no plate may cross more than half a cell in a step -
+        // so one fragment nobody can see stops geological time for everything.
+        float minPlateFraction = 0.0015f;
 
         // Plates whose shared boundary is mostly locked continental collision
         // have stopped moving relative to each other, so they are one plate.
@@ -767,9 +782,25 @@ public:
         float overlapFraction = 0.0f;
         int maxPlatesInOneCell = 0;
 
-        // Largest single-step change in surface height. Tectonics and erosion
-        // are slow; a cell jumping kilometres in one step is a discretisation
-        // artefact, not geology.
+        // Largest single-step change in surface height.
+        //
+        // Not an error bound, which is what this comment used to imply, and the
+        // implication cost an afternoon. Kilometres in one step is normal at a
+        // moving plate boundary: as a margin sweeps across a cell, seven
+        // kilometres of ocean floor is replaced by forty of continent, and Airy
+        // isostasy plus the loss of thermal subsidence puts the surface eight
+        // kilometres higher. Every cell that moves is accounted for exactly by
+        // its own column - thickness, density and age - and there is a test
+        // that says so.
+        //
+        // It also grows as the grid gets finer, which looks like refinement
+        // making things worse and is the opposite. A coarse cell straddles the
+        // margin and averages both sides, so its readout creeps; a fine cell
+        // resolves the margin and flips, so its readout approaches the real
+        // contrast. Convergence, not degradation.
+        //
+        // Still worth watching, because a jump with no column change behind it
+        // would be a genuine fault.
         float maxElevationJump = 0.0f;
         int cellOfLargestJump = -1;
 
@@ -916,6 +947,15 @@ private:
     bool riftSupercontinent();
     void weldLockedPlates();
     void absorbTinyPlates();
+
+    // The smallest plate worth having, in cells, derived from the share of the
+    // surface it must cover. Everything that asks "is this too small to be a
+    // plate" goes through here, so the answer cannot depend on the resolution
+    // in one place and not another.
+    int minPlateCellCount() const {
+        return std::max(4, static_cast<int>(constants.minPlateFraction *
+                                            static_cast<float>(cells.size())));
+    }
 
     float sinceReorganisation = 0.0f;   // My
 

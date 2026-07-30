@@ -381,7 +381,7 @@ void OctreePlanet::generate(uint32_t seed) {
     // Build the tectonic simulation first: it is what decides where continents
     // and ocean basins are. The density field reads from it, and the voxel
     // octree is then filled from the density field, so all three agree.
-    crust = std::make_unique<simulation::CrustGrid>(radius, seed);
+    crust = std::make_unique<simulation::CrustGrid>(radius, seed, crustSubdivisions);
     densityField.setPlanetRadius(radius);
     densityField.setSeed(seed);
     densityField.setCrustGrid(crust.get());

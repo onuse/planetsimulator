@@ -37,6 +37,9 @@ struct Config {
     float screenshotInterval = 0; // Screenshot interval in seconds (0 = disabled)
     bool quiet = false;          // Suppress verbose output
     bool vertexDump = false;     // Dump vertex data on exit for debugging
+    // Icosphere level for the crust grid. 6 is 17.5 km cells; 7 is 8.8 km and
+    // about eight times the cost per million years.
+    int crustSubdivisions = 6;
     bool autoZoom = false;       // Enable automatic zoom during screenshots
     bool usePresetView = false;  // Use preset camera position
     bool disableCulling = false; // Disable face culling for debugging
@@ -54,6 +57,8 @@ Config parseArgs(int argc, char** argv) {
             config.radius = std::stof(argv[++i]);
         } else if (arg == "-max-depth" && i + 1 < argc) {
             config.maxDepth = std::stoi(argv[++i]);
+        } else if (arg == "-crust-detail" && i + 1 < argc) {
+            config.crustSubdivisions = std::stoi(argv[++i]);
         } else if (arg == "-seed" && i + 1 < argc) {
             config.seed = std::stoul(argv[++i]);
         } else if (arg == "-width" && i + 1 < argc) {
@@ -92,6 +97,7 @@ Config parseArgs(int argc, char** argv) {
                       << "  -screenshot-interval <sec> Screenshot interval (default: 0 = disabled)\n"
                       << "  -quiet                  Suppress verbose output\n"
                       << "  -vertex-dump            Dump vertex data on exit for debugging\n"
+                      << "  -crust-detail <level>   Crust grid subdivision, 5-7 (default: 6)\n"
                       << "  -auto-zoom              Enable automatic zoom during screenshots\n"
                       << "  -preset-view            Use preset camera position (nice continent view)\n";
             std::exit(0);
@@ -240,6 +246,9 @@ private:
             std::cout << "Generating planet...\n" << std::flush;
         }
         try {
+            // Set before generating, because it decides how the crust grid is
+            // built and the grid is what everything else is derived from.
+            planet.setCrustResolution(config.crustSubdivisions);
             planet.generate(config.seed);
             if (!config.quiet) {
                 std::cout << "Planet generated successfully\n" << std::flush;
