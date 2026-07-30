@@ -2,7 +2,11 @@
 #include "simulation/crust_grid.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <vector>
+
+#include "utils/parallel.hpp"
 
 namespace simulation {
 
@@ -83,9 +87,11 @@ void Climate::solveTemperature() {
         }
         const float mean = static_cast<float>(meanSum / n);
 
-        int iceCells = 0;
+        std::atomic<int> iceCellsAtomic{0};
 
-        for (size_t i = 0; i < n; i++) {
+        util::parallelFor(n, [&](size_t begin, size_t end) {
+        int localIce = 0;
+        for (size_t i = begin; i < end; i++) {
             const float sinLatitude = cells[i].position.y;
 
             // Annual mean insolation by latitude. The 0.482 is the standard
@@ -101,7 +107,7 @@ void Climate::solveTemperature() {
             float albedo = ocean ? constants.oceanAlbedo : constants.landAlbedo;
             if (frozen) {
                 albedo = constants.iceAlbedo;
-                iceCells++;
+                localIce++;
             }
 
             // Solve the balance for T at sea level.
@@ -117,8 +123,11 @@ void Climate::solveTemperature() {
             const float height = std::max(elevation, 0.0f);
             fields.temperature[i] = seaLevelTemperature - constants.lapseRate * height;
         }
+        iceCellsAtomic.fetch_add(localIce, std::memory_order_relaxed);
+        });
 
-        fields.iceFraction = static_cast<float>(iceCells) / static_cast<float>(n);
+        fields.iceFraction =
+            static_cast<float>(iceCellsAtomic.load()) / static_cast<float>(n);
     }
 
     double sum = 0.0;
@@ -138,7 +147,8 @@ void Climate::solveWind() {
     // each returning branch. That gives easterly trades in the tropics,
     // westerlies in the middle latitudes and easterlies again at the poles,
     // and it is why deserts sit where they do.
-    for (size_t i = 0; i < n; i++) {
+    util::parallelFor(n, [&](size_t begin, size_t end) {
+    for (size_t i = begin; i < end; i++) {
         const glm::vec3 up = cells[i].position;
         const float sinLatitude = glm::clamp(up.y, -1.0f, 1.0f);
         const float latitude = std::asin(sinLatitude);
@@ -182,6 +192,7 @@ void Climate::solveWind() {
 
         fields.wind[i] = glm::normalize(east * zonal + north * meridional);
     }
+    });
 }
 
 void Climate::solvePrecipitation() {
@@ -214,21 +225,17 @@ void Climate::solvePrecipitation() {
     // along its wind, which is upwind differencing - crude, but it is the
     // right crudeness here: it never produces moisture that was not there and
     // it puts the rain shadow on the correct side of the range.
-    for (int step = 0; step < constants.transportSteps; step++) {
-        std::fill(next.begin(), next.end(), 0.0f);
-
-        for (size_t i = 0; i < n; i++) {
-            if (moisture[i] <= 0.0f) {
-                continue;
-            }
-
+    // Which way the wind sends each cell's moisture does not change between
+    // transport steps - the wind field is fixed and so is the terrain - so the
+    // downwind neighbour is found once rather than forty-eight times. That
+    // alone is most of the cost, and it is a pure per-cell question.
+    std::vector<int> downwind(n, -1);
+    util::parallelFor(n, [&](size_t begin, size_t end) {
+        for (size_t i = begin; i < end; i++) {
             const glm::vec3 wind = fields.wind[i];
             if (glm::dot(wind, wind) < 1e-8f) {
-                next[i] += moisture[i];
                 continue;
             }
-
-            // The neighbour most nearly downwind.
             int target = -1;
             float best = 0.2f;   // ignore neighbours that are barely downwind
             for (int k = 0; k < grid.neighbourCount(static_cast<int>(i)); k++) {
@@ -241,7 +248,23 @@ void Climate::solvePrecipitation() {
                     target = j;
                 }
             }
+            downwind[i] = target;
+        }
+    });
 
+    // The transport itself stays on one thread. It is a scatter - several cells
+    // hand their moisture to the same downwind neighbour - and each step
+    // depends on the one before, so there is no range to split that does not
+    // race. What was expensive about it has already been lifted out.
+    for (int step = 0; step < constants.transportSteps; step++) {
+        std::fill(next.begin(), next.end(), 0.0f);
+
+        for (size_t i = 0; i < n; i++) {
+            if (moisture[i] <= 0.0f) {
+                continue;
+            }
+
+            const int target = downwind[i];
             if (target < 0) {
                 next[i] += moisture[i];
                 continue;
