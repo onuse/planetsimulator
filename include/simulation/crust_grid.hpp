@@ -610,6 +610,18 @@ public:
     std::vector<float> lastLakeDepth;
     std::vector<float> lastRoutedSurface;
 
+    // Scratch for the parallel half of the projection: where each parcel lands
+    // and how its volume divides between that cell and its neighbours. Held as
+    // a member so it is not reallocated every step.
+    struct Projection {
+        static constexpr int MAX = 7;   // a cell and up to six neighbours
+        int landing = -1;
+        int count = 0;
+        int cells[MAX] = {};
+        double shares[MAX] = {};
+    };
+    std::vector<Projection> projection;
+
     std::vector<float> elevationField;
     std::vector<glm::vec3> elevationGradient;
     void refreshElevationField();

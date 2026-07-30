@@ -1,4 +1,5 @@
 #include "simulation/crust_grid.hpp"
+#include "utils/parallel.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -1233,22 +1234,27 @@ void CrustGrid::advectMarkers(float dt) {
     // interpolation and therefore no smearing. Plate boundaries move because
     // the parcels either side of them carry their own plate identity, so there
     // is no categorical field to quantise either.
-    for (Marker& marker : markers) {
-        const Plate& plate = plates[marker.plateId];
-        const float rate = plate.angularVelocity();
-        if (rate > 1e-12f) {
-            marker.position = glm::normalize(
-                rotateAbout(marker.position, plate.omega / rate, rate * dt));
-        }
+    // Parallel without qualification: each parcel is rotated by its own plate
+    // and touches nothing else. The plates are read-only here.
+    util::parallelFor(markers.size(), [&](size_t begin, size_t end) {
+        for (size_t index = begin; index < end; index++) {
+            Marker& marker = markers[index];
+            const Plate& plate = plates[marker.plateId];
+            const float rate = plate.angularVelocity();
+            if (rate > 1e-12f) {
+                marker.position = glm::normalize(
+                    rotateAbout(marker.position, plate.omega / rate, rate * dt));
+            }
 
-        // Every episode in the record ages, not just the column average -
-        // otherwise a freshly deposited layer would inherit the mean age of
-        // rock beneath it and the stratigraphy would stop meaning anything.
-        for (int i = 0; i < marker.layerCount; i++) {
-            marker.layers[i].age += dt;
+            // Every episode in the record ages, not just the column average -
+            // otherwise a freshly deposited layer would inherit the mean age of
+            // rock beneath it and the stratigraphy would stop meaning anything.
+            for (int i = 0; i < marker.layerCount; i++) {
+                marker.layers[i].age += dt;
+            }
+            marker.refresh();
         }
-        marker.refresh();
-    }
+    });
 }
 
 void CrustGrid::projectMarkersToGrid() {
@@ -1278,47 +1284,76 @@ void CrustGrid::projectMarkersToGrid() {
     // Smoothing the readout is safe in a way that smoothing the material never
     // was: the parcels keep their exact positions and compositions, and this
     // projection is thrown away and rebuilt from them every step.
-    std::vector<int> stencil;
-    std::vector<double> weights;
-    stencil.reserve(8);
-    weights.reserve(8);
+    // Split in two, because this is a scatter: many parcels land on one cell, so
+    // the accumulation cannot be done from several threads without either
+    // locking every cell or accepting a race, and locking would cost more than
+    // the arithmetic it protects.
+    //
+    // Everything that depends on one parcel alone - the nearest-cell lookup,
+    // which is the expensive part, and the inverse square weights - runs in
+    // parallel. What is left is adding numbers into cells, which is
+    // memory-bound and quick, and runs on one thread.
+    projection.resize(markers.size());
+
+    util::parallelFor(markers.size(), [&](size_t begin, size_t end) {
+        for (size_t index = begin; index < end; index++) {
+            const Marker& marker = markers[index];
+            Projection& out = projection[index];
+            out.count = 0;
+            out.landing = findNearestCell(marker.position);
+            if (out.landing < 0) {
+                continue;
+            }
+
+            int stencil[Projection::MAX];
+            double weights[Projection::MAX];
+            int used = 0;
+            double weightTotal = 0.0;
+
+            const auto consider = [&](int cell) {
+                if (used >= Projection::MAX) {
+                    return;
+                }
+                const float cosAngle =
+                    glm::clamp(glm::dot(cells[cell].position, marker.position), -1.0f, 1.0f);
+                const float angle = std::acos(cosAngle);
+                const double weight = 1.0 / (static_cast<double>(angle) * angle + 1e-9);
+                stencil[used] = cell;
+                weights[used] = weight;
+                used++;
+                weightTotal += weight;
+            };
+
+            consider(out.landing);
+            for (int m = 0; m < neighbourCount(out.landing); m++) {
+                consider(neighbourAt(out.landing, m));
+            }
+            if (weightTotal <= 0.0) {
+                continue;
+            }
+
+            for (int s = 0; s < used; s++) {
+                out.cells[s] = stencil[s];
+                out.shares[s] = static_cast<double>(marker.volume) * (weights[s] / weightTotal);
+            }
+            out.count = used;
+        }
+    });
 
     for (size_t index = 0; index < markers.size(); index++) {
-        const Marker& marker = markers[index];
-        const int landing = findNearestCell(marker.position);
-        if (landing < 0) {
+        const Projection& out = projection[index];
+        if (out.landing < 0) {
             continue;
         }
 
         // Ownership stays with the nearest cell, so reconcileCrust knows which
         // parcels to consume where.
-        cellMarkers[landing].push_back(static_cast<int>(index));
+        cellMarkers[out.landing].push_back(static_cast<int>(index));
 
-        stencil.clear();
-        weights.clear();
-        double weightTotal = 0.0;
-
-        const auto consider = [&](int cell) {
-            const float cosAngle =
-                glm::clamp(glm::dot(cells[cell].position, marker.position), -1.0f, 1.0f);
-            const float angle = std::acos(cosAngle);
-            const double weight = 1.0 / (static_cast<double>(angle) * angle + 1e-9);
-            stencil.push_back(cell);
-            weights.push_back(weight);
-            weightTotal += weight;
-        };
-
-        consider(landing);
-        for (int m = 0; m < neighbourCount(landing); m++) {
-            consider(neighbourAt(landing, m));
-        }
-        if (weightTotal <= 0.0) {
-            continue;
-        }
-
-        for (size_t s = 0; s < stencil.size(); s++) {
-            const int cell = stencil[s];
-            const double share = static_cast<double>(marker.volume) * (weights[s] / weightTotal);
+        const Marker& marker = markers[index];
+        for (int s = 0; s < out.count; s++) {
+            const int cell = out.cells[s];
+            const double share = out.shares[s];
             volume[cell] += share;
             mass[cell] += share * marker.density;
             ageVolume[cell] += share * marker.age;
