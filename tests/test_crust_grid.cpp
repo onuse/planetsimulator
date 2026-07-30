@@ -1341,9 +1341,12 @@ void testChannelsCarveAndPersist() {
         }
 
         // A channel cut below the bed of the river it flows into would mean
-        // water climbing out of its own channel to leave the cell.
+        // water climbing out of its own channel to leave the cell. Only where
+        // there is water: a valley whose river has gone is a landform, and
+        // landforms are allowed to be deeper than the ground next door.
         const int down = snapshot->flowsInto[i];
-        if (down >= 0 && down < n) {
+        if (down >= 0 && down < n &&
+            snapshot->discharge[i] >= grid.getConstants().channelThreshold) {
             const float floorHere = snapshot->elevation[i] - depth;
             const float floorThere = snapshot->elevation[down] - snapshot->channelDepth[down];
             if (floorHere < floorThere - 1.0f) {
@@ -1416,6 +1419,91 @@ void testChannelsCarveAndPersist() {
                 60.0f * slice, retained * 100.0f, survivors);
 
     check(retained > 0.5f, "an abandoned channel is still there long after the river left");
+}
+
+void testAbandonedValleysSurviveTheRiver() {
+    std::printf("What a river leaves behind when it stops running there\n");
+
+    // The one that matters, and the one the previous test missed.
+    //
+    // Persistence was checked by switching erosion off and watching the depth
+    // decay. That leaves the network routing, so every channel still had its
+    // water and what was measured was a slow fade of channels that were still
+    // rivers. It never tested abandonment at all - and abandonment was the case
+    // that was broken, because a cell whose discharge fell below the threshold
+    // had its depth set straight to zero. A river could spend two million years
+    // cutting a valley and take the valley with it the instant the network
+    // moved, leaving nothing on the continent to show it was ever there.
+    //
+    // So this finds cells that genuinely lose their river between one moment
+    // and another, and asks what is left in the ground afterwards.
+    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+
+    const float slice = 0.02f;
+    for (int i = 0; i < 60; i++) {
+        grid.step(slice);
+    }
+
+    auto before = grid.publishSnapshot();
+    const int n = static_cast<int>(before->channelDepth.size());
+    std::vector<float> depthBefore = before->channelDepth;
+    std::vector<float> flowBefore = before->discharge;
+
+    for (int i = 0; i < 40; i++) {
+        grid.step(slice);
+    }
+    auto after = grid.publishSnapshot();
+
+    // Cells that had a channel and a river, and now have no river.
+    const float threshold = grid.getConstants().channelThreshold;
+    int abandoned = 0;
+    int erased = 0;
+    int realValleysErased = 0;
+    float deepestErased = 0.0f;
+    double erasedSum = 0.0;
+    double keptSum = 0.0;
+    double hadSum = 0.0;
+
+    for (int i = 0; i < n; i++) {
+        // Still dry land afterwards. A valley that has been drowned by the sea
+        // or buried under its own delta has genuinely lost its channel, and
+        // counting those as erasures would hide whatever else is going on.
+        const bool hadRiver = flowBefore[i] >= threshold && depthBefore[i] > 1.0f;
+        const bool hasRiver = after->discharge[i] >= threshold;
+        const bool stillLand = after->elevation[i] > 0.0f;
+        if (!hadRiver || hasRiver || !stillLand) {
+            continue;
+        }
+        abandoned++;
+        hadSum += depthBefore[i];
+        keptSum += after->channelDepth[i];
+        if (after->channelDepth[i] <= 0.01f) {
+            erased++;
+            deepestErased = std::max(deepestErased, depthBefore[i]);
+            erasedSum += depthBefore[i];
+            if (depthBefore[i] > 20.0f) {
+                realValleysErased++;
+            }
+        }
+    }
+
+    const float retained = hadSum > 0.0 ? static_cast<float>(keptSum / hadSum) : 0.0f;
+    std::printf("    %d valleys lost their river over %.1f My\n", abandoned, 40.0f * slice);
+    std::printf("    %.0f%% of their depth is still in the ground, %d erased outright\n",
+                retained * 100.0f, erased);
+
+    std::printf("    of the erased: mean %.1f m, deepest %.0f m, %d were over 20 m\n",
+                erased > 0 ? static_cast<float>(erasedSum / erased) : 0.0f,
+                deepestErased, realValleysErased);
+
+    check(abandoned > 5, "rivers do move, so there is something to measure");
+    // Shallow scratches do vanish, and should: a few metres of incision in a
+    // channel a few hundred metres wide really is filled in by the hillsides
+    // within a few tens of thousands of years. What must not vanish is anything
+    // that was a valley. Before the width floor was fixed the deepest thing
+    // erased was a hundred and sixty metres deep.
+    check(deepestErased < 30.0f, "nothing that was actually a valley is wiped out");
+    check(retained > 0.6f, "an abandoned valley is still mostly there");
 }
 
 void testDrainageReorganises() {
@@ -1829,6 +1917,7 @@ int main() {
     testTimeSlicingDoesNotChangeThePlanet();
     testRiversComeInSizes();
     testChannelsCarveAndPersist();
+    testAbandonedValleysSurviveTheRiver();
     testDrainageReorganises();
     testWhatMakesTheGroundJump();
     testResolutionChoice();

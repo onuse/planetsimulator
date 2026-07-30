@@ -388,8 +388,18 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
                         // same. The river stays continuous and simply grows
                         // fainter as it gets too small to see, which is what it
                         // should do.
+                        // Four spacings, not two. Two samples across a channel
+                        // is not undersampled by a little - it is the minimum
+                        // at which a straight line can be represented at all,
+                        // and a river is a curve crossing the grid at an angle,
+                        // so the vertices that land inside it form a staircase
+                        // and the water is drawn as a row of slanted bars. It
+                        // looked like a ladder lying on the ground. Widening by
+                        // three per cent, which is what a two-spacing floor did
+                        // for a three hundred and fifty metre channel against a
+                        // hundred and eighty metre grid, changed nothing.
                         const float vertexSpacing = finestScale * 2.0f;
-                        const float drawn = std::max(river.width, vertexSpacing * 2.0f);
+                        const float drawn = std::max(river.width, vertexSpacing * 4.0f);
                         const float coverage = river.width / drawn;
 
                         const float half = drawn * 0.5f;

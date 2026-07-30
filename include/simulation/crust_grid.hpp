@@ -598,6 +598,13 @@ public:
     // shapes the ground at two scales at once: a channel a kilometre across
     // and a valley ten times that. A single number cannot express both, and
     // the valley is most of what makes a river visible.
+    // How steeply the side of a river valley can stand: the angle loose rock
+    // comes to rest at, about thirty-one degrees. It sets how wide a valley of
+    // a given depth must be, which decides both how it is drawn and how long it
+    // takes to fill in once the river has gone. Shared so those two cannot
+    // disagree about the same valley.
+    static constexpr float VALLEY_WALL_SLOPE = 0.6f;
+
     struct RiverSample {
         float distance = 1e30f;    // metres to the channel centreline
         float width = 0.0f;        // channel width in metres

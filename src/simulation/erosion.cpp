@@ -408,10 +408,24 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     // of channels sitting below their own outlet every step. Forward flood
     // order visits every receiver before the cell draining into it, so each
     // limit is final when it is used.
-    if (channelDepth.size() == static_cast<size_t>(n)) {
+    // Only where water is actually running.
+    //
+    // This is a constraint on flow, not on landforms: it says water cannot
+    // climb out of its own bed to leave the cell. A dry valley is under no such
+    // obligation - it is a hole in the ground, and holes in the ground are
+    // allowed to be deeper than their neighbours.
+    //
+    // Applying it everywhere destroyed exactly what it was supposed to be
+    // protecting. An abandoned valley's neighbours are usually abandoned too,
+    // so their depth is zero, and the limit collapsed the valley to the bare
+    // elevation drop between two cells - metres, on gentle ground. Four out of
+    // five valleys that lost their river were erased this way even after the
+    // depth itself stopped being zeroed.
+    if (channelDepth.size() == static_cast<size_t>(n) &&
+        lastDischarge.size() == static_cast<size_t>(n)) {
         for (int i : popOrder) {
             const int down = receiver[i];
-            if (down < 0) {
+            if (down < 0 || lastDischarge[i] < constants.channelThreshold) {
                 continue;
             }
             const float drop = std::max(0.0f, cells[i].elevation - cells[down].elevation);
@@ -438,14 +452,12 @@ void CrustGrid::evolveChannels(const std::vector<double>& fluvial, float dt) {
 
     for (int i = 0; i < n; i++) {
         const float catchments = lastDischarge[i];
+        const bool flowing = catchments >= k.channelThreshold;
 
-        // No channel here: this is a hillslope, and it wears down evenly.
-        if (catchments < k.channelThreshold) {
-            channelDepth[i] = 0.0f;
+        // Nothing here, and nothing to remember.
+        if (!flowing && channelDepth[i] <= 0.0f) {
             continue;
         }
-
-        const float width = std::max(channelWidthFor(catchments), 1.0f);
 
         // The channel is as deep as the river has cut and the hillsides have
         // not yet filled in. That is the whole model, and it needs no factor.
@@ -458,17 +470,44 @@ void CrustGrid::evolveChannels(const std::vector<double>& fluvial, float dt) {
         // factor was fifty for a headwater and seventeen for a trunk, so it
         // also had small streams cutting three times deeper than big rivers,
         // and produced gorges seven kilometres deep.
-        channelDepth[i] -= static_cast<float>(fluvial[i]);
+        //
+        // Only where there is water to cut with. A dry valley keeps whatever
+        // was cut into it and goes on to the filling in below.
+        if (flowing) {
+            channelDepth[i] -= static_cast<float>(fluvial[i]);
+        }
 
         // And it fills back in, because the valley sides creep into it.
         //
         // The timescale is not a number to pick - it is diffusion across the
         // width of the valley, which the diffusivity and the width already
         // give. A gully closes in a geological instant and a major valley
-        // outlasts the river that cut it, from one rule. This is what leaves an
-        // abandoned channel on the map after a capture, which is the only way
-        // capture is visible at all.
-        const float valleyWidth = width * 7.0f;
+        // outlasts the river that cut it, from one rule.
+        //
+        // This runs whether or not there is still a river in it, and that is
+        // the point. Setting the depth to zero the moment the discharge fell
+        // below the threshold - which is what this did - meant a river that had
+        // spent two million years cutting a valley took the valley with it the
+        // instant the network reorganised. Nothing was left on the continent to
+        // show it had ever been there, which is precisely backwards: the dry
+        // valley is the longest-lived thing a river makes, and the only
+        // evidence that a capture ever happened.
+        // Wide enough for walls that deep to stand up, plus the channel itself
+        // where there still is one. The same relation the valley is drawn with,
+        // so what fills in is the shape that was there.
+        // A valley does not get narrower when the river leaves it.
+        //
+        // Taking the width as zero once the water had gone made the valley as
+        // narrow as its own depth allowed, and the infill time goes as the
+        // square of the width - so a ten metre valley was treated as thirty
+        // metres across and filled in within five thousand years. Everything
+        // shallow disappeared at once. The floor is the width the smallest
+        // channel worth calling a river cuts, because that is the narrowest
+        // thing that can have been there.
+        const float cutBy = std::max(catchments, k.channelThreshold);
+        const float flowWidth = std::max(channelWidthFor(cutBy), 1.0f);
+        const float valleyWidth = std::max(
+            flowWidth + 2.0f * channelDepth[i] / VALLEY_WALL_SLOPE, 1.0f);
         const double infillTime =
             static_cast<double>(valleyWidth) * valleyWidth /
             std::max(4.0 * static_cast<double>(k.hillslopeDiffusivity), 1e-6);
