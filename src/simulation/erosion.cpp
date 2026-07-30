@@ -1,4 +1,8 @@
 #include "simulation/crust_grid.hpp"
+#include "utils/parallel.hpp"
+
+#include <chrono>
+#include <mutex>
 
 #include <algorithm>
 #include <cmath>
@@ -33,6 +37,15 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     const int n = static_cast<int>(cells.size());
     const float cellArea = getCellArea();
     const float spacing = cellSpacing();
+
+    using Clock = std::chrono::steady_clock;
+    auto mark = Clock::now();
+    const auto lap = [&mark]() {
+        const auto now = Clock::now();
+        const float ms = std::chrono::duration<float, std::milli>(now - mark).count();
+        mark = now;
+        return ms;
+    };
 
     // Elevation relative to sea level. Below zero is underwater, and rivers do
     // not run there.
@@ -85,6 +98,8 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
         }
     }
 
+    timings.erosionFill = lap();
+
     // ------------------------------------------------------------------
     // 2. Route downhill
     // ------------------------------------------------------------------
@@ -108,6 +123,8 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
         receiver[i] = best;
         slope[i] = best >= 0 ? steepest / spacing : 0.0f;
     }
+
+    timings.erosionRoute = lap();
 
     // ------------------------------------------------------------------
     // 3. Accumulate drainage from the top down
@@ -239,6 +256,8 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
         }
     }
 
+    timings.erosionIncise = lap();
+
     // ------------------------------------------------------------------
     // 5. Hillslope creep
     // ------------------------------------------------------------------
@@ -267,7 +286,10 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     // The grid decided how much moves; the parcels are what actually moves.
     // Shared by both erosion models, because conservation is the part that must
     // not depend on which one of them ran.
+    timings.erosionCreep = lap();
+
     applyErosionChange(change, eroded, deposited);
+    timings.erosionApply = lap();
 }
 
 void CrustGrid::erodeBulk(float dt) {
@@ -390,46 +412,31 @@ void CrustGrid::applyErosionChange(const std::vector<double>& change,
     double actualErosion = 0.0;
     double plannedDeposition = 0.0;
 
-    for (int i = 0; i < n; i++) {
-        if (cellMarkers[i].empty()) {
-            continue;
-        }
-        const double volume = change[i] * cellArea;
-        if (volume >= 0.0) {
-            plannedDeposition += volume;
-            continue;
-        }
+    // Parallel over cells, which is safe for a reason worth stating: every
+    // parcel belongs to exactly one cell, because cellMarkers is built by
+    // giving each parcel to its nearest one. So two threads working on two
+    // cells can never reach the same parcel, and the rock can be moved without
+    // any coordination at all.
+    //
+    // Only the running totals are shared, and they are summed once per range
+    // rather than once per parcel - a quarter of a million lock acquisitions
+    // would cost more than the work they guard, where thirty cost nothing.
+    std::mutex totalsMutex;
 
-        double total = 0.0;
-        for (int index : cellMarkers[i]) {
-            total += markers[index].volume;
-        }
-        if (total <= 0.0) {
-            continue;
-        }
+    util::parallelFor(static_cast<size_t>(n), [&](size_t begin, size_t end) {
+        double localErosion = 0.0;
+        double localPlanned = 0.0;
 
-        // Never strip a column below what crust can be.
-        const double floorVolume = static_cast<double>(k.minCrustThickness) * cellArea /
-                                   static_cast<double>(cellMarkers[i].size());
-
-        for (int index : cellMarkers[i]) {
-            Marker& marker = markers[index];
-            const double share = -volume * (marker.volume / total);
-            const double allowed = std::max(0.0, marker.volume - floorVolume);
-            actualErosion += marker.erodeFromTop(std::min(share, allowed));
-        }
-    }
-
-    // Lay down exactly what was picked up, no more.
-    const double scale = plannedDeposition > 0.0 ? actualErosion / plannedDeposition : 0.0;
-    double actualDeposition = 0.0;
-
-    if (scale > 0.0) {
-        for (int i = 0; i < n; i++) {
-            if (cellMarkers[i].empty() || change[i] <= 0.0) {
+        for (size_t i = begin; i < end; i++) {
+            if (cellMarkers[i].empty()) {
                 continue;
             }
-            const double volume = change[i] * cellArea * scale;
+            const double volume = change[i] * cellArea;
+            if (volume >= 0.0) {
+                localPlanned += volume;
+                continue;
+            }
+
             double total = 0.0;
             for (int index : cellMarkers[i]) {
                 total += markers[index].volume;
@@ -437,14 +444,58 @@ void CrustGrid::applyErosionChange(const std::vector<double>& change,
             if (total <= 0.0) {
                 continue;
             }
+
+            // Never strip a column below what crust can be.
+            const double floorVolume = static_cast<double>(k.minCrustThickness) * cellArea /
+                                       static_cast<double>(cellMarkers[i].size());
+
             for (int index : cellMarkers[i]) {
                 Marker& marker = markers[index];
-                const double share = volume * (marker.volume / total);
-                // Fresh sediment, so its clock starts now.
-                marker.deposit(RockType::Sediment, share, 0.0f);
-                actualDeposition += share;
+                const double share = -volume * (marker.volume / total);
+                const double allowed = std::max(0.0, marker.volume - floorVolume);
+                localErosion += marker.erodeFromTop(std::min(share, allowed));
             }
         }
+
+        std::lock_guard<std::mutex> lock(totalsMutex);
+        actualErosion += localErosion;
+        plannedDeposition += localPlanned;
+    });
+
+    // Lay down exactly what was picked up, no more.
+    const double scale = plannedDeposition > 0.0 ? actualErosion / plannedDeposition : 0.0;
+    double actualDeposition = 0.0;
+
+    if (scale > 0.0) {
+        std::mutex depositMutex;
+
+        util::parallelFor(static_cast<size_t>(n), [&](size_t begin, size_t end) {
+            double local = 0.0;
+
+            for (size_t i = begin; i < end; i++) {
+                if (cellMarkers[i].empty() || change[i] <= 0.0) {
+                    continue;
+                }
+                const double volume = change[i] * cellArea * scale;
+                double total = 0.0;
+                for (int index : cellMarkers[i]) {
+                    total += markers[index].volume;
+                }
+                if (total <= 0.0) {
+                    continue;
+                }
+                for (int index : cellMarkers[i]) {
+                    Marker& marker = markers[index];
+                    const double share = volume * (marker.volume / total);
+                    // Fresh sediment, so its clock starts now.
+                    marker.deposit(RockType::Sediment, share, 0.0f);
+                    local += share;
+                }
+            }
+
+            std::lock_guard<std::mutex> lock(depositMutex);
+            actualDeposition += local;
+        });
     }
 
     // Whatever the deposition pass could not place - a cell that turned out to

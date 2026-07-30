@@ -651,6 +651,19 @@ public:
         float isostasy = 0.0f;
         float climate = 0.0f;
         float erosion = 0.0f;
+
+        // Erosion's own phases, because it is now the largest one and
+        // "parallelise erosion" is not a plan until it is known which part of
+        // it costs anything. Two of these cannot be threaded at all - a
+        // priority queue and a walk in downstream order are both sequential by
+        // construction - so it matters a great deal whether they are the
+        // expensive ones.
+        float erosionFill = 0.0f;
+        float erosionRoute = 0.0f;
+        float erosionAccumulate = 0.0f;
+        float erosionIncise = 0.0f;
+        float erosionCreep = 0.0f;
+        float erosionApply = 0.0f;
         float rebalance = 0.0f;
         float gradients = 0.0f;
         float total = 0.0f;

@@ -1092,6 +1092,12 @@ void testWhereTheTimeGoes() {
         sum.isostasy += t.isostasy;
         sum.climate += t.climate;
         sum.erosion += t.erosion;
+        sum.erosionFill += t.erosionFill;
+        sum.erosionRoute += t.erosionRoute;
+        sum.erosionAccumulate += t.erosionAccumulate;
+        sum.erosionIncise += t.erosionIncise;
+        sum.erosionCreep += t.erosionCreep;
+        sum.erosionApply += t.erosionApply;
         sum.rebalance += t.rebalance;
         sum.gradients += t.gradients;
         sum.total += t.total;
@@ -1111,6 +1117,12 @@ void testWhereTheTimeGoes() {
     share("isostasy", sum.isostasy);
     share("climate", sum.climate);
     share("erosion", sum.erosion);
+    share("  fill", sum.erosionFill);
+    share("  route", sum.erosionRoute);
+    share("  accumulate", sum.erosionAccumulate);
+    share("  incise", sum.erosionIncise);
+    share("  creep", sum.erosionCreep);
+    share("  apply", sum.erosionApply);
     share("rebalance", sum.rebalance);
     share("gradients", sum.gradients);
 
