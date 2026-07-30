@@ -133,3 +133,4 @@ CMakeLists_*.txt
 # Temporary shader files
 shaders/nul*
 shaders/[0-9]
+cw.txt
