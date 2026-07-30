@@ -323,6 +323,22 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
                                       glm::vec3(0.55f, 0.53f, 0.50f), t);
                 }
             }
+            // Rivers, where the simulation routes them.
+            //
+            // Drawn after the biome colour rather than as part of the height
+            // bands, because a river is not an elevation - it is water sitting
+            // on whatever the ground happens to be, and it runs downhill
+            // through every band on the way to the sea.
+            if (relative >= 0.0f) {
+                const float river = field.getRiverStrength(dir);
+                if (river > 0.01f) {
+                    // Shallow, sediment-laden and reflecting sky, so lighter
+                    // and greener than open ocean rather than the same blue.
+                    const glm::vec3 water(0.22f, 0.38f, 0.48f);
+                    colour = glm::mix(colour, water, glm::clamp(river * 0.9f, 0.0f, 0.9f));
+                }
+            }
+
             patch.vertices[index].color = colour;
         }
     }

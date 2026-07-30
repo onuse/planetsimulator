@@ -424,6 +424,16 @@ public:
         std::vector<uint8_t> surfaceRock; // RockType at the top of the column
         std::vector<float> cloudCover;    // 0 to 1, from the climate model
 
+        // The drainage network erosion routes water down. Accumulated
+        // discharge at each cell, and which neighbour it flows into.
+        //
+        // Erosion computed all of this every step and threw it away, having
+        // used it to decide incision rates. It is a river network - depressions
+        // filled, flow routed downhill, discharge accumulated from the top of
+        // the landscape down - and keeping it costs two arrays.
+        std::vector<float> discharge;     // m^3-ish per step, relative units
+        std::vector<int32_t> flowsInto;   // cell index, or -1 at a sink
+
         float minElevation = 0.0f;
         float maxElevation = 0.0f;
         float seaLevel = 0.0f;
@@ -487,6 +497,15 @@ public:
     // snapshot so the renderer's worker threads can ask while the simulation
     // is mid-step.
     float sampleCloudCover(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
+
+    // How strongly a river runs at a direction, 0 to 1.
+    //
+    // A cell carrying a major river is seventeen kilometres across and the
+    // river is not, so colouring whole cells would draw rivers as wide as
+    // Belgium. The flow direction is known, though - each cell routes into a
+    // specific neighbour - so the channel can be drawn along the path the
+    // water actually takes, with a width set by how much of it there is.
+    float sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
     SurfaceSample sampleSurface(const glm::vec3& sphereNormal) const;
 
     // Nearest cell to a direction, via the spatial accelerator.
@@ -513,6 +532,10 @@ public:
     // whenever the surface moves. Kept because both the renderer's snapshot
     // and the live sampler want the same gradients, and fitting them is
     // O(cells) once against millions of samples read from them.
+    // The last drainage network erosion routed, kept for the renderer.
+    std::vector<float> lastDischarge;
+    std::vector<int32_t> lastFlowsInto;
+
     std::vector<float> elevationField;
     std::vector<glm::vec3> elevationGradient;
     void refreshElevationField();

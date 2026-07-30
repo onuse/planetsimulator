@@ -839,6 +839,90 @@ void testSurfaceReconstruction() {
           "curving between cells at least halves the worst crease");
 }
 
+void testRivers() {
+    std::printf("Rivers run downhill and reach the sea\n");
+    simulation::CrustGrid grid(1000000.0f, 17, 5, 12);
+
+    // Erosion has to have run for a network to exist.
+    for (int i = 0; i < 6; i++) {
+        grid.step(1.0f);
+    }
+
+    auto snapshot = grid.publishSnapshot();
+    const auto& cells = grid.getCells();
+
+    check(snapshot->discharge.size() == cells.size(), "the network was published");
+    check(snapshot->flowsInto.size() == cells.size(), "with its flow directions");
+
+    // Every cell must send water to somewhere lower, or to nowhere at all.
+    // Erosion fills depressions before routing, so a cell draining uphill
+    // would mean the fill and the routing disagree - and a river that runs
+    // uphill is the most obvious way for this to be wrong.
+    // Against the land, not against the planet. Water on the seafloor is
+    // already in the sea and has nowhere to be routed to, so most of a cell
+    // count that includes ocean will never drain and should not be expected
+    // to - the first version of this measured against the whole surface and
+    // failed on a planet that was behaving correctly.
+    int land = 0;
+    int routed = 0;
+    int uphill = 0;
+    for (size_t i = 0; i < cells.size(); i++) {
+        if (cells[i].elevation - grid.getSeaLevel() > 0.0f) {
+            land++;
+        }
+        const int into = snapshot->flowsInto[i];
+        if (into < 0) {
+            continue;
+        }
+        routed++;
+        if (cells[into].elevation > cells[i].elevation + 1.0f) {
+            uphill++;
+        }
+    }
+    std::printf("  %d of %d land cells route somewhere; %d of those route uphill\n",
+                routed, land, uphill);
+    check(routed > land / 2, "most of the land drains");
+    check(uphill == 0, "no cell drains uphill");
+
+    // Discharge has to grow downstream. A river is the collecting of water,
+    // so a cell must carry at least what it receives - if it does not, the
+    // accumulation is walking the network in the wrong order.
+    int shrinks = 0;
+    for (size_t i = 0; i < cells.size(); i++) {
+        const int into = snapshot->flowsInto[i];
+        if (into < 0) {
+            continue;
+        }
+        if (snapshot->discharge[into] < snapshot->discharge[i] * 0.999f) {
+            shrinks++;
+        }
+    }
+    std::printf("  %d cells carry less than what flows into them\n", shrinks);
+    check(shrinks == 0, "discharge grows downstream");
+
+    // And the consequence the renderer depends on: channels have to be narrow.
+    // Sampling along a line across the land, only a small fraction of it
+    // should be river - a model that called a fifth of the surface "river"
+    // would draw floodplains, not rivers.
+    int wet = 0;
+    int dry = 0;
+    for (size_t i = 0; i < cells.size(); i += 3) {
+        if (cells[i].elevation - grid.getSeaLevel() < 0.0f) {
+            continue;
+        }
+        const float strength = grid.sampleRiver(*snapshot, cells[i].position);
+        if (strength > 0.25f) {
+            wet++;
+        } else {
+            dry++;
+        }
+    }
+    const float share = (wet + dry) > 0 ? static_cast<float>(wet) / (wet + dry) : 0.0f;
+    std::printf("  %.1f%% of sampled land sits in a channel\n", share * 100.0f);
+    check(share > 0.0005f, "rivers exist somewhere on the land");
+    check(share < 0.25f, "rivers are channels, not floodplains");
+}
+
 void testClimate() {
     std::printf("Climate follows from where the continents are\n");
     simulation::CrustGrid grid(1000000.0f, 5, 5, 12);
@@ -1000,6 +1084,7 @@ int main() {
     testErosionLimitsMountains();
     testStratigraphy();
     testRigidRotationPreservesContrast();
+    testRivers();
     testClimate();
     testStepPerformance();
 

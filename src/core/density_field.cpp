@@ -218,6 +218,13 @@ float DensityField::getCloudCover(const glm::vec3& sphereNormal) const {
     return crustGrid->sampleCloudCover(*crustSnapshot, glm::normalize(sphereNormal));
 }
 
+float DensityField::getRiverStrength(const glm::vec3& sphereNormal) const {
+    if (crustGrid == nullptr || crustSnapshot == nullptr) {
+        return 0.0f;
+    }
+    return crustGrid->sampleRiver(*crustSnapshot, glm::normalize(sphereNormal));
+}
+
 float DensityField::getTerrainHeight(const glm::vec3& sphereNormal,
                                      float finestScale) const {
     const TerrainParams& tp = terrainParams;

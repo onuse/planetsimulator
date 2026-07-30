@@ -342,9 +342,35 @@ void ImGuiManager::renderSimulationWindow(const VulkanRenderer* renderer) {
         const float currentRate = planet->getSimulationRate();
         const bool paused = currentRate <= 0.0f;
 
+        // The slider owns its own value; it is not re-read from the planet
+        // each frame.
+        //
+        // A logarithmic SliderFloat does not round-trip a value exactly - it
+        // converts to a normalised position and back, and the result differs in
+        // the last bits. So it reports itself as changed on every frame whether
+        // or not anyone touched it, and writing that value back re-quantises it
+        // again next frame. The value walks, and with a logarithmic mapping it
+        // walks fast: this took the rate from a thousand years a second down to
+        // the slider's minimum in a couple of hundred frames and froze the
+        // planet, which looked like the simulation thread had died.
+        //
+        // Two defences. The value lives here rather than being derived from the
+        // planet, so there is nothing to re-quantise; and it is only pushed
+        // while the control is actually being manipulated.
+        static float sliderKyr = 0.0f;
+        static bool primed = false;
+        if (!primed) {
+            primed = true;
+            sliderKyr = std::max(currentRate * 1000.0f, 0.001f);
+        }
+        if (paused) {
+            sliderKyr = pausedRate;
+        }
+
         if (ImGui::Button(paused ? "Resume" : "Pause", ImVec2(90, 0))) {
             if (paused) {
                 planet->setSimulationRate(pausedRate * 0.001f);
+                sliderKyr = pausedRate;
             } else {
                 pausedRate = currentRate * 1000.0f;
                 planet->setSimulationRate(0.0f);
@@ -354,23 +380,26 @@ void ImGuiManager::renderSimulationWindow(const VulkanRenderer* renderer) {
         ImGui::TextDisabled(paused ? "the planet is holding still"
                                    : "geological time is running");
 
-        float thousandYears = paused ? pausedRate : currentRate * 1000.0f;
-
-        // Zero cannot be a logarithmic slider's endpoint, which is the other
-        // reason pausing is a button rather than the bottom of the range.
-        if (ImGui::SliderFloat("thousand years / sec", &thousandYears, 0.01f, 5000.0f,
-                               "%.2f kyr/s", ImGuiSliderFlags_Logarithmic)) {
+        // Down to a thousandth of a thousand years, which is one year per
+        // second. That is a deliberate floor rather than an arbitrary one: at a
+        // year a second nothing within a year has to be resolved, so there is
+        // no need to model seasons to be honest about what is shown.
+        const bool moved = ImGui::SliderFloat("thousand years / sec", &sliderKyr,
+                                              0.001f, 5000.0f, "%.3f kyr/s",
+                                              ImGuiSliderFlags_Logarithmic);
+        if (moved && ImGui::IsItemActive()) {
             if (paused) {
-                pausedRate = thousandYears;
+                pausedRate = sliderKyr;
             } else {
-                planet->setSimulationRate(thousandYears * 0.001f);
+                planet->setSimulationRate(sliderKyr * 0.001f);
             }
         }
 
         struct Preset { const char* name; float kyr; const char* what; };
         static const Preset presets[] = {
-            {"Rivers",    0.5f,  "channels shift and deltas build"},
-            {"Ice",       20.0f, "glaciers advance and retreat"},
+            {"A year",    0.001f, "one year a second; no seasons to resolve"},
+            {"Rivers",    0.5f,   "channels shift and deltas build"},
+            {"Ice",       20.0f,  "glaciers advance and retreat"},
             {"Coasts",    200.0f, "shorelines move, ranges rise"},
             {"Tectonics", 2000.0f, "oceans open and close"},
         };
@@ -378,6 +407,7 @@ void ImGuiManager::renderSimulationWindow(const VulkanRenderer* renderer) {
         for (const Preset& preset : presets) {
             if (ImGui::Button(preset.name, ImVec2(90, 0))) {
                 planet->setSimulationRate(preset.kyr * 0.001f);
+                sliderKyr = preset.kyr;
             }
             ImGui::SameLine();
             ImGui::TextDisabled("%.4g kyr/s - %s", preset.kyr, preset.what);

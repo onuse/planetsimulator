@@ -150,6 +150,11 @@ public:
     // attached, which is what the standalone tools and tests see.
     float getCloudCover(const glm::vec3& sphereNormal) const;
 
+    // How strongly a river runs here, 0 to 1. Zero with no simulation
+    // attached - a river is a thing the simulation routes, not a thing noise
+    // can invent.
+    float getRiverStrength(const glm::vec3& sphereNormal) const;
+
     // Elevation above sea level, in metres, at which snow lies at this point.
     // Falls towards the poles, which is what forms ice caps. Shared so mesh
     // colour and voxel materials cannot disagree about where snow is.

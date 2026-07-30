@@ -512,6 +512,83 @@ float CrustGrid::reconstruct(const glm::vec3& sphereNormal, const std::vector<fl
            6.0f * b111 * u * v * w;
 }
 
+float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNormal) const {
+    if (snapshot.discharge.size() != cells.size() ||
+        snapshot.flowsInto.size() != cells.size()) {
+        return 0.0f;
+    }
+
+    const glm::vec3 n = glm::normalize(sphereNormal);
+    const int centre = findNearestCell(n);
+    if (centre < 0) {
+        return 0.0f;
+    }
+
+    // Rivers are drawn along the path the water takes, not over the cells that
+    // carry it. A cell is seventeen kilometres across and a river is not, so
+    // colouring cells by discharge would draw every major river as a band
+    // wider than the Rhine's whole catchment. Each cell routes into a specific
+    // neighbour, though, so the channel between the two is a line, and how
+    // close a point lies to that line is what decides whether it is in the
+    // river.
+    //
+    // The nearest cell's own channel is not enough: a point near the edge of a
+    // cell can be closest to a channel belonging to a neighbour. Testing the
+    // ring as well is what makes the network continuous instead of a series of
+    // dashes.
+    const float spacing = cellSpacing();
+    if (spacing <= 0.0f) {
+        return 0.0f;
+    }
+
+    float strongest = 0.0f;
+
+    const auto consider = [&](int cell) {
+        if (cell < 0) {
+            return;
+        }
+        const int into = snapshot.flowsInto[cell];
+        if (into < 0 || into >= static_cast<int>(cells.size())) {
+            return;
+        }
+
+        // Only where enough water has gathered to cut a channel. Every cell
+        // has some discharge - it rains everywhere - and what makes a river is
+        // the collecting.
+        const float flow = snapshot.discharge[cell];
+        const float area = static_cast<float>(cellSpacing()) * static_cast<float>(cellSpacing());
+        const float catchments = flow / std::max(area, 1.0f);
+        if (catchments < 12.0f) {
+            return;
+        }
+
+        // Distance from the point to the segment between the two cell centres,
+        // measured as a chord on the unit sphere - over one cell spacing the
+        // sphere barely curves.
+        const glm::vec3 a = cellPositions[cell];
+        const glm::vec3 b = cellPositions[into];
+        const glm::vec3 along = b - a;
+        const float lengthSquared = glm::dot(along, along);
+        if (lengthSquared < 1e-12f) {
+            return;
+        }
+        const float t = glm::clamp(glm::dot(n - a, along) / lengthSquared, 0.0f, 1.0f);
+        const float distance = glm::length(n - (a + along * t)) * planetRadius;
+
+        // Width grows with the square root of discharge, which is roughly how
+        // real channels widen: doubling the width carries four times the water.
+        const float width = 200.0f * std::sqrt(catchments);
+        const float falloff = distance / std::max(width, 1.0f);
+        strongest = std::max(strongest, std::exp(-falloff * falloff));
+    };
+
+    consider(centre);
+    for (int k = 0; k < neighbourCount(centre); k++) {
+        consider(neighbourAt(centre, k));
+    }
+    return strongest;
+}
+
 float CrustGrid::sampleCloudCover(const Snapshot& snapshot,
                                   const glm::vec3& sphereNormal) const {
     if (snapshot.cloudCover.size() != cells.size()) {
@@ -1585,6 +1662,10 @@ std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
     snapshot->surfaceRock.resize(cells.size());
     snapshot->cloudCover = climate.getFields().cloudCover;
     snapshot->cloudCover.resize(cells.size(), 0.0f);
+    snapshot->discharge = lastDischarge;
+    snapshot->discharge.resize(cells.size(), 0.0f);
+    snapshot->flowsInto = lastFlowsInto;
+    snapshot->flowsInto.resize(cells.size(), -1);
 
     for (size_t i = 0; i < cells.size(); i++) {
         snapshot->elevation[i] = cells[i].elevation - seaLevel;

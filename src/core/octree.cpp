@@ -491,13 +491,22 @@ void OctreePlanet::startSimulationThread() {
 
             // Step size follows the rate, so slowing time makes the planet
             // move slowly rather than move in the same lurches further apart.
-            // Bounded above by what is numerically stable and below by what is
-            // worth the fixed cost of a step - isostasy, sea level and erosion
-            // all run once per call whatever the slice is, so slices far below
-            // this buy smoothness at a price that is all overhead.
+            //
+            // Capped above by what is numerically stable and not capped below
+            // at all. A floor here looks like it saves work - a step's cost is
+            // mostly fixed, since isostasy, sea level and erosion each run once
+            // per call whatever the slice is - but it puts a floor on how
+            // slowly time can pass, which is the opposite of the point. At one
+            // year per second the slice is a fraction of a year, and the cost
+            // is that the step still does a full pass. What limits the slow end
+            // is therefore how often a step can be afforded, not how small one
+            // can be.
             const float stable = crust->maxStableTimestep();
-            const float perStep = rate * 0.05f;   // aim for a step every 50 ms
-            const float slice = glm::clamp(perStep, stable * 0.02f, stable);
+            const float slice = std::min(rate * 0.08f, stable);
+            if (slice <= 0.0f) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                continue;
+            }
 
             crust->step(slice);
 

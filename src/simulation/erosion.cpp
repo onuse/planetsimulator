@@ -137,6 +137,15 @@ void CrustGrid::erodeSurface(float dt) {
     }
 
     // ------------------------------------------------------------------
+    // Keep the network. This is the only place it exists, and it is a river
+    // system: where the water collects, and which way it goes.
+    lastDischarge.resize(n);
+    lastFlowsInto.resize(n);
+    for (int i = 0; i < n; i++) {
+        lastDischarge[i] = static_cast<float>(drainage[i]);
+        lastFlowsInto[i] = receiver[i];
+    }
+
     // 4. Incise, carry, deposit
     // ------------------------------------------------------------------
     std::vector<double> load(n, 0.0);      // sediment in transit, m^3
