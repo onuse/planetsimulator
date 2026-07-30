@@ -555,10 +555,21 @@ float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNo
         // Only where enough water has gathered to cut a channel. Every cell
         // has some discharge - it rains everywhere - and what makes a river is
         // the collecting.
+        //
+        // Three upstream cells rather than twelve. Twelve is closer to where a
+        // real river starts and it produced a network nobody could find: some
+        // eight hundred segments spread over every continent, each a few
+        // hundred metres wide, adding up to half a per cent of the land. That
+        // is roughly right and entirely invisible.
+        //
+        // The grid is the reason. Seventeen kilometres per cell cannot resolve
+        // a tributary, so what is drawn is a representation of the network at
+        // the scale the simulation knows it - and a representation that only
+        // shows the trunk is not showing the network.
         const float flow = snapshot.discharge[cell];
         const float area = static_cast<float>(cellSpacing()) * static_cast<float>(cellSpacing());
         const float catchments = flow / std::max(area, 1.0f);
-        if (catchments < 12.0f) {
+        if (catchments < 3.0f) {
             return;
         }
 
@@ -577,7 +588,10 @@ float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNo
 
         // Width grows with the square root of discharge, which is roughly how
         // real channels widen: doubling the width carries four times the water.
-        const float width = 200.0f * std::sqrt(catchments);
+        // Capped, because the relationship holds for channels and a continental
+        // trunk draining a thousand cells is a river, not an inland sea.
+        const float width = std::min(600.0f * std::sqrt(catchments),
+                                     static_cast<float>(cellSpacing()) * 0.35f);
         const float falloff = distance / std::max(width, 1.0f);
         strongest = std::max(strongest, std::exp(-falloff * falloff));
     };

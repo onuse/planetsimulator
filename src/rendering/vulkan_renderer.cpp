@@ -171,8 +171,12 @@ void VulkanRenderer::cleanup() {
         vkFreeMemory(device, instanceBufferMemory, nullptr);
     }
     
+    // Render-finished semaphores are per swap chain image, so there are as
+    // many of them as there are images rather than frames in flight.
+    for (VkSemaphore semaphore : renderFinishedSemaphores) {
+        vkDestroySemaphore(device, semaphore, nullptr);
+    }
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(device, inFlightFences[i], nullptr);
     }

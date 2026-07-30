@@ -162,22 +162,46 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 // ============================================================================
 
 void VulkanRenderer::createSyncObjects() {
-    imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-    
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    
+
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    
+
+    // Two of these are per frame in flight, because that is what they are
+    // about: how many frames the CPU may run ahead of the GPU.
+    imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr,
+                              &imageAvailableSemaphores[i]) != VK_SUCCESS ||
             vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
             throw std::runtime_error("failed to create synchronization objects for a frame!");
+        }
+    }
+
+    // The render-finished semaphore is per swap chain image, not per frame in
+    // flight, and that distinction is the whole point.
+    //
+    // It is signalled when rendering completes and waited on by the present.
+    // The fence proves the submit finished; it says nothing about whether the
+    // present has consumed the semaphore yet - presentation is not part of the
+    // queue submission the fence covers. So with one semaphore per frame in
+    // flight and more swap chain images than that, a frame two ahead can signal
+    // a semaphore a present is still waiting on. Signalling an already-pending
+    // semaphore is undefined, and what it does in practice is drop or tear the
+    // occasional frame, which reads as an intermittent flicker that no amount
+    // of looking at the drawing code explains.
+    //
+    // Tying it to the image means only the frame that owns that image can
+    // signal it, and the acquire cannot hand the image back until its previous
+    // present has completed.
+    renderFinishedSemaphores.resize(swapChainImages.size());
+    for (size_t i = 0; i < renderFinishedSemaphores.size(); i++) {
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr,
+                              &renderFinishedSemaphores[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create a render-finished semaphore!");
         }
     }
 }
@@ -238,7 +262,7 @@ void VulkanRenderer::drawFrame(octree::OctreePlanet* /*planet*/, core::Camera* c
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
     
-    VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+    VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[imageIndex]};
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
     

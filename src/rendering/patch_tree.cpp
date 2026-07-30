@@ -334,8 +334,12 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
                 if (river > 0.01f) {
                     // Shallow, sediment-laden and reflecting sky, so lighter
                     // and greener than open ocean rather than the same blue.
-                    const glm::vec3 water(0.22f, 0.38f, 0.48f);
-                    colour = glm::mix(colour, water, glm::clamp(river * 0.9f, 0.0f, 0.9f));
+                    // Darker than the sea and slightly green, which is what
+                    // shallow sediment-laden water over land looks like, and
+                    // what makes a channel read against vegetation rather than
+                    // disappear into it.
+                    const glm::vec3 water(0.13f, 0.26f, 0.34f);
+                    colour = glm::mix(colour, water, glm::clamp(river, 0.0f, 0.95f));
                 }
             }
 
