@@ -1069,6 +1069,105 @@ void testClimate() {
     check(wettest > driest * 4.0f, "rainfall varies enough across land to shape erosion");
 }
 
+void testResolutionChoice() {
+    std::printf("What a finer grid costs and what it buys\n");
+
+    // Side by side, because "is a finer grid worth it" is not answerable from
+    // one measurement. What matters is not the cost per step but the cost per
+    // million years simulated - halving the cell spacing halves the stable
+    // timestep as well as quadrupling the cells, so the two compound.
+    // Several seeds per level, because plate layout is not the same at two
+    // cell counts - assignPlates works from cell positions - so a single
+    // measurement of plate speed compares two different planets and cannot
+    // tell resolution dependence from ordinary variation between them.
+    const int seeds[] = {31, 77, 129};
+
+    for (int subdivisions = 6; subdivisions <= 7; subdivisions++) {
+      double speedAcross = 0.0;
+      double costAcross = 0.0;
+
+      for (int seed : seeds) {
+        simulation::CrustGrid grid(1000000.0f, seed, subdivisions, 14);
+
+        const size_t cells = grid.getCells().size();
+        const float spacing = grid.cellSpacing();
+        const float stable = grid.maxStableTimestep();
+
+        // Warm up so the marker population and plate layout are realistic.
+        for (int i = 0; i < 2; i++) {
+            grid.step(1.0f);
+        }
+
+        const auto before = grid.computeStats();
+
+        const auto began = std::chrono::steady_clock::now();
+        constexpr int STEPS = 2;
+        for (int i = 0; i < STEPS; i++) {
+            grid.step(1.0f);
+        }
+        const float elapsed =
+            std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - began)
+                .count();
+
+        const auto after = grid.computeStats();
+        const auto diagnostics = grid.computeDiagnostics();
+
+        float fastest = 0.0f;
+        double speedSum = 0.0;
+        for (const auto& plate : grid.getPlates()) {
+            // Angular velocity to centimetres a year at the surface.
+            const float cmPerYear = plate.angularVelocity() * 1000000.0f * 100.0f / 1.0e6f;
+            fastest = std::max(fastest, cmPerYear);
+            speedSum += cmPerYear;
+        }
+        const float meanSpeed =
+            grid.getPlates().empty() ? 0.0f
+                                     : static_cast<float>(speedSum / grid.getPlates().size());
+
+        const float perStep = elapsed / STEPS;
+        const float perMy = elapsed / (STEPS * 1.0f);
+
+        speedAcross += meanSpeed;
+        costAcross += perMy;
+
+        std::printf("\n  level %d seed %d: %zu cells, %.1f km apart\n", subdivisions, seed,
+                    cells, spacing / 1000.0f);
+        std::printf("    markers            %zu\n", grid.getMarkers().size());
+        std::printf("    stable timestep    %.3f My\n", stable);
+        std::printf("    cost               %.1f ms per step, %.0f ms per My simulated\n",
+                    perStep, perMy);
+        std::printf("    land               %.1f%%\n", after.landFraction * 100.0f);
+        std::printf("    elevation range    %.0f to %.0f m\n", after.minElevation,
+                    after.maxElevation);
+        std::printf("    plate speed        %.1f cm/yr mean, %.1f fastest\n", meanSpeed,
+                    fastest);
+        std::printf("    plate overlap      %.2f%%\n", diagnostics.overlapFraction * 100.0f);
+        std::printf("    largest jump       %.0f m in one step\n",
+                    diagnostics.maxElevationJump);
+
+        // Conservation is the thing that must not depend on resolution. The
+        // force balance divides by cell area and the transport is bounded by
+        // cell spacing, so a finer grid exercises both differently.
+        const float drift = before.crustVolume > 0.0f
+                                ? std::fabs(after.crustVolume - before.crustVolume) /
+                                      before.crustVolume
+                                : 0.0f;
+        std::printf("    crust volume drift %.4f%% over %d My\n", drift * 100.0f, STEPS);
+
+        check(after.landFraction > 0.05f && after.landFraction < 0.80f,
+              "the planet has land and ocean at this resolution");
+        check(meanSpeed > 0.5f && meanSpeed < 30.0f,
+              "plate speeds stay physical at this resolution");
+        check(diagnostics.overlapFraction < 0.05f,
+              "plates do not pass through each other at this resolution");
+      }
+
+      const double n = static_cast<double>(sizeof(seeds) / sizeof(seeds[0]));
+      std::printf("\n  level %d across %d seeds: %.2f cm/yr mean, %.0f ms per My\n\n",
+                  subdivisions, static_cast<int>(n), speedAcross / n, costAcross / n);
+    }
+}
+
 void testWhereTheTimeGoes() {
     std::printf("Where a step spends its time\n");
     simulation::CrustGrid grid(1000000.0f, 23, 6, 14);
@@ -1170,6 +1269,7 @@ int main() {
     testRivers();
     testClimate();
     testWhereTheTimeGoes();
+    testResolutionChoice();
     testStepPerformance();
 
     std::printf("\n");
