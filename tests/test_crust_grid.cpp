@@ -1046,6 +1046,54 @@ void testClimate() {
     check(wettest > driest * 4.0f, "rainfall varies enough across land to shape erosion");
 }
 
+void testWhereTheTimeGoes() {
+    std::printf("Where a step spends its time\n");
+    simulation::CrustGrid grid(1000000.0f, 23, 6, 14);
+
+    // Warm up, so the marker population and plate layout are realistic rather
+    // than the initial condition.
+    for (int i = 0; i < 4; i++) {
+        grid.step(1.0f);
+    }
+
+    // Averaged over several steps: any one of them can catch a plate
+    // reorganisation or a climate solve and read as an outlier.
+    simulation::CrustGrid::Timings sum{};
+    constexpr int SAMPLES = 6;
+    for (int i = 0; i < SAMPLES; i++) {
+        grid.step(1.0f);
+        const auto& t = grid.getTimings();
+        sum.plateMotion += t.plateMotion;
+        sum.advection += t.advection;
+        sum.reconcile += t.reconcile;
+        sum.isostasy += t.isostasy;
+        sum.climate += t.climate;
+        sum.erosion += t.erosion;
+        sum.rebalance += t.rebalance;
+        sum.gradients += t.gradients;
+        sum.total += t.total;
+    }
+
+    const float n = static_cast<float>(SAMPLES);
+    const float total = sum.total / n;
+    const auto share = [&](const char* name, float ms) {
+        std::printf("    %-14s %7.2f ms  %5.1f%%\n", name, ms / n,
+                    total > 0.0f ? 100.0f * (ms / n) / total : 0.0f);
+    };
+
+    std::printf("  %zu cells, %.2f ms per step\n", grid.getCells().size(), total);
+    share("plate motion", sum.plateMotion);
+    share("advection", sum.advection);
+    share("reconcile", sum.reconcile);
+    share("isostasy", sum.isostasy);
+    share("climate", sum.climate);
+    share("erosion", sum.erosion);
+    share("rebalance", sum.rebalance);
+    share("gradients", sum.gradients);
+
+    check(total > 0.0f, "a step was measured");
+}
+
 void testStepPerformance() {
     std::printf("A step is fast enough to run interactively\n");
     simulation::CrustGrid grid(1000000.0f, 42, 6, 12);
@@ -1086,6 +1134,7 @@ int main() {
     testRigidRotationPreservesContrast();
     testRivers();
     testClimate();
+    testWhereTheTimeGoes();
     testStepPerformance();
 
     std::printf("\n");

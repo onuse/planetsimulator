@@ -1,6 +1,7 @@
 #include "simulation/crust_grid.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <map>
@@ -1705,7 +1706,21 @@ void CrustGrid::stepOnce(float millionYears) {
     const double continentalBefore = computeContinentalVolume();
 
     // Solve what the forces want the plates to be doing before moving anything.
+    // Timed per phase. Measured in a running simulation rather than in a
+    // microbenchmark, because what matters is the cost with the real marker
+    // population and the real plate layout.
+    using Clock = std::chrono::steady_clock;
+    const auto stepBegan = Clock::now();
+    auto mark = Clock::now();
+    const auto lap = [&mark]() {
+        const auto now = Clock::now();
+        const float ms = std::chrono::duration<float, std::milli>(now - mark).count();
+        mark = now;
+        return ms;
+    };
+
     updatePlateMotion(millionYears);
+    timings.plateMotion = lap();
 
     // Every so often, ask whether the plate layout itself should change.
     // Boundaries do not rearrange every few hundred thousand years, and the
@@ -1720,15 +1735,18 @@ void CrustGrid::stepOnce(float millionYears) {
     // rather than being evolved in place, so transport error cannot accumulate.
     advectMarkers(millionYears);
     projectMarkersToGrid();
+    timings.advection = lap();
     continentalDeltaTransport += computeContinentalVolume() - continentalBefore;
 
     reconcileCrust(millionYears);
     resolvePlateOverlap(millionYears);
+    timings.reconcile = lap();
 
     // Isostasy before erosion, because rivers need to know which way is
     // downhill, and that is decided by how the columns float.
     updateIsostasy();
     solveSeaLevel();
+    timings.isostasy = lap();
 
     // Continents move slowly, so the climate they produce changes slowly too.
     // Resolving it every sub-step would cost as much as the tectonics and
@@ -1738,8 +1756,10 @@ void CrustGrid::stepOnce(float millionYears) {
         climateAge = 0.0f;
         climate.update();
     }
+    timings.climate = lap();
 
     erodeSurface(millionYears);
+    timings.erosion = lap();
 
     rebalanceMarkers();
     updateIsostasy();
@@ -1759,8 +1779,12 @@ void CrustGrid::stepOnce(float millionYears) {
         previousElevation[i] = cells[i].elevation;
     }
 
+    timings.rebalance = lap();
+
     solveSeaLevel();
     refreshElevationField();
+    timings.gradients = lap();
+    timings.total = std::chrono::duration<float, std::milli>(Clock::now() - stepBegan).count();
 
     simulationTime += millionYears;
     version++;

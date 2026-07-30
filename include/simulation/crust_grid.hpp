@@ -568,6 +568,24 @@ public:
     const std::vector<Plate>& getPlates() const { return plates; }
     const std::vector<Marker>& getMarkers() const { return markers; }
 
+    // Where a step's time actually goes, in milliseconds, from the last one.
+    //
+    // Needed to design rather than guess. Erosion is the obvious suspect for
+    // being the expensive phase, and "obvious suspect" has been wrong often
+    // enough in this project to be worth measuring instead.
+    struct Timings {
+        float plateMotion = 0.0f;
+        float advection = 0.0f;
+        float reconcile = 0.0f;
+        float isostasy = 0.0f;
+        float climate = 0.0f;
+        float erosion = 0.0f;
+        float rebalance = 0.0f;
+        float gradients = 0.0f;
+        float total = 0.0f;
+    };
+    const Timings& getTimings() const { return timings; }
+
     // Adjacency, as an allocation-free range. Geodesic cells have 5 or 6
     // neighbours - the twelve pentagons are the icosahedron's original corners.
     int neighbourCount(int cell) const {
@@ -704,6 +722,7 @@ private:
     // years, so what matters is the equilibrium, not the path to it.
     Climate climate;
     float climateAge = 0.0f;
+    Timings timings;
 
     std::vector<Cell> cells;
     std::vector<Plate> plates;
