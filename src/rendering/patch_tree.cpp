@@ -369,9 +369,32 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
                     // everything or nothing.
                     const float openWater = glm::smoothstep(500.0f, 1100.0f, river.width);
                     if (openWater > 0.01f) {
-                        const float half = river.width * 0.5f;
-                        const float core = 1.0f - glm::smoothstep(half * 0.5f, half * 1.1f,
-                                                                  river.distance);
+                        // Widened to what the mesh can carry, and faded by as
+                        // much as it was widened.
+                        //
+                        // Colour lives on vertices, so a channel narrower than
+                        // a couple of vertex spacings is sampled by some
+                        // vertices and missed by the ones between them, and the
+                        // river breaks up into a dark dotted line - short
+                        // striped segments that look like a caterpillar rather
+                        // than a river, appearing and disappearing as the level
+                        // of detail changes under the camera. A channel three
+                        // hundred and fifty metres across against a hundred and
+                        // eighty metre spacing is exactly that case.
+                        //
+                        // Drawing it at the width the mesh can resolve and
+                        // scaling the strength by how much of that width is
+                        // really water keeps the total amount of darkening the
+                        // same. The river stays continuous and simply grows
+                        // fainter as it gets too small to see, which is what it
+                        // should do.
+                        const float vertexSpacing = finestScale * 2.0f;
+                        const float drawn = std::max(river.width, vertexSpacing * 2.0f);
+                        const float coverage = river.width / drawn;
+
+                        const float half = drawn * 0.5f;
+                        const float core = (1.0f - glm::smoothstep(half * 0.5f, half * 1.1f,
+                                                                   river.distance)) * coverage;
                         const glm::vec3 shallow(0.20f, 0.32f, 0.33f);
                         const glm::vec3 deep(0.09f, 0.18f, 0.28f);
                         const glm::vec3 water = glm::mix(shallow, deep, openWater);

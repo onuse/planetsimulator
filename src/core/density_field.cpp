@@ -233,7 +233,8 @@ simulation::CrustGrid::RiverSample DensityField::getRiver(
     return crustGrid->sampleRiverGeometry(*crustSnapshot, glm::normalize(sphereNormal));
 }
 
-float DensityField::getRiverIncision(const glm::vec3& sphereNormal) const {
+float DensityField::getRiverIncision(const glm::vec3& sphereNormal,
+                                     float heightAboveSeaLevel) const {
     if (crustGrid == nullptr || crustSnapshot == nullptr) {
         return 0.0f;
     }
@@ -260,8 +261,38 @@ float DensityField::getRiverIncision(const glm::vec3& sphereNormal) const {
     // how deep and how wide, not what the cross-section looks like. Two nested
     // profiles, because that is what a river valley is: a broad trough with a
     // channel cut into its floor.
-    const float valleyWidth = river.width * 7.0f;
-    const float valleyDepth = river.depth;
+    // Deep enough for the ground there to hold it.
+    //
+    // The simulation caps the depth by the height of the cell it belongs to,
+    // but a cell is seventeen kilometres across and the valley is drawn far
+    // below that, so the cap has to be applied again where the carve actually
+    // lands. Without it the profile was cut to whatever the nearest cell's
+    // channel was worth - hundreds of metres - across ground a few metres above
+    // the sea, and every point of it bottomed out on the do-not-cut-below-sea
+    // limit. That produces a flat floor at sea level with steep walls, which is
+    // a fjord, and it is what every river mouth had become.
+    //
+    // Fitting the depth to the ground instead of clipping the result means the
+    // valley shallows as the river approaches the coast and closes to nothing
+    // at the shore, which is what river mouths do.
+    const float room = std::max(0.0f, heightAboveSeaLevel - 1.0f);
+    const float valleyDepth = std::min(river.depth, room * 0.85f);
+    if (valleyDepth <= 0.0f) {
+        return 0.0f;
+    }
+
+    // And as wide as walls that deep can stand up.
+    //
+    // The width was seven times the channel, which is a number with nothing
+    // behind it and made every valley the same shape - the only thing that
+    // varied was scale, so a network of them reads as one feature repeated.
+    // Valley sides stand at the angle loose rock rests at and no steeper, so a
+    // deep valley is necessarily a broad one and a shallow valley is narrow.
+    // Depth already varies with rock, discharge and height above base level, so
+    // tying width to it is what makes the valleys differ from each other rather
+    // than differ in size.
+    constexpr float WALL_SLOPE = 0.6f;   // about 31 degrees, loose rock
+    const float valleyWidth = river.width + 2.0f * valleyDepth / WALL_SLOPE;
 
     const float v = glm::clamp(river.distance / valleyWidth, 0.0f, 1.0f);
     const float trough = (1.0f - v * v) * (1.0f - v * v);
@@ -377,7 +408,7 @@ float DensityField::getTerrainHeight(const glm::vec3& sphereNormal,
         // submarine canyon, which is a different process, and cutting one here
         // would turn every river mouth into a fjord reaching inland.
         if (simulated > 0.0f) {
-            const float incision = getRiverIncision(n);
+            const float incision = getRiverIncision(n, height);
             if (incision > 0.0f) {
                 // Never below sea level. A river reaches the sea at sea level
                 // by definition, so the carve has to run out there rather than

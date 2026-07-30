@@ -162,7 +162,11 @@ public:
 
     // How far the ground has been cut down here by the river running through
     // it, in metres. Zero away from any channel.
-    float getRiverIncision(const glm::vec3& sphereNormal) const;
+    // How far the ground drops into the river valley at this point, given how
+    // high the ground is here to begin with. The height matters: a valley
+    // cannot be cut deeper than the land it is cut into, and near a coast that
+    // is a few metres.
+    float getRiverIncision(const glm::vec3& sphereNormal, float heightAboveSeaLevel) const;
 
     // Elevation above sea level, in metres, at which snow lies at this point.
     // Falls towards the poles, which is what forms ice caps. Shared so mesh
