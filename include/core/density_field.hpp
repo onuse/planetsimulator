@@ -155,6 +155,10 @@ public:
     // can invent.
     float getRiverStrength(const glm::vec3& sphereNormal) const;
 
+    // How far the ground has been cut down here by the river running through
+    // it, in metres. Zero away from any channel.
+    float getRiverIncision(const glm::vec3& sphereNormal) const;
+
     // Elevation above sea level, in metres, at which snow lies at this point.
     // Falls towards the poles, which is what forms ice caps. Shared so mesh
     // colour and voxel materials cannot disagree about where snow is.

@@ -225,6 +225,42 @@ float DensityField::getRiverStrength(const glm::vec3& sphereNormal) const {
     return crustGrid->sampleRiver(*crustSnapshot, glm::normalize(sphereNormal));
 }
 
+float DensityField::getRiverIncision(const glm::vec3& sphereNormal) const {
+    if (crustGrid == nullptr || crustSnapshot == nullptr) {
+        return 0.0f;
+    }
+
+    const simulation::CrustGrid::RiverSample river =
+        crustGrid->sampleRiverGeometry(*crustSnapshot, glm::normalize(sphereNormal));
+    if (river.width <= 0.0f) {
+        return 0.0f;
+    }
+
+    // Rivers cut valleys, and the valley is the part you can see.
+    //
+    // The simulation already erodes according to discharge, but it does it on a
+    // seventeen kilometre grid and a valley is a kilometre or two across - so
+    // the incision is real and averaged over ground a hundred times wider than
+    // the feature it makes. The network is known exactly, though: which cells
+    // carry water, how much, and where it goes. So the valley is resolved here
+    // from that, the same division of labour as sub-grid relief - the
+    // simulation decides where and how much, the renderer resolves what it
+    // looks like below the grid.
+    //
+    // Two nested profiles, because that is what a river valley is: a broad
+    // trough with a channel cut into its floor.
+    const float valleyWidth = river.width * 7.0f;
+    const float valleyDepth = 45.0f * std::pow(river.catchments, 0.42f);
+
+    const float v = glm::clamp(river.distance / valleyWidth, 0.0f, 1.0f);
+    const float trough = (1.0f - v * v) * (1.0f - v * v);
+
+    const float c = glm::clamp(river.distance / std::max(river.width * 0.5f, 1.0f), 0.0f, 1.0f);
+    const float channel = (1.0f - c * c);
+
+    return valleyDepth * trough + valleyDepth * 0.35f * channel;
+}
+
 float DensityField::getTerrainHeight(const glm::vec3& sphereNormal,
                                      float finestScale) const {
     const TerrainParams& tp = terrainParams;
@@ -324,7 +360,25 @@ float DensityField::getTerrainHeight(const glm::vec3& sphereNormal,
         // and letting it through mottles every ocean.
         const float exposed = simulated < 0.0f ? 0.2f : 1.0f;
 
-        return simulated + detail * subGrid * amplitude * hardness * exposed;
+        float height = simulated + detail * subGrid * amplitude * hardness * exposed;
+
+        // Cut the valley in. Only on land: a channel below sea level is a
+        // submarine canyon, which is a different process, and cutting one here
+        // would turn every river mouth into a fjord reaching inland.
+        if (simulated > 0.0f) {
+            const float incision = getRiverIncision(n);
+            if (incision > 0.0f) {
+                // Never below sea level. A river reaches the sea at sea level
+                // by definition, so the carve has to run out there rather than
+                // continue and flood a valley the whole way inland.
+                // One metre above sea level, which here is zero: with the
+                // simulation attached, elevation is already reported relative
+                // to its own solved sea level.
+                height = std::max(height - incision, 1.0f);
+            }
+        }
+
+        return height;
     }
 
     // Offsets decorrelate the layers; without them every octave lines up.

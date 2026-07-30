@@ -512,16 +512,19 @@ float CrustGrid::reconstruct(const glm::vec3& sphereNormal, const std::vector<fl
            6.0f * b111 * u * v * w;
 }
 
-float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNormal) const {
+CrustGrid::RiverSample CrustGrid::sampleRiverGeometry(
+    const Snapshot& snapshot, const glm::vec3& sphereNormal) const {
+    RiverSample nearestRiver;
+
     if (snapshot.discharge.size() != cells.size() ||
         snapshot.flowsInto.size() != cells.size()) {
-        return 0.0f;
+        return nearestRiver;
     }
 
     const glm::vec3 n = glm::normalize(sphereNormal);
     const int centre = findNearestCell(n);
     if (centre < 0) {
-        return 0.0f;
+        return nearestRiver;
     }
 
     // Rivers are drawn along the path the water takes, not over the cells that
@@ -538,10 +541,8 @@ float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNo
     // dashes.
     const float spacing = cellSpacing();
     if (spacing <= 0.0f) {
-        return 0.0f;
+        return nearestRiver;
     }
-
-    float strongest = 0.0f;
 
     const auto consider = [&](int cell) {
         if (cell < 0) {
@@ -573,9 +574,6 @@ float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNo
             return;
         }
 
-        // Distance from the point to the segment between the two cell centres,
-        // measured as a chord on the unit sphere - over one cell spacing the
-        // sphere barely curves.
         const glm::vec3 a = cellPositions[cell];
         const glm::vec3 b = cellPositions[into];
         const glm::vec3 along = b - a;
@@ -583,24 +581,130 @@ float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNo
         if (lengthSquared < 1e-12f) {
             return;
         }
-        const float t = glm::clamp(glm::dot(n - a, along) / lengthSquared, 0.0f, 1.0f);
-        const float distance = glm::length(n - (a + along * t)) * planetRadius;
 
         // Width grows with the square root of discharge, which is roughly how
         // real channels widen: doubling the width carries four times the water.
         // Capped, because the relationship holds for channels and a continental
         // trunk draining a thousand cells is a river, not an inland sea.
-        const float width = std::min(600.0f * std::sqrt(catchments),
-                                     static_cast<float>(cellSpacing()) * 0.35f);
-        const float falloff = distance / std::max(width, 1.0f);
-        strongest = std::max(strongest, std::exp(-falloff * falloff));
+        // A wider spread than the square root alone gives. Discharge across a
+        // network spans two or three orders of magnitude and the square root
+        // compresses that to one, so every river came out much the same size -
+        // and rivers being different sizes is most of how a network reads as a
+        // network rather than as a grid of channels.
+        const float width = glm::clamp(180.0f * std::pow(catchments, 0.62f),
+                                       120.0f, static_cast<float>(cellSpacing()) * 0.55f);
+
+        // Meanders.
+        //
+        // The routing knows that this cell drains into that one and nothing
+        // about the path between them, because the path is far below the grid.
+        // Joining the two centres with a straight line is the honest drawing of
+        // what is known and it looks like a drainage diagram, because no river
+        // has ever run straight for seventeen kilometres - a channel wanders
+        // across its floodplain, and that wandering is most of what makes a
+        // river recognisable from above.
+        //
+        // So the path within a cell is synthesised, exactly as sub-grid relief
+        // is: the simulation decides where the network goes and noise decides
+        // what it looks like in between. Two harmonics, vanishing at both ends
+        // so the channel still leaves one cell centre and arrives at the next -
+        // connectivity is the part that has to stay true, because it is the part
+        // the simulation actually determined.
+        //
+        // The amplitude is a fraction of the segment, which is what a meander
+        // belt is: ten to twenty channel widths, and on this grid that is
+        // kilometres.
+        // Cheap rejection before any of that. The meandering channel never
+        // leaves a corridor of the straight segment plus the bend amplitude
+        // plus its own width, so a point outside that corridor cannot be in
+        // the river and does not need the curve walked for it. Almost every
+        // sample on a planet is outside every corridor.
+        {
+            const float straightT =
+                glm::clamp(glm::dot(n - a, along) / lengthSquared, 0.0f, 1.0f);
+            const float straight = glm::length(n - (a + along * straightT)) * planetRadius;
+            const float corridor =
+                width * 3.0f + std::sqrt(lengthSquared) * 0.16f * planetRadius;
+            if (straight > corridor) {
+                return;
+            }
+        }
+
+        const glm::vec3 up = glm::normalize(a + b);
+        glm::vec3 lateral = glm::cross(up, along);
+        const float lateralLength = glm::length(lateral);
+
+        // Deterministic from the pair, so a river does not rewrite its own
+        // course between one frame and the next.
+        const float phase = static_cast<float>((cell * 2654435761u) % 1000u) * 0.006283f;
+        const float second = static_cast<float>((into * 40503u) % 1000u) * 0.006283f;
+
+        const float bendAmplitude = std::sqrt(lengthSquared) * 0.16f;
+
+        float nearest = 1e30f;
+        if (lateralLength > 1e-9f) {
+            lateral /= lateralLength;
+
+            // Walked rather than solved: the curve has no closed-form nearest
+            // point, and a handful of samples is cheaper than one that does.
+            //
+            // The distance is to the straight pieces between the samples, not
+            // to the samples themselves. Measuring to the points draws a circle
+            // around each one, and with samples two kilometres apart and a
+            // channel one kilometre wide that is a string of beads rather than
+            // a river - which is exactly what it looked like.
+            constexpr int SAMPLES = 10;
+            const auto curvePoint = [&](float t) {
+                const float envelope = std::sin(t * PI);
+                const float wander = std::sin(t * PI * 2.0f + phase) * 0.7f +
+                                     std::sin(t * PI * 5.0f + second) * 0.3f;
+                return a + along * t + lateral * (envelope * wander * bendAmplitude);
+            };
+
+            glm::vec3 previous = curvePoint(0.0f);
+            for (int s = 1; s <= SAMPLES; s++) {
+                const glm::vec3 current = curvePoint(static_cast<float>(s) / SAMPLES);
+                const glm::vec3 piece = current - previous;
+                const float pieceLengthSquared = glm::dot(piece, piece);
+                if (pieceLengthSquared > 1e-16f) {
+                    const float u = glm::clamp(glm::dot(n - previous, piece) / pieceLengthSquared,
+                                               0.0f, 1.0f);
+                    nearest = std::min(nearest, glm::length(n - (previous + piece * u)));
+                }
+                previous = current;
+            }
+        } else {
+            const float t = glm::clamp(glm::dot(n - a, along) / lengthSquared, 0.0f, 1.0f);
+            nearest = glm::length(n - (a + along * t));
+        }
+
+        const float distance = nearest * planetRadius;
+        if (distance < nearestRiver.distance) {
+            nearestRiver.distance = distance;
+            nearestRiver.width = width;
+            nearestRiver.catchments = catchments;
+        }
     };
 
     consider(centre);
     for (int k = 0; k < neighbourCount(centre); k++) {
         consider(neighbourAt(centre, k));
     }
-    return strongest;
+    return nearestRiver;
+}
+
+float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNormal) const {
+    const RiverSample river = sampleRiverGeometry(snapshot, sphereNormal);
+    if (river.width <= 0.0f) {
+        return 0.0f;
+    }
+
+    // A bank rather than a blur. A Gaussian falloff is smooth everywhere,
+    // which is what made every river look like a soft stain - water has an
+    // edge, and where it ends the ground starts. Half the width of the channel
+    // is spent on that edge, which at this scale is a bank and a gravel bar.
+    const float half = river.width * 0.5f;
+    return 1.0f - glm::smoothstep(half * 0.55f, half * 1.15f, river.distance);
 }
 
 float CrustGrid::sampleCloudCover(const Snapshot& snapshot,

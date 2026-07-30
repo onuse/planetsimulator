@@ -498,13 +498,28 @@ public:
     // is mid-step.
     float sampleCloudCover(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
 
-    // How strongly a river runs at a direction, 0 to 1.
+    // Where the nearest river channel is, and how big it is.
     //
     // A cell carrying a major river is seventeen kilometres across and the
     // river is not, so colouring whole cells would draw rivers as wide as
     // Belgium. The flow direction is known, though - each cell routes into a
-    // specific neighbour - so the channel can be drawn along the path the
-    // water actually takes, with a width set by how much of it there is.
+    // specific neighbour - so the channel is a path, and this reports how far
+    // a point lies from it.
+    //
+    // Distance and discharge rather than one blended strength, because a river
+    // shapes the ground at two scales at once: a channel a kilometre across
+    // and a valley ten times that. A single number cannot express both, and
+    // the valley is most of what makes a river visible.
+    struct RiverSample {
+        float distance = 1e30f;    // metres to the channel centreline
+        float width = 0.0f;        // channel width in metres
+        float catchments = 0.0f;   // upstream cells draining through it
+    };
+    RiverSample sampleRiverGeometry(const Snapshot& snapshot,
+                                    const glm::vec3& sphereNormal) const;
+
+    // How strongly a river runs at a direction, 0 to 1. A readout of the
+    // above, for colouring.
     float sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
     SurfaceSample sampleSurface(const glm::vec3& sphereNormal) const;
 
