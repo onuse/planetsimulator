@@ -40,6 +40,11 @@ struct Config {
     // Icosphere level for the crust grid. 6 is 17.5 km cells; 7 is 8.8 km and
     // about eight times the cost per million years.
     int crustSubdivisions = 6;
+    // Grow the window part way through the run, so that resizing can be tested
+    // without a hand on it. A fault that only appears when the window changes
+    // size cannot be found by looking at still frames of a window that does
+    // not.
+    float resizeAfter = 0.0f;    // seconds; 0 disables
     bool autoZoom = false;       // Enable automatic zoom during screenshots
     bool usePresetView = false;  // Use preset camera position
     bool disableCulling = false; // Disable face culling for debugging
@@ -57,6 +62,8 @@ Config parseArgs(int argc, char** argv) {
             config.radius = std::stof(argv[++i]);
         } else if (arg == "-max-depth" && i + 1 < argc) {
             config.maxDepth = std::stoi(argv[++i]);
+        } else if (arg == "-resize-after" && i + 1 < argc) {
+            config.resizeAfter = std::stof(argv[++i]);
         } else if (arg == "-crust-detail" && i + 1 < argc) {
             config.crustSubdivisions = std::stoi(argv[++i]);
         } else if (arg == "-seed" && i + 1 < argc) {
@@ -163,6 +170,14 @@ public:
             //               << "s, shouldExit=" << shouldExit() << std::endl;
             // }
             
+            // Grow the window once, if asked, to exercise the resize path.
+            if (config.resizeAfter > 0.0f && elapsed >= config.resizeAfter) {
+                config.resizeAfter = 0.0f;
+                std::cout << "Resizing window to test the resize path\n" << std::flush;
+                glfwSetWindowSize(renderer.getWindow(), config.width + 420,
+                                  config.height + 260);
+            }
+
             // Check auto-terminate
             if (config.autoTerminate > 0 && elapsed >= config.autoTerminate) {
                 std::cout << "Auto-terminating after " << elapsed << " seconds\n" << std::flush;

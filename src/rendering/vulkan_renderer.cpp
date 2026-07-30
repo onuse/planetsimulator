@@ -233,8 +233,17 @@ void VulkanRenderer::resize(uint32_t width, uint32_t height) {
     framebufferResized = true;
 }
 
-void VulkanRenderer::framebufferResizeCallback(GLFWwindow* window, int /*width*/, int /*height*/) {
+void VulkanRenderer::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
     auto app = reinterpret_cast<VulkanRenderer*>(glfwGetWindowUserPointer(window));
+
+    // The new size is recorded, not just the fact that it changed. Several
+    // things are derived from it - the camera's own projection, and the ray it
+    // casts through a pixel to find what the mouse is pointing at - and none of
+    // them can be right if the only thing that gets updated is the swap chain.
+    if (width > 0 && height > 0) {
+        app->windowWidth = static_cast<uint32_t>(width);
+        app->windowHeight = static_cast<uint32_t>(height);
+    }
     app->framebufferResized = true;
 }
 

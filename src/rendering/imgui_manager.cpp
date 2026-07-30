@@ -26,7 +26,14 @@ bool ImGuiManager::initialize(GLFWwindow* window, VkInstance instance,
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+    // Keyboard navigation deliberately off.
+    //
+    // The application already owns the keyboard - WASD flies the camera - and
+    // with nav enabled ImGui takes those keys whenever a panel has focus. Worse,
+    // it can focus and activate the first control in a window without anyone
+    // touching it, which is how the simulation rate ended up at a thousandth of
+    // its default with nobody having clicked anything.
+    io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
     
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -387,7 +394,11 @@ void ImGuiManager::renderSimulationWindow(const VulkanRenderer* renderer) {
         const bool moved = ImGui::SliderFloat("thousand years / sec", &sliderKyr,
                                               0.001f, 5000.0f, "%.3f kyr/s",
                                               ImGuiSliderFlags_Logarithmic);
-        if (moved && ImGui::IsItemActive()) {
+        // Active and the mouse actually down on it. Active alone is not enough:
+        // it is also true when the control merely holds focus, and a slider
+        // that reports itself changed every frame - which a logarithmic one
+        // does - will then rewrite the value forever.
+        if (moved && ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             if (paused) {
                 pausedRate = sliderKyr;
             } else {
@@ -414,14 +425,23 @@ void ImGuiManager::renderSimulationWindow(const VulkanRenderer* renderer) {
         }
 
         ImGui::Separator();
+
+        bool clouds = renderer->getCloudsVisible();
+        if (ImGui::Checkbox("Draw clouds", &clouds)) {
+            const_cast<VulkanRenderer*>(renderer)->setCloudsVisible(clouds);
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("they hide the ground");
+
+        ImGui::Separator();
         ImGui::TextWrapped(
             "Surface patches are rebuilt whenever the crust moves, so slowing "
             "time also settles the terrain - which is what makes it possible "
             "to judge detail rather than watch it change.\n\n"
-            "Clouds fade out above a few thousand years per second. The "
-            "atmosphere is solved as an equilibrium, so at geological speeds "
-            "the weather is a still photograph of a sky that should have "
-            "changed millions of times.");
+            "Clouds also fade out on their own above a few thousand years per "
+            "second. The atmosphere is solved as an equilibrium, so at "
+            "geological speeds the weather is a still photograph of a sky that "
+            "should have changed millions of times.");
     }
     ImGui::End();
 }

@@ -534,7 +534,7 @@ void VulkanRenderer::renderPatches(const glm::dvec3& cameraPosition) {
 }
 
 void VulkanRenderer::renderClouds(const glm::dvec3& cameraPosition) {
-    if (!currentCommandBuffer || cloudPipeline == VK_NULL_HANDLE ||
+    if (!cloudsVisible || !currentCommandBuffer || cloudPipeline == VK_NULL_HANDLE ||
         hierarchicalDescriptorSets.empty() || patchVertexPool == VK_NULL_HANDLE) {
         return;
     }

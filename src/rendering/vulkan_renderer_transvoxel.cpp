@@ -256,7 +256,18 @@ void VulkanRenderer::createTrianglePipeline() {
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
     
-    // Viewport state
+    // Viewport state, declared dynamic.
+    //
+    // Without this the viewport is baked into the pipeline at creation, and
+    // vkCmdSetViewport does nothing - so the window could be resized, the swap
+    // chain would correctly follow it, the render area would grow, and the
+    // geometry would keep being drawn into the rectangle the window happened to
+    // be when the pipeline was built. The planet stayed the size and position it
+    // had at startup with fresh empty space around it, which looks like the
+    // camera failing to recentre and is nothing of the kind.
+    //
+    // The values below are only what the pipeline is created with; the real ones
+    // come from the command buffer every frame.
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -326,7 +337,14 @@ void VulkanRenderer::createTrianglePipeline() {
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.pColorBlendState = &colorBlending;
-    pipelineInfo.pDynamicState = nullptr;
+    const VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
+                                            VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = 2;
+    dynamicState.pDynamicStates = dynamicStates;
+
+    pipelineInfo.pDynamicState = &dynamicState;
     pipelineInfo.layout = hierarchicalPipelineLayout;
     pipelineInfo.renderPass = renderPass;
     pipelineInfo.subpass = 0;

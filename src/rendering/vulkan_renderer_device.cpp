@@ -402,12 +402,47 @@ void VulkanRenderer::recreateSwapChain() {
     
     cleanupSwapChain();
     
+    const size_t imagesBefore = renderFinishedSemaphores.size();
+    const VkExtent2D extentBefore = swapChainExtent;
+
     createSwapChain();
+
+    util::vlog() << "[resize] swap chain " << extentBefore.width << "x" << extentBefore.height
+                 << " -> " << swapChainExtent.width << "x" << swapChainExtent.height
+                 << ", images " << imagesBefore << " -> " << swapChainImages.size() << "\n";
     createImageViews();
     createRenderPass();
 //     createGraphicsPipeline();
     createDepthResources();
     createFramebuffers();
+
+    // One render-finished semaphore per swap chain image, so if the driver
+    // hands back a different number of images the array has to follow. Getting
+    // this wrong would index past the end of it, and only on the resize that
+    // happened to change the count.
+    if (swapChainImages.size() != imagesBefore) {
+        for (VkSemaphore semaphore : renderFinishedSemaphores) {
+            vkDestroySemaphore(device, semaphore, nullptr);
+        }
+        renderFinishedSemaphores.clear();
+
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        renderFinishedSemaphores.resize(swapChainImages.size());
+        for (size_t i = 0; i < renderFinishedSemaphores.size(); i++) {
+            vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]);
+        }
+    }
+
+    // The window decides the aspect ratio and the size of a pixel, and the
+    // camera answers questions in both - what a pixel covers on the ground, and
+    // which direction a click points. Left stale, the planet would keep drawing
+    // correctly while dragging it moved the wrong distance.
+    windowWidth = swapChainExtent.width;
+    windowHeight = swapChainExtent.height;
+    if (currentCamera != nullptr) {
+        currentCamera->setViewport(swapChainExtent.width, swapChainExtent.height);
+    }
 }
 
 } // namespace rendering

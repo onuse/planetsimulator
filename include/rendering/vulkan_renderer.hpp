@@ -133,6 +133,14 @@ public:
         }
     }
 
+    // Whether to draw the cloud layer at all.
+    //
+    // Separate from the automatic fade with simulation speed: that decides
+    // whether a still sky is honest, this decides whether anyone wants to see
+    // the ground.
+    void setCloudsVisible(bool visible) { cloudsVisible = visible; }
+    bool getCloudsVisible() const { return cloudsVisible; }
+
     void setRenderMode(int mode) { renderMode = mode; }
     void setWireframe(bool enabled) { wireframeEnabled = enabled; }
     void setVSync(bool enabled);
@@ -450,6 +458,7 @@ private:
     // Same geometry, same layout - it differs only in lifting each vertex to
     // the cloud shell, blending instead of overwriting, and not writing depth.
     VkPipeline cloudPipeline = VK_NULL_HANDLE;
+    bool cloudsVisible = true;
     // REMOVED: Test NDC pipeline - using only triangle mesh rendering
     VkDescriptorSetLayout hierarchicalDescriptorSetLayout = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> hierarchicalDescriptorSets;
