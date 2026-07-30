@@ -225,6 +225,14 @@ float DensityField::getRiverStrength(const glm::vec3& sphereNormal) const {
     return crustGrid->sampleRiver(*crustSnapshot, glm::normalize(sphereNormal));
 }
 
+simulation::CrustGrid::RiverSample DensityField::getRiver(
+    const glm::vec3& sphereNormal) const {
+    if (crustGrid == nullptr || crustSnapshot == nullptr) {
+        return {};
+    }
+    return crustGrid->sampleRiverGeometry(*crustSnapshot, glm::normalize(sphereNormal));
+}
+
 float DensityField::getRiverIncision(const glm::vec3& sphereNormal) const {
     if (crustGrid == nullptr || crustSnapshot == nullptr) {
         return 0.0f;

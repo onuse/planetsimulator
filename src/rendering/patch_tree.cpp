@@ -329,17 +329,55 @@ void PatchTree::build(Patch& patch, const core::DensityField& field, float plane
             // bands, because a river is not an elevation - it is water sitting
             // on whatever the ground happens to be, and it runs downhill
             // through every band on the way to the sea.
+            //
+            // Two features, not one, because what is visible from above is
+            // mostly not the water.
+            //
+            // Drawing the channel alone, at full opacity, gave every river the
+            // same look regardless of size - a line of saturated blue laid over
+            // the ground like a highlighter, when most of the network is
+            // streams far too narrow to see at all. What is actually visible
+            // along a small river is its corridor: alluvium, wetter ground, and
+            // the vegetation that follows it. Open water only reads on trunks.
             if (relative >= 0.0f) {
-                const float river = field.getRiverStrength(dir);
-                if (river > 0.01f) {
-                    // Shallow, sediment-laden and reflecting sky, so lighter
-                    // and greener than open ocean rather than the same blue.
-                    // Darker than the sea and slightly green, which is what
-                    // shallow sediment-laden water over land looks like, and
-                    // what makes a channel read against vegetation rather than
-                    // disappear into it.
-                    const glm::vec3 water(0.13f, 0.26f, 0.34f);
-                    colour = glm::mix(colour, water, glm::clamp(river, 0.0f, 0.95f));
+                const simulation::CrustGrid::RiverSample river = field.getRiver(dir);
+
+                if (river.width > 0.0f) {
+                    // The corridor: broad, soft, and subtle. Wetter ground and
+                    // denser growth either side of the channel, which is what
+                    // makes a river valley visible from orbit long before the
+                    // water in it is.
+                    const float corridorWidth = river.width * 6.0f;
+                    const float corridor = 1.0f - glm::smoothstep(corridorWidth * 0.25f,
+                                                                  corridorWidth,
+                                                                  river.distance);
+                    if (corridor > 0.01f) {
+                        const glm::vec3 riparian(0.26f, 0.42f, 0.20f);
+                        colour = glm::mix(colour, riparian, corridor * 0.45f);
+                    }
+
+                    // The water itself, judged by how wide the channel is
+                    // rather than by how many cells drain into it. Catchment
+                    // counts are weighted by rainfall and scale with the grid,
+                    // so a threshold written in them means something different
+                    // on every resolution; metres do not.
+                    //
+                    // The measured spread across a whole planet is about three
+                    // to one - roughly three hundred and fifty metres for a
+                    // headwater to eleven hundred for the largest trunk - so
+                    // the fade has to sit inside that range or it picks out
+                    // everything or nothing.
+                    const float openWater = glm::smoothstep(500.0f, 1100.0f, river.width);
+                    if (openWater > 0.01f) {
+                        const float half = river.width * 0.5f;
+                        const float core = 1.0f - glm::smoothstep(half * 0.5f, half * 1.1f,
+                                                                  river.distance);
+                        const glm::vec3 shallow(0.20f, 0.32f, 0.33f);
+                        const glm::vec3 deep(0.09f, 0.18f, 0.28f);
+                        const glm::vec3 water = glm::mix(shallow, deep, openWater);
+                        colour = glm::mix(colour, water,
+                                          glm::clamp(core * openWater * 0.92f, 0.0f, 0.92f));
+                    }
                 }
             }
 

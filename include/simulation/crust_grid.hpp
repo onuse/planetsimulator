@@ -611,6 +611,10 @@ public:
     RiverSample sampleRiverGeometry(const Snapshot& snapshot,
                                     const glm::vec3& sphereNormal) const;
 
+    // How wide a channel carrying this many upstream cells is. One rule, so
+    // that what is drawn and what is measured cannot drift apart.
+    float channelWidthFor(float catchments) const;
+
     // How strongly a river runs at a direction, 0 to 1. A readout of the
     // above, for colouring.
     float sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;

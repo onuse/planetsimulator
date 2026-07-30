@@ -514,6 +514,24 @@ float CrustGrid::reconstruct(const glm::vec3& sphereNormal, const std::vector<fl
            6.0f * b111 * u * v * w;
 }
 
+float CrustGrid::channelWidthFor(float catchments) const {
+    // Width grows with discharge, which is roughly how real channels widen:
+    // more water needs more cross-section, and a channel gets it mostly by
+    // widening rather than by deepening.
+    //
+    // The exponent is above a half deliberately. Square root is the textbook
+    // hydraulic relation, but discharge across a network spans two or three
+    // orders of magnitude and a square root compresses that into one - so every
+    // river came out much the same size, which is most of what made the network
+    // read as a grid of channels rather than as a network.
+    //
+    // Floored so a headwater stream is not sub-metre, and capped because the
+    // relation describes channels: a continental trunk draining a thousand
+    // cells is still a river and not an inland sea.
+    return glm::clamp(180.0f * std::pow(catchments, 0.62f), 120.0f,
+                      static_cast<float>(cellSpacing()) * 0.55f);
+}
+
 CrustGrid::RiverSample CrustGrid::sampleRiverGeometry(
     const Snapshot& snapshot, const glm::vec3& sphereNormal) const {
     RiverSample nearestRiver;
@@ -569,9 +587,7 @@ CrustGrid::RiverSample CrustGrid::sampleRiverGeometry(
         // a tributary, so what is drawn is a representation of the network at
         // the scale the simulation knows it - and a representation that only
         // shows the trunk is not showing the network.
-        const float flow = snapshot.discharge[cell];
-        const float area = static_cast<float>(cellSpacing()) * static_cast<float>(cellSpacing());
-        const float catchments = flow / std::max(area, 1.0f);
+        const float catchments = snapshot.discharge[cell];
         if (catchments < 3.0f) {
             return;
         }
@@ -584,17 +600,7 @@ CrustGrid::RiverSample CrustGrid::sampleRiverGeometry(
             return;
         }
 
-        // Width grows with the square root of discharge, which is roughly how
-        // real channels widen: doubling the width carries four times the water.
-        // Capped, because the relationship holds for channels and a continental
-        // trunk draining a thousand cells is a river, not an inland sea.
-        // A wider spread than the square root alone gives. Discharge across a
-        // network spans two or three orders of magnitude and the square root
-        // compresses that to one, so every river came out much the same size -
-        // and rivers being different sizes is most of how a network reads as a
-        // network rather than as a grid of channels.
-        const float width = glm::clamp(180.0f * std::pow(catchments, 0.62f),
-                                       120.0f, static_cast<float>(cellSpacing()) * 0.55f);
+        const float width = channelWidthFor(catchments);
 
         // Meanders.
         //

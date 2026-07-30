@@ -155,6 +155,11 @@ public:
     // can invent.
     float getRiverStrength(const glm::vec3& sphereNormal) const;
 
+    // The nearest channel: how far away, how wide, and how much drains through
+    // it. Colouring needs all three, because a stream and a continental trunk
+    // do not look alike and cannot be drawn from one number.
+    simulation::CrustGrid::RiverSample getRiver(const glm::vec3& sphereNormal) const;
+
     // How far the ground has been cut down here by the river running through
     // it, in metres. Zero away from any channel.
     float getRiverIncision(const glm::vec3& sphereNormal) const;

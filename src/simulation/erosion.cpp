@@ -66,6 +66,23 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     std::vector<float> filled(surface);
     std::vector<char> visited(n, 0);
 
+    // Where each cell spills to, and the order the flood reached them.
+    //
+    // The flood already knows both, and throwing them away was what left more
+    // than half the land draining nowhere. Priority flood raises a basin to its
+    // spill point, which makes the basin flat - and steepest descent across a
+    // flat finds no lower neighbour and gives up, so every flow path died at
+    // the first lake it met. The longest river on the planet was seven cells.
+    //
+    // The cell that first reached j during the flood *is* j's way out: the
+    // flood works inward from the sea in increasing order of filled level, so
+    // that cell is downhill-or-level and nearer the outlet by construction.
+    // Following it cannot loop, because every cell's spill target was popped
+    // before the cell itself.
+    std::vector<int> spillTo(n, -1);
+    std::vector<int> popOrder;
+    popOrder.reserve(n);
+
     using Entry = std::pair<float, int>;   // (level, cell)
     std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> queue;
 
@@ -87,6 +104,7 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     while (!queue.empty()) {
         const auto [level, cell] = queue.top();
         queue.pop();
+        popOrder.push_back(cell);
         for (int m = 0; m < neighbourCount(cell); m++) {
             const int j = neighbourAt(cell, m);
             if (visited[j]) {
@@ -94,6 +112,7 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
             }
             visited[j] = 1;
             filled[j] = std::max(surface[j], level);
+            spillTo[j] = cell;
             queue.emplace(filled[j], j);
         }
     }
@@ -118,7 +137,6 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     // year, which is churn rather than reorganisation.
     const bool haveHistory = lastFlowsInto.size() == static_cast<size_t>(n) &&
                              lastDischarge.size() == static_cast<size_t>(n);
-    const float cellFootprint = cellArea;
 
     for (int i = 0; i < n; i++) {
         if (filled[i] <= 0.0f) {
@@ -131,8 +149,7 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
         if (haveHistory) {
             incumbent = lastFlowsInto[i];
             if (incumbent >= 0 && incumbent < n) {
-                const float catchments =
-                    lastDischarge[i] / std::max(cellFootprint, 1.0f);
+                const float catchments = lastDischarge[i];
                 if (catchments > 1.0f) {
                     entrenchment = k.channelDepthPerCatchment *
                                    std::pow(catchments, k.channelDepthExponent);
@@ -166,6 +183,12 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
             }
         }
 
+        // Nothing lower anywhere: this cell is inside a filled basin, and the
+        // flood already worked out the way out of it.
+        if (best < 0 && spillTo[i] >= 0) {
+            best = spillTo[i];
+        }
+
         receiver[i] = best;
 
         // The slope that drives incision is the real one, not the one the
@@ -181,13 +204,12 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     // ------------------------------------------------------------------
     // 3. Accumulate drainage from the top down
     // ------------------------------------------------------------------
-    std::vector<int> order(n);
-    for (int i = 0; i < n; i++) {
-        order[i] = i;
-    }
-    std::sort(order.begin(), order.end(),
-              [&](int a, int b) { return filled[a] > filled[b]; });
-
+    // Highest first, so a cell has collected everything above it before it
+    // passes the total on. Reverse pop order gives exactly that and costs
+    // nothing: the flood pops in increasing filled level, and every receiver -
+    // whether chosen by descent or by the spill path - was popped before the
+    // cell that drains into it. Sorting by elevation instead was subtly wrong
+    // as well as slower, because it cannot order cells inside a flat.
     std::vector<double> drainage(n, 0.0);
     for (int i = 0; i < n; i++) {
         // Every cell contributes its own catch of rain - and how much rain
@@ -199,7 +221,8 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
         drainage[i] = static_cast<double>(cellArea) * k.precipitation *
                       climate.relativePrecipitation(i);
     }
-    for (int i : order) {
+    for (auto it = popOrder.rbegin(); it != popOrder.rend(); ++it) {
+        const int i = *it;
         if (receiver[i] >= 0) {
             drainage[receiver[i]] += drainage[i];
         }
@@ -212,8 +235,21 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     lastFlowsInto.resize(n);
     lastLakeDepth.resize(n);
     lastRoutedSurface.resize(n);
+    // Upstream cells, not cubic metres.
+    //
+    // Accumulation works in volume because stream power needs volume, but every
+    // reader of this field wants a catchment size - how many cells' worth of
+    // rain arrives here - and each of them was dividing by the square of the
+    // cell spacing to get one. That is not the cell's area (the cells are
+    // hexagons) and the spacing does not track the grid resolution, so the
+    // count came out several times too small and every threshold built on it
+    // was wrong by the same factor. Dividing here, once, by the volume a single
+    // average cell contributes, makes the field mean what its name says.
+    const double perCell =
+        std::max(1e-9, static_cast<double>(cellArea) * static_cast<double>(k.precipitation));
+
     for (int i = 0; i < n; i++) {
-        lastDischarge[i] = static_cast<float>(drainage[i]);
+        lastDischarge[i] = static_cast<float>(drainage[i] / perCell);
         lastFlowsInto[i] = receiver[i];
         // What the depression fill added: zero on a slope, positive in a lake.
         lastLakeDepth[i] = std::max(0.0f, filled[i] - surface[i]);
@@ -232,7 +268,10 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     double eroded = 0.0;
     double deposited = 0.0;
 
-    for (int i : order) {
+    // Highest first again, so debris is picked up before the cell it lands in
+    // is visited and can carry it further down the same pass.
+    for (auto it = popOrder.rbegin(); it != popOrder.rend(); ++it) {
+        const int i = *it;
         const int down = receiver[i];
 
         if (down < 0 || filled[i] <= 0.0f) {

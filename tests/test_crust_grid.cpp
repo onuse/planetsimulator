@@ -1071,6 +1071,226 @@ void testClimate() {
     check(wettest > driest * 4.0f, "rainfall varies enough across land to shape erosion");
 }
 
+void testTimeSlicingDoesNotChangeThePlanet() {
+    std::printf("Whether how time is sliced changes what the planet becomes\n");
+
+    // The same simulated time, cut into different sized steps. A landscape
+    // after twenty million years should be the same landscape whichever way
+    // the twenty million years were counted out - if it is not, the answer
+    // depends on the frame rate, and nothing built on it can be trusted.
+    struct Result {
+        float step;
+        float highest;
+        float land;
+        float crust;
+        int rivers;
+    };
+
+    const float steps[] = {0.5f, 2.0f, 5.0f};
+    Result results[3];
+
+    for (int variant = 0; variant < 3; variant++) {
+        simulation::CrustGrid grid(1000000.0f, 61, 5, 12);
+
+        const float slice = steps[variant];
+        const int count = static_cast<int>(20.0f / slice);
+        for (int i = 0; i < count; i++) {
+            grid.step(slice);
+        }
+
+        const auto stats = grid.computeStats();
+        auto snapshot = grid.publishSnapshot();
+
+        int rivers = 0;
+        for (size_t i = 0; i < snapshot->discharge.size(); i++) {
+            if (snapshot->flowsInto[i] >= 0) {
+                rivers++;
+            }
+        }
+
+        results[variant] = {slice, stats.maxElevation, stats.landFraction,
+                            stats.crustVolume, rivers};
+
+        std::printf("    %.1f My steps: highest %.0f m, land %.1f%%, crust %.4e, "
+                    "%d draining cells\n",
+                    slice, stats.maxElevation, stats.landFraction * 100.0f,
+                    stats.crustVolume, rivers);
+    }
+
+    // Compared against the finest slicing, which is the most trustworthy.
+    const Result& reference = results[0];
+    float worstHeight = 0.0f;
+    float worstLand = 0.0f;
+    for (int variant = 1; variant < 3; variant++) {
+        worstHeight = std::max(worstHeight,
+                               std::fabs(results[variant].highest - reference.highest) /
+                                   std::max(reference.highest, 1.0f));
+        worstLand = std::max(worstLand, std::fabs(results[variant].land - reference.land));
+    }
+
+    std::printf("    against the finest slicing: highest differs by up to %.0f%%, "
+                "land by %.1f points\n", worstHeight * 100.0f, worstLand * 100.0f);
+
+    check(worstHeight < 0.35f, "peak height does not depend on the step size");
+    check(worstLand < 0.10f, "how much land there is does not depend on the step size");
+}
+
+void testRiversComeInSizes() {
+    std::printf("Whether rivers come in a range of sizes or all look alike\n");
+
+    // The complaint was that every river is the same width. Colouring can only
+    // show a range the simulation actually produces, so measure the range
+    // before deciding how to draw it.
+    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+    for (int i = 0; i < 40; i++) {
+        grid.step(0.5f);
+    }
+    auto snapshot = grid.publishSnapshot();
+
+    // Catchment counts along the drawn network, in the buckets the renderer
+    // cares about: invisible, a corridor with no open water, and a trunk.
+    int buckets[4] = {0, 0, 0, 0};
+    float widest = 0.0f;
+    float narrowest = 1e30f;
+    int drawn = 0;
+    for (size_t i = 0; i < snapshot->discharge.size(); i++) {
+        if (snapshot->flowsInto[i] < 0) {
+            continue;
+        }
+        const float catchments = snapshot->discharge[i];
+        if (catchments < 3.0f) {
+            continue;
+        }
+        drawn++;
+        const float width = grid.channelWidthFor(catchments);
+        widest = std::max(widest, width);
+        narrowest = std::min(narrowest, width);
+
+        if (catchments < 20.0f) {
+            buckets[0]++;
+        } else if (catchments < 220.0f) {
+            buckets[1]++;
+        } else if (catchments < 2000.0f) {
+            buckets[2]++;
+        } else {
+            buckets[3]++;
+        }
+    }
+
+    std::printf("    %d channels drawn, widths %.0f m to %.0f m\n",
+                drawn, narrowest, widest);
+    std::printf("    stream %d (%.0f%%), small river %d (%.0f%%), "
+                "large %d (%.0f%%), trunk %d (%.0f%%)\n",
+                buckets[0], 100.0f * buckets[0] / std::max(drawn, 1),
+                buckets[1], 100.0f * buckets[1] / std::max(drawn, 1),
+                buckets[2], 100.0f * buckets[2] / std::max(drawn, 1),
+                buckets[3], 100.0f * buckets[3] / std::max(drawn, 1));
+
+    // Why the sizes come out as they do. A network with no trunk cannot have a
+    // range of widths, so if the widths are uniform the structure is the thing
+    // to look at, not the width rule.
+    const int n = static_cast<int>(snapshot->discharge.size());
+    int land = 0;
+    int drainsToSea = 0;
+    int endsInland = 0;
+    int longest = 0;
+    float biggestCatchment = 0.0f;
+
+    // Against the surface the network was routed on, not the current one. The
+    // network is rebuilt on an interval and can be two million years older than
+    // the elevations, and judging it by ground it has never seen reports rivers
+    // stranded inland that drain perfectly well on the map they were drawn for.
+    const std::vector<float>& routed =
+        snapshot->routedSurface.size() == snapshot->elevation.size()
+            ? snapshot->routedSurface
+            : snapshot->elevation;
+
+    for (int i = 0; i < n; i++) {
+        if (routed[i] <= 0.0f) {
+            continue;
+        }
+        land++;
+        biggestCatchment = std::max(biggestCatchment, snapshot->discharge[i]);
+
+        // Walk downstream and see where it ends up.
+        int at = i;
+        int steps = 0;
+        while (steps < n) {
+            const int into = snapshot->flowsInto[at];
+            if (into < 0) {
+                break;
+            }
+            at = into;
+            steps++;
+            if (routed[at] <= 0.0f) {
+                break;
+            }
+        }
+        longest = std::max(longest, steps);
+        if (routed[at] <= 0.0f) {
+            drainsToSea++;
+        } else {
+            endsInland++;
+        }
+    }
+
+    // How big the basins actually are, counted rather than accumulated. If the
+    // largest basin holds far more cells than the largest catchment reports,
+    // the accumulation is losing water somewhere; if they agree, the network is
+    // simply as small as the grid allows and no rule about widths will help.
+    std::vector<int> basinSize(n, 0);
+    for (int i = 0; i < n; i++) {
+        if (routed[i] <= 0.0f) {
+            continue;
+        }
+        int at = i;
+        int guard = 0;
+        while (guard++ < n) {
+            const int into = snapshot->flowsInto[at];
+            if (into < 0 || routed[at] <= 0.0f) {
+                break;
+            }
+            at = into;
+        }
+        basinSize[at]++;
+    }
+    const int biggestBasin = *std::max_element(basinSize.begin(), basinSize.end());
+    int mouths = 0;
+    for (int i = 0; i < n; i++) {
+        if (basinSize[i] > 0) {
+            mouths++;
+        }
+    }
+
+    std::printf("    %d land cells: %d reach the sea, %d end inland\n",
+                land, drainsToSea, endsInland);
+    std::printf("    %d river mouths, biggest basin %d cells, area per cell %.3e m2, "
+                "spacing squared %.3e m2\n",
+                mouths, biggestBasin, grid.getCellArea(),
+                grid.cellSpacing() * grid.cellSpacing());
+    std::printf("    longest path to the sea %d cells, biggest catchment %.0f cells\n",
+                longest, biggestCatchment);
+
+    check(drawn > 100, "there is a network to look at");
+
+    // Every land cell, not most of them. After the depressions are filled there
+    // is no such thing as a cell with nowhere to go - the fill exists precisely
+    // to guarantee that - so any cell stranded inland is a bug in the routing
+    // and not a feature of the terrain. This held at zero exceptions out of
+    // nine and a half thousand, and it is the invariant worth guarding: it was
+    // false for more than half the planet until the flood's own spill paths
+    // were used to cross the flats it creates.
+    check(drainsToSea == land, "every land cell drains to the sea");
+    check(longest > 25, "the network is deep enough to have long rivers in it");
+
+    // Only three to one, and that is the honest number. Rivers here are much
+    // the same size because the hierarchy is shallow - sixteen hundred separate
+    // outlets for nine thousand land cells - and no width rule can invent a
+    // range the drainage does not have. Guarding it stops the range collapsing
+    // further without pretending it is Earth's.
+    check(widest > narrowest * 2.5f, "channels differ in width by more than a factor of two");
+}
+
 void testDrainageReorganises() {
     std::printf("Whether drainage networks reorganise on their own\n");
     simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
@@ -1479,6 +1699,8 @@ int main() {
     testRivers();
     testClimate();
     testWhereTheTimeGoes();
+    testTimeSlicingDoesNotChangeThePlanet();
+    testRiversComeInSizes();
     testDrainageReorganises();
     testWhatMakesTheGroundJump();
     testResolutionChoice();
