@@ -240,6 +240,31 @@ public:
         // in exactly the same place.
         float tectonicInterval = 0.05f;     // My
 
+
+        // How much geological time the routed erosion model covers in one
+        // pass, however finely the caller happens to be stepping.
+        //
+        // Rebuilding the drainage network means taking, for each cell, whichever
+        // neighbour is lowest - an argmax over near-equal numbers drawn from a
+        // field that moves every step. It changes its mind whether or not
+        // anything has happened, and it does so once per rebuild rather than
+        // once per million years.
+        //
+        // Measured from two directions. The largest catchment moves eighty per
+        // cent per million years when the network is rebuilt every twenty
+        // thousand years and four per cent when it is rebuilt every two
+        // million. And going from level 6 to level 7 halves the stable timestep,
+        // so it doubles the number of rebuilds for the same geology - and
+        // doubles the rewiring per cell, which is why the finer grid came out
+        // less steady rather than more.
+        //
+        // So how fast rivers reorganised was set by how often they were asked,
+        // which is not a property of the planet. Banking the time and running
+        // the pass on its own schedule makes it one again. It costs no fidelity:
+        // twenty million years cut into half-million and five-million year
+        // slices already lands within one per cent on peak height.
+        float erosionInterval = 0.1f;   // My
+
         // How often to rebuild the drainage network when the routed model is
         // not running. A river system outlives a couple of million years, and
         // rebuilding it costs one erosion pass without the incision - so this
@@ -605,6 +630,25 @@ public:
     // disagree about the same valley.
     static constexpr float VALLEY_WALL_SLOPE = 0.6f;
 
+    // What the routing did, and how much of it was warranted.
+    //
+    // The network is rebuilt from scratch every step by taking, for each cell,
+    // whichever neighbour is lowest. That is an argmax over near-equal numbers
+    // drawn from a field that moves every step, so it will change its mind
+    // whether or not anything has happened. This counts how often it changes
+    // its mind for a reason: a new receiver is warranted only if it is lower
+    // than the one being abandoned by more than the depth of the channel the
+    // water is currently sitting in, which is the condition for the flow
+    // actually being able to climb out and go elsewhere.
+    struct DrainageAudit {
+        long long routed = 0;        // cells given a receiver
+        long long changed = 0;       // receivers different from last step
+        long long warranted = 0;     // changes that clear the channel depth
+        double abandonedDepth = 0.0; // total channel depth walked away from, m
+    };
+    const DrainageAudit& getDrainageAudit() const { return drainageAudit; }
+    void resetDrainageAudit() { drainageAudit = DrainageAudit{}; }
+
     struct RiverSample {
         float distance = 1e30f;    // metres to the channel centreline
         float width = 0.0f;        // channel width in metres
@@ -658,6 +702,12 @@ public:
     // Move that depth by one step, given how much fluvial erosion or deposition
     // happened at each cell in metres of mean column.
     void evolveChannels(const std::vector<double>& fluvial, float dt);
+
+    DrainageAudit drainageAudit;
+
+    // Geological time banked towards the next routed erosion pass.
+    float erosionDebt = 0.0f;
+
     std::vector<int32_t> lastFlowsInto;
     std::vector<float> lastLakeDepth;
     std::vector<float> lastRoutedSurface;

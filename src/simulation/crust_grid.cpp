@@ -1827,12 +1827,18 @@ void CrustGrid::stepOnce(float millionYears) {
     }
     timings.climate = lap();
 
-    // Erosion at whichever fidelity this step length can actually resolve.
+    // Erosion at whichever fidelity this step length can actually resolve, and
+    // on its own schedule rather than the caller's.
     if (millionYears <= constants.routedErosionBelow) {
-        erodeSurface(millionYears);
+        erosionDebt += millionYears;
+        if (erosionDebt >= constants.erosionInterval ||
+            lastFlowsInto.size() != cells.size()) {
+            const float owed = erosionDebt;
+            erosionDebt = 0.0f;
+            erodeSurface(owed);
+        }
     } else {
         erodeBulk(millionYears);
-
     }
     timings.erosion = lap();
 
@@ -1879,6 +1885,22 @@ void CrustGrid::stepOnce(float millionYears) {
             lastFlowsInto.size() != cells.size()) {
             networkAge = 0.0f;
             erodeSurface(millionYears, true);
+        }
+    }
+
+    // A channel cannot be deeper than the ground it is cut into, applied here
+    // because here is the only point in the step where the ground has stopped
+    // moving.
+    //
+    // Erosion clamps it too, but isostasy and the tectonics run afterwards and
+    // move the elevations again, so a limit applied during erosion is already
+    // stale by the time anything reads it. That was invisible while erosion ran
+    // every step and each step's drift was tiny; running it on its own schedule
+    // made the drift large enough to show.
+    if (channelDepth.size() == cells.size()) {
+        for (size_t i = 0; i < cells.size(); i++) {
+            const float aboveSea = cells[i].elevation - seaLevel;
+            channelDepth[i] = std::min(channelDepth[i], std::max(0.0f, aboveSea));
         }
     }
 

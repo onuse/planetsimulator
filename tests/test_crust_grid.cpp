@@ -1743,6 +1743,145 @@ void testRiversSurviveBeingRunFast() {
           "running time quickly does not make rivers far less stable per million years");
 }
 
+void testHowMuchRewiringIsWarranted() {
+    std::printf("Whether the network changes its mind for a reason\n");
+
+    // The question that decides whether the routing needs rebuilding or
+    // replacing.
+    //
+    // Every step, every cell picks whichever neighbour is lowest. That is an
+    // argmax over near-equal numbers taken from a field that moves every step,
+    // so it will change its mind whether or not anything has happened. A change
+    // is warranted only if the new receiver is lower than the abandoned one by
+    // more than the depth of the channel the water is sitting in - otherwise
+    // the flow could not have climbed out of its own bed to get there, and the
+    // change is an artefact of recomputation rather than an event.
+    //
+    // If most changes are unwarranted, no amount of biasing a from-scratch
+    // rebuild towards its previous answer will fix it, and the network has to
+    // become state that is edited rather than output that is regenerated.
+    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+
+    const float slice = 0.02f;
+    for (int i = 0; i < 60; i++) {
+        grid.step(slice);
+    }
+
+    grid.resetDrainageAudit();
+    for (int i = 0; i < 40; i++) {
+        grid.step(slice);
+    }
+
+    const auto& audit = grid.getDrainageAudit();
+    const double changeShare =
+        audit.routed > 0 ? double(audit.changed) / audit.routed : 0.0;
+    const double warrantedShare =
+        audit.changed > 0 ? double(audit.warranted) / audit.changed : 0.0;
+
+    std::printf("    %lld routing decisions, %lld changed (%.1f%%)\n",
+                audit.routed, audit.changed, changeShare * 100.0);
+    std::printf("    %lld of those changes were warranted (%.0f%%), "
+                "mean channel abandoned %.1f m\n",
+                audit.warranted, warrantedShare * 100.0,
+                audit.changed > 0 ? audit.abandonedDepth / audit.changed : 0.0);
+
+    check(audit.routed > 0, "the routing ran");
+
+    // Recorded rather than enforced for now. This is the measurement that
+    // decides the design, and the number it reports is the case for changing
+    // it.
+    std::printf("    %s\n",
+                warrantedShare < 0.5
+                    ? "most rewiring is unwarranted: the network should be edited, not rebuilt"
+                    : "most rewiring is warranted: rebuilding is defensible");
+}
+
+void testWhetherFinerCellsSteadyTheRivers() {
+    std::printf("Whether rivers hold their size better on a finer grid\n");
+
+    // The measurement that decides whether this is a bug or a resolution.
+    //
+    // Two thirds of drainage rewiring turns out to be warranted - the water
+    // genuinely can climb out of the six metre channel it is in and go
+    // elsewhere - and a cell rewires about once per million years, which is
+    // roughly the rate at which real divides migrate seventeen kilometres. So
+    // the network may not be moving too much at all.
+    //
+    // What it is doing is moving in units that are far too large. A network
+    // fifty cells deep loses a visible fraction of itself every time one
+    // headwater switches, because one cell is a large share of fifty. On a
+    // finer grid the same physical divide migration moves the same amount of
+    // ground and a much smaller share of the river.
+    //
+    // If that is right, the swing falls with resolution while the rewiring rate
+    // stays put, and no amount of work on the routing will help.
+    struct Result {
+        int level;
+        double swingPerMy;
+        double changeShare;
+        float typicalBiggest;
+    };
+    Result results[2];
+
+    const int levels[] = {6, 7};
+    for (int variant = 0; variant < 2; variant++) {
+        simulation::CrustGrid grid(1000000.0f, 61, levels[variant], 12);
+
+        const float slice = 0.05f;
+        for (int i = 0; i < 20; i++) {
+            grid.step(slice);
+        }
+
+        grid.resetDrainageAudit();
+        float previous = 0.0f;
+        double swingSum = 0.0, biggestSum = 0.0;
+        int samples = 0;
+
+        const int steps = 40;
+        for (int i = 0; i < steps; i++) {
+            grid.step(slice);
+            auto snapshot = grid.publishSnapshot();
+            float biggest = 0.0f;
+            for (float flow : snapshot->discharge) {
+                biggest = std::max(biggest, flow);
+            }
+            if (previous > 0.0f && biggest > 0.0f) {
+                swingSum += std::fabs(biggest - previous) / std::max(previous, 1.0f);
+                biggestSum += biggest;
+                samples++;
+            }
+            previous = biggest;
+        }
+
+        const auto& audit = grid.getDrainageAudit();
+        results[variant] = {
+            levels[variant],
+            samples > 0 ? (swingSum / samples) / slice : 0.0,
+            audit.routed > 0 ? double(audit.changed) / audit.routed : 0.0,
+            samples > 0 ? static_cast<float>(biggestSum / samples) : 0.0f};
+
+        std::printf("    level %d: largest catchment %.0f cells, moves %.0f%% per My, "
+                    "%.1f%% of cells rewire per step\n",
+                    levels[variant], results[variant].typicalBiggest,
+                    results[variant].swingPerMy * 100.0,
+                    results[variant].changeShare * 100.0);
+    }
+
+    const double improvement =
+        results[0].swingPerMy > 0.0 ? results[1].swingPerMy / results[0].swingPerMy : 1.0;
+    std::printf("    finer grid swings %.0f%% as much, and rewires %.0fx as often per cell\n",
+                improvement * 100.0,
+                results[0].changeShare > 0.0 ? results[1].changeShare / results[0].changeShare
+                                             : 0.0);
+
+    check(results[0].swingPerMy > 0.0 && results[1].swingPerMy > 0.0,
+          "both grids produced rivers to measure");
+    std::printf("    %s\n",
+                improvement < 0.7
+                    ? "resolution steadies the rivers: this is a grid problem, not a routing one"
+                    : "resolution does not steady the rivers: the instability is in the routing");
+}
+
 void testDrainageReorganises() {
     std::printf("Whether drainage networks reorganise on their own\n");
     simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
@@ -2157,6 +2296,8 @@ int main() {
     testAbandonedValleysSurviveTheRiver();
     testDividesDoNotFlap();
     testRiversSurviveBeingRunFast();
+    testHowMuchRewiringIsWarranted();
+    testWhetherFinerCellsSteadyTheRivers();
     testDrainageReorganises();
     testWhatMakesTheGroundJump();
     testResolutionChoice();

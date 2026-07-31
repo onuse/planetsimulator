@@ -236,6 +236,21 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
             }
         }
 
+        // Audit only - this changes nothing about the routing.
+        if (best >= 0) {
+            drainageAudit.routed++;
+            const int was = haveHistory ? lastFlowsInto[i] : -1;
+            if (was >= 0 && was < n && was != best) {
+                drainageAudit.changed++;
+                const float depth =
+                    channelDepth.size() == static_cast<size_t>(n) ? channelDepth[i] : 0.0f;
+                if (filled[was] - filled[best] > depth) {
+                    drainageAudit.warranted++;
+                }
+                drainageAudit.abandonedDepth += depth;
+            }
+        }
+
         receiver[i] = best;
 
         // The slope that drives incision is the real one, not the one the
