@@ -348,8 +348,9 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, core::Camera* ca
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
     ubo.time = time;
     
-    // Simple directional light (sun)
-    ubo.lightDir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.3f));
+    // The sun. A fixed direction unless something has asked for another one.
+    ubo.lightDir = sunOverridden ? glm::normalize(sunOverrideDirection)
+                                 : glm::normalize(glm::vec3(-0.5f, -1.0f, -0.3f));
 
     // How much ground one pixel covers, per metre of distance. The shader
     // multiplies by the distance to a fragment to find out whether a detail is
@@ -526,6 +527,29 @@ void VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat forma
     }
     
     vkBindImageMemory(device, image, imageMemory, 0);
+}
+
+void VulkanRenderer::setPanelsVisible(bool visible) {
+    imguiManager.uiState.showStats = visible;
+    imguiManager.uiState.showCamera = visible;
+    imguiManager.uiState.showSimulation = visible;
+    if (!visible) {
+        imguiManager.uiState.showSettings = false;
+        imguiManager.uiState.showConsole = false;
+        imguiManager.uiState.showDemo = false;
+    }
+}
+
+bool VulkanRenderer::arePanelsVisible() const {
+    return imguiManager.uiState.showStats || imguiManager.uiState.showCamera ||
+           imguiManager.uiState.showSimulation;
+}
+
+void VulkanRenderer::setSunOverride(bool enabled, const glm::vec3& direction) {
+    sunOverridden = enabled;
+    if (enabled && glm::length(direction) > 1e-6f) {
+        sunOverrideDirection = direction;
+    }
 }
 
 } // namespace rendering

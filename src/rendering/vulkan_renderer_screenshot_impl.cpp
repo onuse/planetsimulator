@@ -114,18 +114,25 @@ bool VulkanRenderer::captureScreenshot(const std::string& filename) {
     
     vkUnmapMemory(device, stagingBufferMemory);
     
-    // Get executable directory and create screenshot_dev there
-    std::filesystem::path exePath = std::filesystem::current_path();
-    std::filesystem::path screenshotDir = exePath / "screenshot_dev";
-    
-    // Create directory if it doesn't exist
-    if (!std::filesystem::exists(screenshotDir)) {
-        std::filesystem::create_directories(screenshotDir);
-        std::cout << "Created screenshot directory: " << screenshotDir.string() << std::endl;
+    // A bare name goes to the usual place; anything with a directory in it
+    // means what it says.
+    //
+    // This used to prepend screenshot_dev unconditionally, which is right for
+    // the automatic captures that only ever pass a filename and wrong for a
+    // caller that has chosen where the picture should go - it silently turned
+    // an explicit path into a nested one and failed on the directory that did
+    // not exist.
+    const std::filesystem::path requested(filename);
+    std::filesystem::path fullPath = requested.has_parent_path() || requested.is_absolute()
+                                         ? requested
+                                         : std::filesystem::current_path() /
+                                               "screenshot_dev" / requested;
+
+    const std::filesystem::path parent = fullPath.parent_path();
+    if (!parent.empty() && !std::filesystem::exists(parent)) {
+        std::error_code created;
+        std::filesystem::create_directories(parent, created);
     }
-    
-    // Save to file using stb_image_write
-    std::filesystem::path fullPath = screenshotDir / filename;
     int result = stbi_write_png(fullPath.string().c_str(), swapChainExtent.width, swapChainExtent.height,
                                4, pixels.data(), swapChainExtent.width * 4);
     

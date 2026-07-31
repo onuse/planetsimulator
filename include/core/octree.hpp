@@ -179,6 +179,23 @@ public:
     // Wall-clock time per frame the simulation may spend. Everything left over
     // is carried to the next frame rather than stalling the renderer.
     void setSimulationBudgetMs(float ms) { simulationBudgetMs = ms; }
+
+    // Run exactly this much geological time, as fast as the machine allows,
+    // regardless of the requested rate.
+    //
+    // The rate is a wall-clock pace, which is the right control for watching a
+    // planet and the wrong one for measuring it: how much geology happened
+    // between two observations then depends on frame rate and on how busy the
+    // machine was. Anything of the form "what does this look like two million
+    // years from now" needs the amount of time to be the thing that is
+    // specified and the wall clock to be whatever it turns out to be.
+    //
+    // Does not block. The caller keeps rendering and watches advanceComplete(),
+    // so the window stays alive through a long run and can still be
+    // photographed part way through.
+    void requestAdvance(float millionYears);
+    bool advanceComplete() const { return advanceRemaining.load() <= 0.0f; }
+    float advanceOutstanding() const { return advanceRemaining.load(); }
     
 private:
     float radius;
@@ -217,6 +234,9 @@ private:
     std::shared_ptr<const simulation::CrustGrid::Snapshot> renderSnapshot;
     std::atomic<float> atomicSimulationRate{1.0f};
     std::atomic<float> atomicAchievedRate{0.0f};
+
+    // Geological time still owed to an explicit request, in My.
+    std::atomic<float> advanceRemaining{0.0f};
 
     void startSimulationThread();
     void stopSimulationThread();

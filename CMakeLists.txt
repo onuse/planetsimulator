@@ -59,6 +59,8 @@ add_library(planetsim STATIC
     src/core/density_field.cpp
     src/core/material_table.cpp
     src/core/octree.cpp
+    src/tools/control_server.cpp
+    src/tools/control_commands.cpp
     src/utils/parallel.cpp
     src/simulation/climate.cpp
     src/simulation/crust_grid.cpp
@@ -68,6 +70,10 @@ add_library(planetsim STATIC
 )
 target_include_directories(planetsim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(planetsim PUBLIC glm::glm Threads::Threads)
+
+if(WIN32)
+    target_link_libraries(planetsim PUBLIC ws2_32)
+endif()
 
 if(WIN32)
     target_compile_definitions(planetsim PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)

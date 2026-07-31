@@ -281,6 +281,20 @@ void Camera::setMode(CameraMode newMode) {
 // Planet-Aware Functions
 // ============================================================================
 
+void Camera::viewFrom(const glm::vec3& direction, float planetRadius, float altitude) {
+    const glm::vec3 outward = glm::normalize(direction);
+
+    orbitCenter = glm::vec3(0.0f);
+    orbitDistance = planetRadius + std::max(altitude, 1.0f);
+    orbitRotation = orbitRotationLookingFrom(outward);
+
+    setMode(CameraMode::Orbital);
+    updateOrbitalPosition();
+    autoAdjustClipPlanes(std::max(altitude, 1.0f), planetRadius);
+    autoAdjustSpeed(std::max(altitude, 1.0f));
+    updateViewMatrix();
+}
+
 void Camera::alignToPlanetSurface(const glm::vec3& planetCenter, float /*planetRadius*/) {
     glm::vec3 toPlanet = position - planetCenter;
     float distance = glm::length(toPlanet);

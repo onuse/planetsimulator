@@ -11,6 +11,8 @@
 #include "core/octree.hpp"
 #include "rendering/vulkan_renderer.hpp"
 #include "core/camera.hpp"
+#include "tools/control_server.hpp"
+#include "tools/control_commands.hpp"
 #include "utils/log.hpp"
 
 // Global flag for clean shutdown
@@ -34,6 +36,7 @@ struct Config {
     int width = 1280;            // Window width
     int height = 720;            // Window height
     float autoTerminate = 0;     // Auto-terminate after N seconds (0 = disabled)
+    unsigned short controlPort = 0; // Control channel port (0 = disabled)
     float screenshotInterval = 0; // Screenshot interval in seconds (0 = disabled)
     bool quiet = false;          // Suppress verbose output
     bool vertexDump = false;     // Dump vertex data on exit for debugging
@@ -74,6 +77,8 @@ Config parseArgs(int argc, char** argv) {
             config.height = std::stoi(argv[++i]);
         } else if (arg == "-auto-terminate" && i + 1 < argc) {
             config.autoTerminate = std::stof(argv[++i]);
+        } else if (arg == "-control" && i + 1 < argc) {
+            config.controlPort = static_cast<unsigned short>(std::stoi(argv[++i]));
         } else if (arg == "-screenshot-interval" && i + 1 < argc) {
             config.screenshotInterval = std::stof(argv[++i]);
         } else if (arg == "-quiet") {
@@ -101,6 +106,7 @@ Config parseArgs(int argc, char** argv) {
                       << "  -width <pixels>         Window width (default: 1280)\n"
                       << "  -height <pixels>        Window height (default: 720)\n"
                       << "  -auto-terminate <sec>   Exit after N seconds (default: 0 = disabled)\n"
+                      << "  -control <port>         Accept commands on 127.0.0.1:<port>\n"
                       << "  -screenshot-interval <sec> Screenshot interval (default: 0 = disabled)\n"
                       << "  -quiet                  Suppress verbose output\n"
                       << "  -vertex-dump            Dump vertex data on exit for debugging\n"
@@ -147,6 +153,10 @@ public:
         init();
         if (!config.quiet) {
             std::cout << "Initialization complete, entering main loop...\n" << std::flush;
+        }
+
+        if (config.controlPort != 0) {
+            startControlChannel();
         }
         
         // Main loop
@@ -224,6 +234,9 @@ public:
                 }
             }
             
+            // Commands, between frames, where everything is safe to touch.
+            pumpControlChannel();
+
             // Frame counter
             frameCount++;
             // A single status line every few seconds. This used to fire on a
@@ -247,6 +260,14 @@ private:
     Config config;
     octree::OctreePlanet planet;
     rendering::VulkanRenderer renderer;
+
+    // The control channel. Two objects on purpose: one moves bytes, the other
+    // decides what the words mean. Neither knows about the other, and the only
+    // thing that knows about both is the loop below.
+    tools::ControlServer control;
+    tools::ControlContext controlContext;
+    std::unique_ptr<tools::ControlCommands> commands;
+    bool awaitingAdvance = false;
     core::Camera camera;
     
     void init() {
@@ -547,6 +568,67 @@ private:
         }
     }
     
+    void startControlChannel() {
+        controlContext.planet = &planet;
+        controlContext.camera = &camera;
+        controlContext.screenshot = [this](const std::string& path) {
+            return renderer.captureScreenshot(path);
+        };
+        controlContext.setPanelsVisible = [this](bool visible) {
+            renderer.setPanelsVisible(visible);
+        };
+        controlContext.panelsVisible = [this]() { return renderer.arePanelsVisible(); };
+        controlContext.setSunOverride = [this](bool enabled, const glm::vec3& direction) {
+            renderer.setSunOverride(enabled, direction);
+        };
+
+        commands = std::make_unique<tools::ControlCommands>(controlContext);
+        control.start(config.controlPort);
+    }
+
+    void pumpControlChannel() {
+        if (!control.isRunning() || !commands) {
+            return;
+        }
+
+        // An outstanding advance owes a reply, and nothing else is handled
+        // until it is paid. Commands are a sequence and the caller is entitled
+        // to assume that when "advance two million years" answers, two million
+        // years have happened.
+        if (awaitingAdvance) {
+            if (planet.advanceComplete()) {
+                awaitingAdvance = false;
+                control.reply(commands->completionReply());
+            }
+            return;
+        }
+
+        std::string line;
+        while (control.poll(line)) {
+            if (line == "quit") {
+                control.reply("{\"ok\":true,\"quitting\":true}");
+                config.autoTerminate = 0.0001f;
+                return;
+            }
+
+            bool deferred = false;
+            const std::string answer = commands->dispatch(line, deferred);
+            if (deferred) {
+                awaitingAdvance = true;
+                return;
+            }
+            control.reply(answer);
+        }
+
+        // The light is locked to the view, so it has to be recomputed whenever
+        // the view moves - which is every frame the camera is in motion, not
+        // only when a command asks for it.
+        if (controlContext.sunFollowsCamera) {
+            bool ignored = false;
+            commands->dispatch("sun camera", ignored);
+        }
+    }
+
     void takeScreenshot(float realTime, float simTime) {
         // Format: screenshot_Xs_YMy.png where X is real time, Y is simulation time in million years
         char filename[256];

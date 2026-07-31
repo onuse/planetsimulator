@@ -72,6 +72,14 @@ public:
     bool pickSphere(const glm::vec2& pixel, float radius, glm::vec3& outDirection) const;
 
     // Planet-aware functions
+    // Put the camera directly above a point on the sphere, looking down at it.
+    //
+    // Everything else that moves the camera is relative - orbit by this much,
+    // zoom by that much - which is right for a hand on a mouse and useless for
+    // "show me the mouth of the largest river". This is the absolute form, and
+    // it is what makes a view reproducible from one run to the next.
+    void viewFrom(const glm::vec3& direction, float planetRadius, float altitude);
+
     void alignToPlanetSurface(const glm::vec3& planetCenter, float planetRadius);
     void clampToMinimumAltitude(const glm::vec3& planetCenter, float planetRadius, float minAltitude);
     float getAltitude(const glm::vec3& planetCenter, float planetRadius) const;

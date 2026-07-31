@@ -135,3 +135,6 @@ shaders/nul*
 shaders/[0-9]
 cw.txt
 app.txt
+ctl.log
+ctl.err
+*.csv

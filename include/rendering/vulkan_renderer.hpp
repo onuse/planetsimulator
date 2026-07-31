@@ -150,6 +150,18 @@ public:
     
     // Screenshot support
     bool captureScreenshot(const std::string& filename);
+
+    // The panels, so they can be got out of the way. A screenshot with three
+    // debug windows across it is mostly debug windows.
+    void setPanelsVisible(bool visible);
+    bool arePanelsVisible() const;
+
+    // Where the light comes from, when something other than the default is
+    // wanted - looking at the night side, or raking the terrain at a low angle
+    // so that relief actually reads. Rendering only: the climate model takes
+    // its insolation from latitude and never consults this, so moving the light
+    // cannot change the planet being looked at.
+    void setSunOverride(bool enabled, const glm::vec3& direction);
     
     // Debug support
     void dumpVertexData();  // Dump vertex data for debugging
@@ -397,6 +409,9 @@ private:
     
     // ImGui manager
     ImGuiManager imguiManager;
+
+    bool sunOverridden = false;
+    glm::vec3 sunOverrideDirection = glm::vec3(0.0f, -1.0f, 0.0f);
     
     // Current camera (for debug display)
     core::Camera* currentCamera = nullptr;

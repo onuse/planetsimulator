@@ -471,6 +471,34 @@ void OctreePlanet::startSimulationThread() {
         // after each step, and sleeps if it is running ahead of the requested
         // pace. The renderer never waits for it and never touches the grid.
         while (simulationRunning.load()) {
+            // An explicit request outranks the rate, and ignores pause. This is
+            // measurement rather than playback: the point is to land on an
+            // exact amount of geological time, so it runs flat out and the
+            // slice is whatever the physics allows rather than whatever the
+            // wall clock wants.
+            const float owed = advanceRemaining.load();
+            if (owed > 0.0f) {
+                const float stable = crust->maxStableTimestep();
+                const float slice = std::min(owed, std::max(stable, 1e-9f));
+
+                crust->step(slice);
+                auto stepped = crust->publishSnapshot();
+                {
+                    std::lock_guard<std::mutex> lock(snapshotMutex);
+                    publishedSnapshot = std::move(stepped);
+                }
+
+                // Subtracting the slice rather than storing the remainder, so
+                // that a request arriving mid-advance adds to the work instead
+                // of silently replacing it.
+                float left = advanceRemaining.load() - slice;
+                if (left < 1e-7f) {
+                    left = 0.0f;
+                }
+                advanceRemaining.store(left);
+                continue;
+            }
+
             const float rate = atomicSimulationRate.load();
 
             // Paused means paused.
@@ -536,6 +564,13 @@ void OctreePlanet::stopSimulationThread() {
     if (simulationThread.joinable()) {
         simulationThread.join();
     }
+}
+
+void OctreePlanet::requestAdvance(float millionYears) {
+    if (!crust || millionYears <= 0.0f) {
+        return;
+    }
+    advanceRemaining.store(advanceRemaining.load() + millionYears);
 }
 
 void OctreePlanet::update(float deltaTime) {
