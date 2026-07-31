@@ -1506,6 +1506,243 @@ void testAbandonedValleysSurviveTheRiver() {
     check(retained > 0.6f, "an abandoned valley is still mostly there");
 }
 
+void testDividesDoNotFlap() {
+    std::printf("Whether drainage divides settle or oscillate\n");
+
+    // Capture is supposed to be a one-way event. Once a stream cuts below its
+    // neighbour and takes its headwaters, the neighbour cannot take them back
+    // without cutting lower still - so a divide moves, stays moved, and the
+    // catchment it handed over stays handed over.
+    //
+    // What the largest river actually does is gain and lose half its catchment
+    // repeatedly without moving anywhere, which is a divide flapping rather
+    // than migrating. This separates the two: a receiver change that goes back
+    // to where it was is an oscillation, and a receiver change that does not is
+    // reorganisation. Only the first is a bug.
+    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+
+    const float slice = 0.02f;
+    for (int i = 0; i < 60; i++) {
+        grid.step(slice);
+    }
+
+    const int n = static_cast<int>(grid.getCells().size());
+    std::vector<int> previous(n, -2);
+    std::vector<int> beforeThat(n, -2);
+    std::vector<double> dischargeSum(n, 0.0);
+
+    long long changes = 0;
+    long long reversals = 0;
+
+    // By how much the new receiver actually beat the old one. If a drainage
+    // network is rewiring because one neighbour is genuinely lower, the margin
+    // is metres of relief; if it is rewiring because two neighbours are level
+    // to within the noise of the last erosion step, the margin is centimetres
+    // and the choice is a coin toss that happens to be made afresh every step.
+    long long tinyMargin = 0;
+    double marginSum = 0.0;
+
+    // How much of the churn is inside filled depressions.
+    //
+    // A lake surface is perfectly flat by construction - the fill puts every
+    // cell in the basin at exactly the spill height - so steepest descent has
+    // nothing to choose between and the receiver comes from whichever way the
+    // flood happened to arrive. That order is re-derived from scratch every
+    // step, and a tie broken arbitrarily is a tie broken differently each time.
+    long long lakeChanges = 0;
+
+    // What any of this is for.
+    //
+    // Counting receiver changes is a proxy. The symptom is that the largest
+    // river on the planet gains and loses half its catchment while staying
+    // exactly where it is, so that is the number to judge by: how much the
+    // biggest catchment moves from one step to the next, as a fraction of
+    // itself. A drainage network that has settled should change size slowly
+    // even while individual headwaters are still being traded.
+    float previousBiggest = 0.0f;
+    double swingSum = 0.0;
+    float worstSwing = 0.0f;
+    int swingSamples = 0;
+    long long headwaterChanges = 0, headwaterReversals = 0;
+    long long trunkChanges = 0, trunkReversals = 0;
+
+    const int steps = 40;
+    for (int step = 0; step < steps; step++) {
+        grid.step(slice);
+        auto snapshot = grid.publishSnapshot();
+        if (static_cast<int>(snapshot->flowsInto.size()) != n) {
+            continue;
+        }
+
+        float biggest = 0.0f;
+        for (float flow : snapshot->discharge) {
+            biggest = std::max(biggest, flow);
+        }
+        if (previousBiggest > 0.0f && biggest > 0.0f) {
+            const float swing = std::fabs(biggest - previousBiggest) /
+                                std::max(previousBiggest, 1.0f);
+            swingSum += swing;
+            worstSwing = std::max(worstSwing, swing);
+            swingSamples++;
+        }
+        previousBiggest = biggest;
+
+        for (int i = 0; i < n; i++) {
+            const int now = snapshot->flowsInto[i];
+            const float flow = i < static_cast<int>(snapshot->discharge.size())
+                                   ? snapshot->discharge[i]
+                                   : 0.0f;
+            dischargeSum[i] += flow;
+
+            if (previous[i] != -2 && now != previous[i]) {
+                changes++;
+                if (i < static_cast<int>(snapshot->lakeDepth.size()) &&
+                    snapshot->lakeDepth[i] > 0.0f) {
+                    lakeChanges++;
+                }
+                // Back to the receiver it had before the last change: the
+                // signature of a divide that cannot make up its mind.
+                const bool wentBack = now == beforeThat[i];
+                if (wentBack) {
+                    reversals++;
+                }
+
+                // How much lower the new receiver is than the one abandoned,
+                // on the surface the routing actually saw.
+                if (previous[i] >= 0 && now >= 0 &&
+                    previous[i] < n && now < n &&
+                    static_cast<int>(snapshot->routedSurface.size()) == n) {
+                    const float margin =
+                        snapshot->routedSurface[previous[i]] - snapshot->routedSurface[now];
+                    marginSum += std::fabs(margin);
+                    if (std::fabs(margin) < 1.0f) {
+                        tinyMargin++;
+                    }
+                }
+                if (flow < 10.0f) {
+                    headwaterChanges++;
+                    if (wentBack) headwaterReversals++;
+                } else {
+                    trunkChanges++;
+                    if (wentBack) trunkReversals++;
+                }
+                beforeThat[i] = previous[i];
+            }
+            previous[i] = now;
+        }
+    }
+
+    const double reversalShare = changes > 0 ? double(reversals) / changes : 0.0;
+    std::printf("    %lld receiver changes over %.1f My, %lld of them reversals (%.0f%%)\n",
+                changes, steps * slice, reversals, reversalShare * 100.0);
+    std::printf("    headwaters: %lld changes, %.0f%% reversals\n",
+                headwaterChanges,
+                headwaterChanges > 0 ? 100.0 * headwaterReversals / headwaterChanges : 0.0);
+    std::printf("    trunks:     %lld changes, %.0f%% reversals\n",
+                trunkChanges,
+                trunkChanges > 0 ? 100.0 * trunkReversals / trunkChanges : 0.0);
+
+    std::printf("    %lld changes (%.0f%%) are inside filled depressions\n",
+                lakeChanges, changes > 0 ? 100.0 * lakeChanges / changes : 0.0);
+    std::printf("    mean margin %.2f m, %lld changes (%.0f%%) decided by under a metre\n",
+                changes > 0 ? marginSum / changes : 0.0, tinyMargin,
+                changes > 0 ? 100.0 * tinyMargin / changes : 0.0);
+
+    const double meanSwing = swingSamples > 0 ? swingSum / swingSamples : 0.0;
+    std::printf("    largest catchment moves %.0f%% per step on average, worst %.0f%%\n",
+                meanSwing * 100.0, worstSwing * 100.0);
+
+    check(changes > 0, "the network does change, so there is something to judge");
+    check(meanSwing < 0.12, "the biggest river keeps its size from one step to the next");
+
+    // A network where most changes undo the previous one is not reorganising,
+    // it is vibrating. Some reversals are legitimate - ground genuinely moves
+    // back and forth as plates and isostasy work - but they should be the
+    // minority.
+    check(reversalShare < 0.35, "drainage changes mostly stick rather than undoing themselves");
+}
+
+void testRiversSurviveBeingRunFast() {
+    std::printf("Whether a river keeps its size when time runs quickly\n");
+
+    // The regime nobody was measuring.
+    //
+    // Every drainage measurement so far has used the landscape timestep, where
+    // the routed model runs every step and the network is maintained
+    // continuously. That is not the setting the planet is normally watched at.
+    // At a million years a second the steps are large, erosion is the bulk
+    // approximation, and the network is rebuilt from scratch on an interval -
+    // so between one rebuild and the next, two million years of plate motion
+    // and denudation happen to a network that is not being updated, and the
+    // rebuild lands on terrain that has moved underneath it.
+    //
+    // If the size of the largest river jumps at each rebuild, that is a river
+    // visibly appearing and disappearing, which is the complaint.
+    struct Result {
+        const char* name;
+        float slice;
+        double meanSwing;
+        float worstSwing;
+    };
+
+    const float slices[] = {0.02f, 0.5f};
+    const char* names[] = {"landscape", "geological"};
+    Result results[2];
+
+    for (int variant = 0; variant < 2; variant++) {
+        simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+        const float slice = slices[variant];
+
+        // The same amount of simulated time either way, so the two are
+        // comparable as histories rather than as step counts.
+        const int warmup = static_cast<int>(1.2f / slice);
+        for (int i = 0; i < warmup; i++) {
+            grid.step(slice);
+        }
+
+        float previous = 0.0f;
+        double swingSum = 0.0;
+        float worst = 0.0f;
+        int samples = 0;
+
+        const int steps = static_cast<int>(4.0f / slice);
+        for (int i = 0; i < steps; i++) {
+            grid.step(slice);
+            auto snapshot = grid.publishSnapshot();
+            float biggest = 0.0f;
+            for (float flow : snapshot->discharge) {
+                biggest = std::max(biggest, flow);
+            }
+            if (previous > 0.0f && biggest > 0.0f) {
+                const float swing = std::fabs(biggest - previous) / std::max(previous, 1.0f);
+                swingSum += swing;
+                worst = std::max(worst, swing);
+                samples++;
+            }
+            previous = biggest;
+        }
+
+        results[variant] = {names[variant], slice,
+                            samples > 0 ? swingSum / samples : 0.0, worst};
+        std::printf("    %-11s %.2f My steps: largest catchment moves %.0f%% per step, "
+                    "worst %.0f%%\n",
+                    names[variant], slice, results[variant].meanSwing * 100.0,
+                    worst * 100.0);
+    }
+
+    // Judged per million years rather than per step, because the two regimes
+    // take very different numbers of steps to cover the same history and a
+    // per-step figure would flatter whichever takes more of them.
+    const double landscapePerMy = results[0].meanSwing / results[0].slice;
+    const double geologicalPerMy = results[1].meanSwing / results[1].slice;
+    std::printf("    per million years: landscape %.0f%%, geological %.0f%%\n",
+                landscapePerMy * 100.0, geologicalPerMy * 100.0);
+
+    check(results[0].meanSwing > 0.0, "there is a river to measure");
+    check(geologicalPerMy < landscapePerMy * 3.0,
+          "running time quickly does not make rivers far less stable per million years");
+}
+
 void testDrainageReorganises() {
     std::printf("Whether drainage networks reorganise on their own\n");
     simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
@@ -1918,6 +2155,8 @@ int main() {
     testRiversComeInSizes();
     testChannelsCarveAndPersist();
     testAbandonedValleysSurviveTheRiver();
+    testDividesDoNotFlap();
+    testRiversSurviveBeingRunFast();
     testDrainageReorganises();
     testWhatMakesTheGroundJump();
     testResolutionChoice();

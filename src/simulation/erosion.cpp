@@ -83,6 +83,11 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     std::vector<int> popOrder;
     popOrder.reserve(n);
 
+    // When each cell was reached, as a position in the flood. Any receiver with
+    // a smaller number was settled earlier, which is what makes following
+    // receivers downstream guaranteed to terminate.
+    std::vector<int> popIndex(n, -1);
+
     using Entry = std::pair<float, int>;   // (level, cell)
     std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> queue;
 
@@ -104,6 +109,7 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     while (!queue.empty()) {
         const auto [level, cell] = queue.top();
         queue.pop();
+        popIndex[cell] = static_cast<int>(popOrder.size());
         popOrder.push_back(cell);
         for (int m = 0; m < neighbourCount(cell); m++) {
             const int j = neighbourAt(cell, m);
@@ -188,10 +194,46 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
             }
         }
 
-        // Nothing lower anywhere: this cell is inside a filled basin, and the
-        // flood already worked out the way out of it.
-        if (best < 0 && spillTo[i] >= 0) {
-            best = spillTo[i];
+        // Nothing lower anywhere: this cell is inside a filled basin.
+        //
+        // A lake surface is flat by construction - the fill puts every cell in
+        // the basin at exactly the spill height - so there is no lower
+        // neighbour and nothing in the topography to choose between them. The
+        // flood's own path out is a correct answer, but it is not a stable one:
+        // it comes from the order a priority queue happened to pop cells whose
+        // keys are all equal, and that order is re-derived from scratch every
+        // step. Half of every drainage change on the planet was this, a tie
+        // broken differently each time on ground that had not moved.
+        //
+        // Where the surface says nothing, the previous answer stands. Water
+        // crossing a lake keeps the course it had until the lake itself
+        // changes, which is both the stable choice and the physical one - a
+        // current across still water does not rearrange itself for no reason.
+        //
+        // Only if that course still leads outward. The flood settles cells in
+        // order and a receiver settled earlier is nearer the outlet, so
+        // requiring the old receiver to have been reached before this cell is
+        // exactly the condition that stops a remembered path from closing into
+        // a ring.
+        if (best < 0) {
+            const int previous = haveHistory ? lastFlowsInto[i] : -1;
+            const bool stillLeadsOut =
+                previous >= 0 && previous < n && popIndex[previous] >= 0 &&
+                popIndex[i] >= 0 && popIndex[previous] < popIndex[i] &&
+                filled[previous] <= filled[i];
+
+            if (stillLeadsOut) {
+                bool adjacent = false;
+                for (int m = 0; m < neighbourCount(i) && !adjacent; m++) {
+                    adjacent = neighbourAt(i, m) == previous;
+                }
+                if (adjacent) {
+                    best = previous;
+                }
+            }
+            if (best < 0 && spillTo[i] >= 0) {
+                best = spillTo[i];
+            }
         }
 
         receiver[i] = best;
@@ -452,7 +494,12 @@ void CrustGrid::evolveChannels(const std::vector<double>& fluvial, float dt) {
 
     for (int i = 0; i < n; i++) {
         const float catchments = lastDischarge[i];
-        const bool flowing = catchments >= k.channelThreshold;
+
+        // Any water at all cuts something, and what it cuts is remembered. The
+        // threshold decides where a channel is worth drawing, which is a
+        // question about pixels; using it here made it a question about
+        // physics, and left every headwater with no memory of its own course.
+        const bool flowing = catchments > 0.0f && lastFlowsInto[i] >= 0;
 
         // Nothing here, and nothing to remember.
         if (!flowing && channelDepth[i] <= 0.0f) {
