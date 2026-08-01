@@ -293,6 +293,43 @@ void CrustGrid::erodeSurface(float dt, bool networkOnly) {
     // ------------------------------------------------------------------
     // Keep the network. This is the only place it exists, and it is a river
     // system: where the water collects, and which way it goes.
+    // Which upstream neighbour brings the most water, so the channel can be
+    // placed on the line it actually takes through the cell rather than at the
+    // centre. One pass over the receivers gives it for every cell at once.
+    std::vector<int> dominantUpstream(n, -1);
+    std::vector<double> largestInflow(n, -1.0);
+    for (int i = 0; i < n; i++) {
+        const int d = receiver[i];
+        if (d >= 0 && drainage[i] > largestInflow[d]) {
+            largestInflow[d] = drainage[i];
+            dominantUpstream[d] = i;
+        }
+    }
+
+    lastChannelPoint.resize(n);
+    for (int i = 0; i < n; i++) {
+        const glm::vec3 here = cells[i].position;
+        const int down = receiver[i];
+        const int up = dominantUpstream[i];
+
+        if (down < 0) {
+            lastChannelPoint[i] = here;
+            continue;
+        }
+
+        // Midway between where the water comes in and where it leaves.
+        //
+        // With flow passing straight through, the two neighbours are opposite
+        // and this lands back on the centre, which is right. With a bend, the
+        // average of the two leans towards the inside of the turn and the
+        // channel is placed there, which is also right - a river takes the
+        // short way round a corner. The displacement is a quarter of a cell at
+        // most, so the point cannot leave the cell it belongs to.
+        const glm::vec3 exit = cells[down].position;
+        const glm::vec3 entry = up >= 0 ? cells[up].position : here;
+        lastChannelPoint[i] = glm::normalize(here * 0.5f + (entry + exit) * 0.25f);
+    }
+
     lastDischarge.resize(n);
     lastFlowsInto.resize(n);
     lastLakeDepth.resize(n);

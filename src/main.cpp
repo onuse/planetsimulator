@@ -581,6 +581,10 @@ private:
         controlContext.setSunOverride = [this](bool enabled, const glm::vec3& direction) {
             renderer.setSunOverride(enabled, direction);
         };
+        controlContext.setCloudsVisible = [this](bool visible) {
+            renderer.setCloudsVisible(visible);
+        };
+        controlContext.cloudsVisible = [this]() { return renderer.getCloudsVisible(); };
 
         commands = std::make_unique<tools::ControlCommands>(controlContext);
         control.start(config.controlPort);

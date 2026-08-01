@@ -593,8 +593,17 @@ CrustGrid::RiverSample CrustGrid::sampleRiverGeometry(
             return;
         }
 
-        const glm::vec3 a = cellPositions[cell];
-        const glm::vec3 b = cellPositions[into];
+        // Through the sub-grid crossing points where they are known, so the
+        // river is not pinned to the lattice of cell centres.
+        const bool havePoints = snapshot.channelPoint.size() == cells.size();
+        const auto crossing = [&](int c) {
+            if (havePoints && glm::dot(snapshot.channelPoint[c], snapshot.channelPoint[c]) > 0.5f) {
+                return snapshot.channelPoint[c];
+            }
+            return cellPositions[c];
+        };
+        const glm::vec3 a = crossing(cell);
+        const glm::vec3 b = crossing(into);
         const glm::vec3 along = b - a;
         const float lengthSquared = glm::dot(along, along);
         if (lengthSquared < 1e-12f) {
@@ -1935,6 +1944,8 @@ std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
     snapshot->lakeDepth.resize(cells.size(), 0.0f);
     snapshot->channelDepth = channelDepth;
     snapshot->channelDepth.resize(cells.size(), 0.0f);
+    snapshot->channelPoint = lastChannelPoint;
+    snapshot->channelPoint.resize(cells.size(), glm::vec3(0.0f));
     snapshot->routedSurface = lastRoutedSurface;
     snapshot->routedSurface.resize(cells.size(), 0.0f);
 

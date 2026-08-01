@@ -32,6 +32,13 @@ struct ControlContext {
     // being examined. If that ever stops being true, this is where it breaks.
     std::function<void(bool enabled, const glm::vec3& direction)> setSunOverride;
 
+    // Clouds hide the ground, which is fine when watching and useless when
+    // inspecting. The panel has had a checkbox for this all along; the point of
+    // putting it here is that hiding the panels should not take the controls
+    // with it.
+    std::function<void(bool visible)> setCloudsVisible;
+    std::function<bool()> cloudsVisible;
+
     // True while the light is being held at a fixed angle to the camera rather
     // than to the planet.
     bool sunFollowsCamera = false;

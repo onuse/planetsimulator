@@ -72,7 +72,7 @@ std::string ControlCommands::help() const {
     return "{\"ok\":true,\"commands\":["
            "\"help\",\"status\",\"stats\",\"quit\","
            "\"screenshot <path>\","
-           "\"panels on|off\","
+           "\"panels on|off\",\"clouds on|off\","
            "\"camera goto <lat> <lon> <altitude_km>\",\"camera where\","
            "\"sun world <az> <el>|camera <az> <el>|off\","
            "\"sim pause|resume|rate <kyr_per_s>|advance <My>\","
@@ -355,6 +355,15 @@ std::string ControlCommands::dispatch(const std::string& line, bool& deferred) {
         const bool on = parts[1] == "on";
         ctx.setPanelsVisible(on);
         return format("{\"ok\":true,\"panels\":%s}", on ? "true" : "false");
+    }
+
+    if (verb == "clouds") {
+        if (parts.size() < 2 || !ctx.setCloudsVisible) {
+            return fail("clouds needs on or off");
+        }
+        const bool on = parts[1] == "on";
+        ctx.setCloudsVisible(on);
+        return format("{\"ok\":true,\"clouds\":%s}", on ? "true" : "false");
     }
 
     if (verb == "camera") {

@@ -529,6 +529,22 @@ public:
         // relief the grid cannot hold but the simulation still knows.
         std::vector<float> channelDepth;
 
+        // Where the channel crosses each cell, as a unit direction, rather
+        // than the cell centre.
+        //
+        // The routing can only say which neighbour a cell drains into, so the
+        // drawn river ran centre to centre and its geometry was pinned to a
+        // seventeen kilometre lattice - every bend a sixty degree corner in the
+        // same six directions, which reads as a diagram however much meander
+        // noise is laid over it. The crossing point is below the grid, but it
+        // is not unknown: a channel entering from one neighbour and leaving
+        // towards another cuts the inside of that bend, and where it cuts is
+        // decided by the two directions the simulation already knows.
+        //
+        // Derived rather than stored, so there is no second piece of state to
+        // drift out of agreement with the network it describes.
+        std::vector<glm::vec3> channelPoint;
+
         // The surface the network was routed on, in metres relative to sea
         // level: elevation with depressions filled, at the moment the routing
         // ran.
@@ -718,6 +734,9 @@ public:
     // Move that depth by one step, given how much fluvial erosion or deposition
     // happened at each cell in metres of mean column.
     void evolveChannels(const std::vector<double>& fluvial, float dt);
+
+    // Where the channel crosses each cell, worked out from the flow through it.
+    std::vector<glm::vec3> lastChannelPoint;
 
     DrainageAudit drainageAudit;
     ErosionBudget erosionBudget;
