@@ -1455,6 +1455,7 @@ void CrustGrid::reconcileCrust(float dt) {
             const float deficit = k.oceanicThickness - cell.thickness;
             if (buoyant) {
                 continentalLostToRifting += static_cast<double>(cell.thickness) * cellArea;
+                crustBudget.riftedAway += static_cast<double>(cell.thickness) * cellArea;
             }
 
             Marker fresh;
@@ -1517,7 +1518,9 @@ void CrustGrid::reconcileCrust(float dt) {
         toMantle += consumed;
         if (buoyant) {
             continentalLostToDelamination += consumed;
+            crustBudget.delaminated += consumed;
         } else {
+            crustBudget.subducted += consumed;
             arcPending[i] = static_cast<float>(consumed * k.arcProductionRatio);
         }
         cell.thickness = capacity;
@@ -1547,6 +1550,7 @@ void CrustGrid::reconcileCrust(float dt) {
 
         fromMantle += static_cast<double>(arc.volume);
         continentalCreatedByArcs += static_cast<double>(arc.volume);
+        crustBudget.arcFromMantle += static_cast<double>(arc.volume);
         cells[target].thickness += arc.volume / cellArea;
     }
 
@@ -1630,6 +1634,7 @@ void CrustGrid::resolvePlateOverlap(float dt) {
                 // single frame.
                 const double consumed = marker.consumeProportionally(marker.volume * rate);
                 subducted += consumed;
+                crustBudget.subducted += consumed;
                 arcPending[i] += static_cast<float>(consumed * k.arcProductionRatio);
             } else {
                 // Buoyant: it cannot subduct, so it docks. The ground is now
@@ -1651,6 +1656,7 @@ void CrustGrid::resolvePlateOverlap(float dt) {
         markers.push_back(arc);
         fromMantle += arc.volume;
         continentalCreatedByArcs += arc.volume;
+        crustBudget.arcFromMantle += arc.volume;
     }
 
     mantleReservoir += subducted - fromMantle;
@@ -1918,6 +1924,7 @@ void CrustGrid::stepOnce(float millionYears) {
     timings.total = std::chrono::duration<float, std::milli>(Clock::now() - stepBegan).count();
 
     erosionBudget.simulatedTime += millionYears;
+    crustBudget.simulatedTime += millionYears;
     simulationTime += millionYears;
     version++;
 }

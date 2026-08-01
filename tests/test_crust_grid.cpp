@@ -1961,6 +1961,157 @@ void testDenudationMatchesTheRealWorld() {
     check(heightChange < 0.5f, "mountains neither run away nor collapse");
 }
 
+void testContinentsDoNotDrown() {
+    std::printf("Whether the planet quietly drowns itself\n");
+
+    // Land fell from twenty-three per cent of the surface to eighteen over
+    // twenty million years while measuring something else. Extrapolated that
+    // empties the planet, and continents do not do that - erosion strips them
+    // and arc magmatism builds them back, which is why there has been dry land
+    // for four billion years.
+    //
+    // Three things could be responsible and they need separating before
+    // anything is changed: the continents could be losing volume, the ocean
+    // basins could be filling with the sediment that came off them and pushing
+    // sea level up, or the land could simply be wearing flat. They imply
+    // completely different fixes.
+    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+
+    for (int i = 0; i < 10; i++) {
+        grid.step(2.0f);
+    }
+
+    grid.resetCrustBudget();
+
+    struct Sample {
+        float time;
+        float land;
+        float seaLevel;
+        float continental;
+        float oceanic;
+        float meanElevation;
+    };
+    std::vector<Sample> history;
+
+    const float slice = 2.0f;
+    for (int block = 0; block <= 10; block++) {
+        if (block > 0) {
+            for (int i = 0; i < 5; i++) {
+                grid.step(slice);
+            }
+        }
+        const auto stats = grid.computeStats();
+        auto snapshot = grid.publishSnapshot();
+        history.push_back({grid.getSimulationTime(), stats.landFraction, snapshot->seaLevel,
+                           stats.continentalVolume, stats.oceanicVolume,
+                           stats.meanElevation});
+    }
+
+    for (const Sample& s : history) {
+        std::printf("    %6.0f My  land %5.1f%%  sea %7.0f m  continental %.4e  "
+                    "oceanic %.4e  mean %6.0f m\n",
+                    s.time, s.land * 100.0f, s.seaLevel, s.continental, s.oceanic,
+                    s.meanElevation);
+    }
+
+    const Sample& first = history.front();
+    const Sample& last = history.back();
+    const float span = last.time - first.time;
+
+    const float landChange = last.land - first.land;
+    const float seaRise = last.seaLevel - first.seaLevel;
+    const float continentalChange =
+        first.continental > 0.0f ? (last.continental - first.continental) / first.continental
+                                 : 0.0f;
+
+    std::printf("    over %.0f My: land %+.1f points, sea level %+.0f m (%.1f m/My), "
+                "continental crust %+.1f%%\n",
+                span, landChange * 100.0f, seaRise, seaRise / std::max(span, 1.0f),
+                continentalChange * 100.0f);
+
+    // Which path the crust actually took. Two guesses at this were wrong -
+    // sediment routing and the sea level budget - so the answer comes from the
+    // ledger rather than from a hypothesis.
+    const auto& budget = grid.getCrustBudget();
+    const double perMy = budget.simulatedTime > 0.0f ? 1.0 / budget.simulatedTime : 0.0;
+    std::printf("    crust per My: subducted %.3e, delaminated %.3e, rifted %.3e, "
+                "arc returned %.3e\n",
+                budget.subducted * perMy, budget.delaminated * perMy,
+                budget.riftedAway * perMy, budget.arcFromMantle * perMy);
+
+    const double destroyed = budget.subducted + budget.delaminated + budget.riftedAway;
+    const char* dominant = "subduction";
+    double worst = budget.subducted;
+    if (budget.delaminated > worst) { worst = budget.delaminated; dominant = "delamination"; }
+    if (budget.riftedAway > worst) { worst = budget.riftedAway; dominant = "rifting"; }
+    std::printf("    %.0f%% of crust destruction is %s; arcs return %.0f%% of the total\n",
+                destroyed > 0.0 ? 100.0 * worst / destroyed : 0.0, dominant,
+                destroyed > 0.0 ? 100.0 * budget.arcFromMantle / destroyed : 0.0);
+
+    // Which term is doing it.
+    std::printf("    %s\n",
+                std::fabs(continentalChange) > 0.05f
+                    ? "continental crust is being lost: the problem is the crustal budget"
+                    : "continental crust is holding: the problem is sea level or relief");
+
+    check(!history.empty(), "there is a history to judge");
+    check(last.land > 0.05f, "there is still land at the end");
+
+    // Continents survive on Earth for billions of years. Over a hundred million
+    // they should not lose a large fraction of their area.
+    check(landChange > -0.10f, "the continents are not draining away");
+}
+
+void testWhatKeepsContinentsAbove() {
+    std::printf("Whether arc production is what sets how much land there is\n");
+
+    // Continental crust falls by forty per cent over a hundred million years
+    // and then steadies, so the planet is not leaking - it is relaxing to an
+    // equilibrium, and the equilibrium is a tenth of the surface as land where
+    // Earth manages nearly a third.
+    //
+    // Erosion strips continents and arc magmatism rebuilds them, so where that
+    // balance settles is set by how much of what goes down comes back up. That
+    // ratio is the least constrained number in the model - its own comment says
+    // so - and the observed range on Earth is one to two cubic kilometres a
+    // year returned against about three subducted, which is a third to two
+    // thirds, not the quarter assumed here.
+    //
+    // Calibrating it against an outcome is legitimate in the way that guessing
+    // it is not: it is the same standing as the asthenosphere viscosity, which
+    // is set so that Earth-sized plates come out moving at the speeds we
+    // measure. But it is only legitimate if the outcome actually responds to
+    // it, which is what this checks first.
+    const float ratios[] = {0.25f, 0.5f, 0.75f};
+    float landAtEnd[3] = {0.0f, 0.0f, 0.0f};
+    float continentalAtEnd[3] = {0.0f, 0.0f, 0.0f};
+
+    for (int variant = 0; variant < 3; variant++) {
+        simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+        grid.getConstants().arcProductionRatio = ratios[variant];
+
+        for (int i = 0; i < 40; i++) {
+            grid.step(2.0f);
+        }
+
+        const auto stats = grid.computeStats();
+        landAtEnd[variant] = stats.landFraction;
+        continentalAtEnd[variant] = static_cast<float>(stats.continentalVolume);
+
+        std::printf("    arc ratio %.2f: land %.1f%% after 80 My, continental %.4e\n",
+                    ratios[variant], stats.landFraction * 100.0f, stats.continentalVolume);
+    }
+
+    const float response = landAtEnd[2] - landAtEnd[0];
+    std::printf("    tripling the return changes land by %+.1f points\n", response * 100.0f);
+
+    check(landAtEnd[0] > 0.0f, "the planet still has land at the lowest ratio");
+    std::printf("    %s\n",
+                response > 0.03f
+                    ? "land responds to arc production: this is a calibration, not a leak"
+                    : "land barely responds: something else sets the equilibrium");
+}
+
 void testDrainageReorganises() {
     std::printf("Whether drainage networks reorganise on their own\n");
     simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
@@ -2378,6 +2529,8 @@ int main() {
     testHowMuchRewiringIsWarranted();
     testWhetherFinerCellsSteadyTheRivers();
     testDenudationMatchesTheRealWorld();
+    testContinentsDoNotDrown();
+    testWhatKeepsContinentsAbove();
     testDrainageReorganises();
     testWhatMakesTheGroundJump();
     testResolutionChoice();

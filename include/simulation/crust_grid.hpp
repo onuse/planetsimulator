@@ -65,7 +65,28 @@ public:
         // shrink. The least well constrained number here - Earth's continental
         // growth is order 1-2 km^3/yr against ~3 km^3/yr subducted, but much
         // arc crust is itself recycled.
-        float arcProductionRatio = 0.25f;
+        //
+        // That range is a third to two thirds. This was a quarter, which is
+        // below the range its own comment cites, and the planet showed it:
+        // continental crust fell by forty per cent over a hundred million years
+        // and settled at a tenth of the surface as land, against Earth's near
+        // third. Arcs were returning thirteen per cent of everything the crust
+        // lost.
+        //
+        // Measured across the range before changing it, because a constant that
+        // is adjusted until the output looks right is worth nothing. Land after
+        // a hundred and twenty million years comes out at nine per cent for a
+        // quarter, fourteen and a half for a half, and fifteen and a half for
+        // three quarters - so it responds, and it saturates, which means this
+        // is what sets the equilibrium rather than merely correlating with it.
+        // At a half the continental budget roughly balances instead of draining.
+        //
+        // Calibrated, then, in the same way and with the same justification as
+        // the asthenosphere viscosity: an admittedly unconstrained quantity set
+        // so that a known outcome comes out right. The midpoint of the observed
+        // range is also the value that balances the budget, which is the only
+        // reason to trust it.
+        float arcProductionRatio = 0.5f;
 
         // Crust parcels per grid cell. More markers means finer material
         // detail and a smoother projection, at linear cost.
@@ -675,6 +696,24 @@ public:
         double deposited = 0.0;  // m^3 laid down again
         float simulatedTime = 0.0f;  // My covered by the above
     };
+    // Where crust comes from and where it goes, cumulatively, in cubic metres.
+    //
+    // Continental crust was measured draining away at forty per cent per
+    // hundred million years and two guesses at the cause were both wrong, which
+    // is what this is for. Every path that creates or destroys crust reports
+    // through it, so the question stops being which mechanism sounds most
+    // likely and becomes which number is largest.
+    struct CrustBudget {
+        double meltFromMantle = 0.0;      // new basalt at rifts and ridges
+        double arcFromMantle = 0.0;       // andesite returned above slabs
+        double subducted = 0.0;           // dense crust pulled under
+        double delaminated = 0.0;         // buoyant roots foundering
+        double riftedAway = 0.0;          // continental crust stretched to ocean
+        float simulatedTime = 0.0f;
+    };
+    const CrustBudget& getCrustBudget() const { return crustBudget; }
+    void resetCrustBudget() { crustBudget = CrustBudget{}; }
+
     const ErosionBudget& getErosionBudget() const { return erosionBudget; }
     void resetErosionBudget() { erosionBudget = ErosionBudget{}; }
 
@@ -740,6 +779,7 @@ public:
 
     DrainageAudit drainageAudit;
     ErosionBudget erosionBudget;
+    CrustBudget crustBudget;
 
     // Geological time banked towards the next routed erosion pass.
     float erosionDebt = 0.0f;

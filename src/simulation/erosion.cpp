@@ -702,22 +702,65 @@ void CrustGrid::erodeBulk(float dt) {
     // responding to the ground moving underneath it.
     evolveChannels(change, dt);
 
-    // Everything taken off the land goes to the sea floor, weighted by depth -
-    // the deeper the basin, the more room it has and the more of the load it
-    // takes.
+    // Everything taken off the land goes to the sea floor near the land it came
+    // off, not to the deepest hole on the planet.
+    //
+    // This used to weight deposition by depth alone, so the abyssal plains -
+    // the deepest water, and the largest area of it - took most of the load
+    // wherever on the planet they were. That is wrong as geography: sediment is
+    // dropped where the energy carrying it runs out, which is the shelf and the
+    // rise beside the continent it eroded from, and the deep ocean floor is
+    // sediment-starved for exactly that reason.
+    //
+    // It was also the largest hole in the crustal budget. Deep ocean floor is
+    // the crust that subducts, so posting continental rock to it is posting
+    // continental rock to the mantle, where only the arc production ratio comes
+    // back. Continental crust was draining away at nearly forty per cent per
+    // hundred million years, and this is where it went.
+    //
+    // Distance to land is measured over the cell graph, so it costs one sweep
+    // and needs no cutoff to be chosen: the weight falls off with the square of
+    // it, and the deep water next to a continent - the continental rise, which
+    // is where the sediment really goes - still wins on the depth term.
+    std::vector<int> distanceToLand(n, -1);
+    std::vector<int> frontier;
+    frontier.reserve(n);
+    for (int i = 0; i < n; i++) {
+        if (cells[i].elevation - seaLevel > 0.0f) {
+            distanceToLand[i] = 0;
+            frontier.push_back(i);
+        }
+    }
+    for (size_t head = 0; head < frontier.size(); head++) {
+        const int i = frontier[head];
+        for (int m = 0; m < neighbourCount(i); m++) {
+            const int j = neighbourAt(i, m);
+            if (distanceToLand[j] < 0) {
+                distanceToLand[j] = distanceToLand[i] + 1;
+                frontier.push_back(j);
+            }
+        }
+    }
+
+    const auto share = [&](int i) -> double {
+        const float depth = seaLevel - cells[i].elevation;
+        if (depth <= 0.0f || distanceToLand[i] < 0) {
+            return 0.0;
+        }
+        const double reach = 1.0 + static_cast<double>(distanceToLand[i]);
+        return static_cast<double>(depth) / (reach * reach);
+    };
+
     double weight = 0.0;
     for (int i = 0; i < n; i++) {
-        const float depth = seaLevel - cells[i].elevation;
-        if (depth > 0.0f) {
-            weight += depth;
-        }
+        weight += share(i);
     }
 
     if (weight > 0.0 && removed > 0.0) {
         for (int i = 0; i < n; i++) {
-            const float depth = seaLevel - cells[i].elevation;
-            if (depth > 0.0f) {
-                change[i] += (removed * (depth / weight)) / cellArea;
+            const double part = share(i);
+            if (part > 0.0) {
+                change[i] += (removed * (part / weight)) / cellArea;
             }
         }
     }
