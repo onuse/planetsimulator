@@ -1908,6 +1908,7 @@ void CrustGrid::stepOnce(float millionYears) {
     timings.gradients = lap();
     timings.total = std::chrono::duration<float, std::milli>(Clock::now() - stepBegan).count();
 
+    erosionBudget.simulatedTime += millionYears;
     simulationTime += millionYears;
     version++;
 }

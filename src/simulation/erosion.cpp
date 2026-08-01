@@ -688,6 +688,8 @@ void CrustGrid::erodeBulk(float dt) {
     applyErosionChange(change, removed, removed);
 }
 
+// Every cubic metre that moves goes through here, whichever erosion model
+// asked for it, so this is the one place that can count them.
 void CrustGrid::applyErosionChange(const std::vector<double>& change,
                                    double eroded, double deposited) {
     // Nothing to move rock into or out of until the parcels have been indexed
@@ -695,6 +697,9 @@ void CrustGrid::applyErosionChange(const std::vector<double>& change,
     if (cellMarkers.size() != cells.size() || change.size() != cells.size()) {
         return;
     }
+
+    erosionBudget.eroded += eroded;
+    erosionBudget.deposited += deposited;
 
     const Constants& k = constants;
     const int n = static_cast<int>(cells.size());

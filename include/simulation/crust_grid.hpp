@@ -646,6 +646,22 @@ public:
         long long warranted = 0;     // changes that clear the channel depth
         double abandonedDepth = 0.0; // total channel depth walked away from, m
     };
+    // How much rock erosion has moved, cumulatively, in cubic metres.
+    //
+    // Kept because a denudation rate is the one number in this whole model that
+    // can be checked against the world rather than against my judgement:
+    // continents wear down at thirty to a hundred metres per million years, and
+    // that is measured, not modelled. Everything downstream of erosion is built
+    // on the assumption that it is roughly right, and until this existed the
+    // assumption had never been tested.
+    struct ErosionBudget {
+        double eroded = 0.0;     // m^3 cut out of hillsides and channels
+        double deposited = 0.0;  // m^3 laid down again
+        float simulatedTime = 0.0f;  // My covered by the above
+    };
+    const ErosionBudget& getErosionBudget() const { return erosionBudget; }
+    void resetErosionBudget() { erosionBudget = ErosionBudget{}; }
+
     const DrainageAudit& getDrainageAudit() const { return drainageAudit; }
     void resetDrainageAudit() { drainageAudit = DrainageAudit{}; }
 
@@ -704,6 +720,7 @@ public:
     void evolveChannels(const std::vector<double>& fluvial, float dt);
 
     DrainageAudit drainageAudit;
+    ErosionBudget erosionBudget;
 
     // Geological time banked towards the next routed erosion pass.
     float erosionDebt = 0.0f;

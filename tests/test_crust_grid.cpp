@@ -1882,6 +1882,85 @@ void testWhetherFinerCellsSteadyTheRivers() {
                     : "resolution does not steady the rivers: the instability is in the routing");
 }
 
+void testDenudationMatchesTheRealWorld() {
+    std::printf("Whether continents wear down at the rate continents wear down\n");
+
+    // The one number in this model that can be checked against the world.
+    //
+    // Everything built on top of erosion - valleys, sediment, where rivers run,
+    // whether a mountain range is in steady state - assumes the rate is roughly
+    // right, and until now that assumption had never been tested against
+    // anything except my own judgement. Continental denudation is measured, not
+    // modelled: thirty to a hundred metres per million years for ordinary
+    // continental interiors, several hundred to a thousand for wet active
+    // orogens. A planet-wide average should land in the lower part of that.
+    //
+    // If this is wrong the whole plan of treating fine detail as a cosmetic
+    // front on sound coarse geology is built on sand, so it is worth knowing
+    // before building anything else on it.
+    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+
+    // Long enough for the initial condition to stop dominating.
+    for (int i = 0; i < 40; i++) {
+        grid.step(0.5f);
+    }
+
+    grid.resetErosionBudget();
+    const auto before = grid.computeStats();
+
+    const float span = 20.0f;
+    for (int i = 0; i < 40; i++) {
+        grid.step(span / 40.0f);
+    }
+
+    const auto after = grid.computeStats();
+    const auto& budget = grid.getErosionBudget();
+
+    auto snapshot = grid.publishSnapshot();
+    int land = 0;
+    for (float elevation : snapshot->elevation) {
+        if (elevation > 0.0f) {
+            land++;
+        }
+    }
+    const double landArea = double(land) * grid.getCellArea();
+
+    // Gross removal spread over the land it came off.
+    const double denudation =
+        landArea > 0.0 && budget.simulatedTime > 0.0f
+            ? budget.eroded / landArea / budget.simulatedTime
+            : 0.0;
+
+    // What the budget failed to put back down again. Erosion that leaks is
+    // indistinguishable from erosion that works until continents evaporate.
+    const double leak =
+        budget.eroded > 0.0 ? std::fabs(budget.eroded - budget.deposited) / budget.eroded : 0.0;
+
+    std::printf("    over %.1f My: %.3e m3 eroded, %.3e m3 deposited, %.4f%% unaccounted\n",
+                budget.simulatedTime, budget.eroded, budget.deposited, leak * 100.0);
+    std::printf("    %d land cells, denudation %.1f m/My\n", land, denudation);
+    std::printf("    highest ground %.0f m -> %.0f m, land %.1f%% -> %.1f%%\n",
+                before.maxElevation, after.maxElevation,
+                before.landFraction * 100.0f, after.landFraction * 100.0f);
+
+    check(budget.eroded > 0.0, "erosion is actually removing rock");
+    check(leak < 0.01, "everything eroded is deposited again");
+
+    // The observed range, generously bounded: this is a different planet with
+    // its own rainfall and relief, so the claim is that it is the right order
+    // of magnitude, not that it matches Earth.
+    check(denudation > 5.0 && denudation < 500.0,
+          "continents wear down at a rate the real world would recognise");
+
+    // Steady state, not runaway. A range under sustained convergence should
+    // settle where uplift and erosion balance; it should not grow without
+    // limit, and it should not be planed flat either.
+    const float heightChange =
+        std::fabs(after.maxElevation - before.maxElevation) / std::max(before.maxElevation, 1.0f);
+    std::printf("    highest ground moved %.0f%% over %.0f My\n", heightChange * 100.0f, span);
+    check(heightChange < 0.5f, "mountains neither run away nor collapse");
+}
+
 void testDrainageReorganises() {
     std::printf("Whether drainage networks reorganise on their own\n");
     simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
@@ -2298,6 +2377,7 @@ int main() {
     testRiversSurviveBeingRunFast();
     testHowMuchRewiringIsWarranted();
     testWhetherFinerCellsSteadyTheRivers();
+    testDenudationMatchesTheRealWorld();
     testDrainageReorganises();
     testWhatMakesTheGroundJump();
     testResolutionChoice();
