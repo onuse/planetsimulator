@@ -1898,7 +1898,29 @@ void testDenudationMatchesTheRealWorld() {
     // If this is wrong the whole plan of treating fine detail as a cosmetic
     // front on sound coarse geology is built on sand, so it is worth knowing
     // before building anything else on it.
-    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+    // Level 5, not 6, and the reason is worth stating carefully because the
+    // justification for it turned out to be half wrong.
+    //
+    // The argument was that a global mass budget cannot depend on how finely
+    // the sphere is divided, so the finer grid buys nothing here and costs
+    // eight times the work - four times the cells and half the stable timestep.
+    // Denudation bears that out exactly: ninety-four metres per million years
+    // at level 6, ninety-seven at level 5.
+    //
+    // The crustal budget does not. Continental crust changes by minus eighteen
+    // per cent over a hundred million years at level 6 and plus two at level 5,
+    // and sea level moves three hundred metres in opposite directions. A mass
+    // balance should not do that, and the discrepancy is a defect in its own
+    // right - most likely in the capacity rule, which sheds crust per cell and
+    // so has an aggregate effect that scales with how many cells there are.
+    // It is recorded in CLAUDE.md rather than chased here.
+    //
+    // These tests stay at level 5 anyway, because what they assert is
+    // qualitative - that land does not drain away, and that it responds to arc
+    // production - and that holds at both resolutions. What must not be read
+    // off them is an absolute number: the arc production ratio was calibrated
+    // on level 6, which is what the application runs.
+    simulation::CrustGrid grid(1000000.0f, 61, 5, 12);
 
     // Long enough for the initial condition to stop dominating.
     for (int i = 0; i < 40; i++) {
@@ -1975,7 +1997,29 @@ void testContinentsDoNotDrown() {
     // basins could be filling with the sediment that came off them and pushing
     // sea level up, or the land could simply be wearing flat. They imply
     // completely different fixes.
-    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+    // Level 5, not 6, and the reason is worth stating carefully because the
+    // justification for it turned out to be half wrong.
+    //
+    // The argument was that a global mass budget cannot depend on how finely
+    // the sphere is divided, so the finer grid buys nothing here and costs
+    // eight times the work - four times the cells and half the stable timestep.
+    // Denudation bears that out exactly: ninety-four metres per million years
+    // at level 6, ninety-seven at level 5.
+    //
+    // The crustal budget does not. Continental crust changes by minus eighteen
+    // per cent over a hundred million years at level 6 and plus two at level 5,
+    // and sea level moves three hundred metres in opposite directions. A mass
+    // balance should not do that, and the discrepancy is a defect in its own
+    // right - most likely in the capacity rule, which sheds crust per cell and
+    // so has an aggregate effect that scales with how many cells there are.
+    // It is recorded in CLAUDE.md rather than chased here.
+    //
+    // These tests stay at level 5 anyway, because what they assert is
+    // qualitative - that land does not drain away, and that it responds to arc
+    // production - and that holds at both resolutions. What must not be read
+    // off them is an absolute number: the arc production ratio was calibrated
+    // on level 6, which is what the application runs.
+    simulation::CrustGrid grid(1000000.0f, 61, 5, 12);
 
     for (int i = 0; i < 10; i++) {
         grid.step(2.0f);
@@ -2087,7 +2131,29 @@ void testWhatKeepsContinentsAbove() {
     float continentalAtEnd[3] = {0.0f, 0.0f, 0.0f};
 
     for (int variant = 0; variant < 3; variant++) {
-        simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+    // Level 5, not 6, and the reason is worth stating carefully because the
+    // justification for it turned out to be half wrong.
+    //
+    // The argument was that a global mass budget cannot depend on how finely
+    // the sphere is divided, so the finer grid buys nothing here and costs
+    // eight times the work - four times the cells and half the stable timestep.
+    // Denudation bears that out exactly: ninety-four metres per million years
+    // at level 6, ninety-seven at level 5.
+    //
+    // The crustal budget does not. Continental crust changes by minus eighteen
+    // per cent over a hundred million years at level 6 and plus two at level 5,
+    // and sea level moves three hundred metres in opposite directions. A mass
+    // balance should not do that, and the discrepancy is a defect in its own
+    // right - most likely in the capacity rule, which sheds crust per cell and
+    // so has an aggregate effect that scales with how many cells there are.
+    // It is recorded in CLAUDE.md rather than chased here.
+    //
+    // These tests stay at level 5 anyway, because what they assert is
+    // qualitative - that land does not drain away, and that it responds to arc
+    // production - and that holds at both resolutions. What must not be read
+    // off them is an absolute number: the arc production ratio was calibrated
+    // on level 6, which is what the application runs.
+        simulation::CrustGrid grid(1000000.0f, 61, 5, 12);
         grid.getConstants().arcProductionRatio = ratios[variant];
 
         for (int i = 0; i < 40; i++) {
@@ -2498,43 +2564,154 @@ void testStepPerformance() {
 int main() {
     std::printf("=== CrustGrid tectonics tests ===\n\n");
 
-    testGridTopology();
-    testNearestCellLookup();
-    testSurfaceReconstruction();
-    testIsostasyPredictsRealElevations();
-    testSeaLevelRespondsToCrust();
-    testPlatesActuallyMove();
-    testSilicateBooksBalance();
-    testContinentsPersist();
-    testPlateForcesGiveRealisticSpeeds();
-    testSlabPullDominates();
-    testContinentalPlatesAreSlower();
-    testPlateMotionEvolves();
-    testPlatesReorganise();
-    testNothingImpossibleHappens();
-    testErosionConservesRock();
-    testErosionMovesRockDownhill();
-    testErosionLimitsMountains();
-    testStratigraphy();
-    testRigidRotationPreservesContrast();
-    testRivers();
-    testClimate();
-    testWhereTheTimeGoes();
-    testTimeSlicingDoesNotChangeThePlanet();
-    testRiversComeInSizes();
-    testChannelsCarveAndPersist();
-    testAbandonedValleysSurviveTheRiver();
-    testDividesDoNotFlap();
-    testRiversSurviveBeingRunFast();
-    testHowMuchRewiringIsWarranted();
-    testWhetherFinerCellsSteadyTheRivers();
-    testDenudationMatchesTheRealWorld();
-    testContinentsDoNotDrown();
-    testWhatKeepsContinentsAbove();
-    testDrainageReorganises();
-    testWhatMakesTheGroundJump();
-    testResolutionChoice();
-    testStepPerformance();
+    { const auto t0 = std::chrono::steady_clock::now();
+      testGridTopology();
+      std::printf("[time] %-42s %6.0f ms\n", "testGridTopology",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testNearestCellLookup();
+      std::printf("[time] %-42s %6.0f ms\n", "testNearestCellLookup",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testSurfaceReconstruction();
+      std::printf("[time] %-42s %6.0f ms\n", "testSurfaceReconstruction",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testIsostasyPredictsRealElevations();
+      std::printf("[time] %-42s %6.0f ms\n", "testIsostasyPredictsRealElevations",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testSeaLevelRespondsToCrust();
+      std::printf("[time] %-42s %6.0f ms\n", "testSeaLevelRespondsToCrust",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testPlatesActuallyMove();
+      std::printf("[time] %-42s %6.0f ms\n", "testPlatesActuallyMove",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testSilicateBooksBalance();
+      std::printf("[time] %-42s %6.0f ms\n", "testSilicateBooksBalance",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testContinentsPersist();
+      std::printf("[time] %-42s %6.0f ms\n", "testContinentsPersist",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testPlateForcesGiveRealisticSpeeds();
+      std::printf("[time] %-42s %6.0f ms\n", "testPlateForcesGiveRealisticSpeeds",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testSlabPullDominates();
+      std::printf("[time] %-42s %6.0f ms\n", "testSlabPullDominates",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testContinentalPlatesAreSlower();
+      std::printf("[time] %-42s %6.0f ms\n", "testContinentalPlatesAreSlower",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testPlateMotionEvolves();
+      std::printf("[time] %-42s %6.0f ms\n", "testPlateMotionEvolves",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testPlatesReorganise();
+      std::printf("[time] %-42s %6.0f ms\n", "testPlatesReorganise",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testNothingImpossibleHappens();
+      std::printf("[time] %-42s %6.0f ms\n", "testNothingImpossibleHappens",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testErosionConservesRock();
+      std::printf("[time] %-42s %6.0f ms\n", "testErosionConservesRock",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testErosionMovesRockDownhill();
+      std::printf("[time] %-42s %6.0f ms\n", "testErosionMovesRockDownhill",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testErosionLimitsMountains();
+      std::printf("[time] %-42s %6.0f ms\n", "testErosionLimitsMountains",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testStratigraphy();
+      std::printf("[time] %-42s %6.0f ms\n", "testStratigraphy",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testRigidRotationPreservesContrast();
+      std::printf("[time] %-42s %6.0f ms\n", "testRigidRotationPreservesContrast",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testRivers();
+      std::printf("[time] %-42s %6.0f ms\n", "testRivers",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testClimate();
+      std::printf("[time] %-42s %6.0f ms\n", "testClimate",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testWhereTheTimeGoes();
+      std::printf("[time] %-42s %6.0f ms\n", "testWhereTheTimeGoes",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testTimeSlicingDoesNotChangeThePlanet();
+      std::printf("[time] %-42s %6.0f ms\n", "testTimeSlicingDoesNotChangeThePlanet",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testRiversComeInSizes();
+      std::printf("[time] %-42s %6.0f ms\n", "testRiversComeInSizes",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testChannelsCarveAndPersist();
+      std::printf("[time] %-42s %6.0f ms\n", "testChannelsCarveAndPersist",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testAbandonedValleysSurviveTheRiver();
+      std::printf("[time] %-42s %6.0f ms\n", "testAbandonedValleysSurviveTheRiver",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testDividesDoNotFlap();
+      std::printf("[time] %-42s %6.0f ms\n", "testDividesDoNotFlap",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testRiversSurviveBeingRunFast();
+      std::printf("[time] %-42s %6.0f ms\n", "testRiversSurviveBeingRunFast",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testHowMuchRewiringIsWarranted();
+      std::printf("[time] %-42s %6.0f ms\n", "testHowMuchRewiringIsWarranted",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testWhetherFinerCellsSteadyTheRivers();
+      std::printf("[time] %-42s %6.0f ms\n", "testWhetherFinerCellsSteadyTheRivers",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testDenudationMatchesTheRealWorld();
+      std::printf("[time] %-42s %6.0f ms\n", "testDenudationMatchesTheRealWorld",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testContinentsDoNotDrown();
+      std::printf("[time] %-42s %6.0f ms\n", "testContinentsDoNotDrown",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testWhatKeepsContinentsAbove();
+      std::printf("[time] %-42s %6.0f ms\n", "testWhatKeepsContinentsAbove",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testDrainageReorganises();
+      std::printf("[time] %-42s %6.0f ms\n", "testDrainageReorganises",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testWhatMakesTheGroundJump();
+      std::printf("[time] %-42s %6.0f ms\n", "testWhatMakesTheGroundJump",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testResolutionChoice();
+      std::printf("[time] %-42s %6.0f ms\n", "testResolutionChoice",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testStepPerformance();
+      std::printf("[time] %-42s %6.0f ms\n", "testStepPerformance",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
 
     std::printf("\n");
     if (failures == 0) {
