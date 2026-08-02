@@ -114,7 +114,6 @@ __pycache__/
 # Other
 *.user
 *.sublime-workspace
-CLAUDE.md
 
 # Temporary text files
 all_tests.txt
