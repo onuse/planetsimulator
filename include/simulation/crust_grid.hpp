@@ -145,6 +145,30 @@ public:
         // forces change.
         float plateResponseTime = 10.0f;       // My
 
+        // Crust past what the column can support is shed the instant it is
+        // noticed, and that is known to be wrong without it being known what is
+        // right.
+        //
+        // How much crust the planet destroys depends on how finely it is
+        // divided - level 6 sheds one and a half times as much per million
+        // years as level 5 on the same planet, which is why the crustal budget
+        // comes out at minus eighteen per cent over a hundred million years on
+        // one grid and plus two on the other. A one-sided limit applied to a
+        // projected, and therefore noisy, thickness takes the upper tail and
+        // leaves the lower, so the mean walks at a rate set by the noise.
+        //
+        // The obvious fix does not work. Shedding the excess over a foundering
+        // timescale of a few million years, so the amount removed follows
+        // elapsed time rather than the sampling schedule, made every measure
+        // worse: the resolution ratio went from 1.50 to 1.78, denudation rose
+        // from ninety-seven metres per million year to a hundred and seventy
+        // five, and two unrelated invariants broke. Crust that is not shed
+        // stays, so columns sit above capacity, stand higher and erode harder,
+        // and the excess that accumulates is itself resolution-dependent.
+        //
+        // So the bias is real and the timescale is not the answer. Left as it
+        // was rather than left half-changed.
+
         // --- Plate reorganisation ------------------------------------------
         //
         // Rigid plates that only ever rotate settle into one arrangement and

@@ -2178,6 +2178,81 @@ void testWhatKeepsContinentsAbove() {
                     : "land barely responds: something else sets the equilibrium");
 }
 
+void testCrustBudgetDoesNotDependOnCellSize() {
+    std::printf("Whether how finely the sphere is divided changes the crust budget\n");
+
+    // Mass balance should not care about cell size, and this one does:
+    // continental crust changes by minus eighteen per cent over a hundred
+    // million years at level 6 and plus two at level 5.
+    //
+    // The suspicion is the three one-sided rules in reconcileCrust. Each looks
+    // at a cell's thickness - which is a projection from scattered parcels, so
+    // it carries sampling noise - and acts only when it falls on one side:
+    // crust above the column's capacity is shed to the mantle, crust below the
+    // thickness of ocean floor has melt injected, and a hole has new seafloor
+    // created in it. A one-sided limit on a noisy estimate is a biased
+    // operator by construction. It takes the upper tail and leaves the lower,
+    // so the mean walks, and how fast it walks depends on the noise rather than
+    // on any physics.
+    //
+    // If that is what is happening, the shedding and injection terms will be
+    // larger per unit of planet at the finer grid, where each cell's reading is
+    // drawn from a smaller sample of rock.
+    struct Result {
+        int level;
+        double sheddingPerMy;
+        double riftingPerMy;
+        double meltPerMy;
+        double arcPerMy;
+    };
+    Result results[2];
+
+    const int levels[] = {5, 6};
+    for (int variant = 0; variant < 2; variant++) {
+        simulation::CrustGrid grid(1000000.0f, 61, levels[variant], 12);
+
+        // Past the initial transient, so what is measured is the running state.
+        for (int i = 0; i < 10; i++) {
+            grid.step(1.0f);
+        }
+        grid.resetCrustBudget();
+        for (int i = 0; i < 20; i++) {
+            grid.step(1.0f);
+        }
+
+        const auto& b = grid.getCrustBudget();
+        const double perMy = b.simulatedTime > 0.0f ? 1.0 / b.simulatedTime : 0.0;
+        results[variant] = {levels[variant],
+                            (b.subducted + b.delaminated) * perMy,
+                            b.riftedAway * perMy,
+                            b.meltFromMantle * perMy,
+                            b.arcFromMantle * perMy};
+
+        std::printf("    level %d: shed %.3e, rifted %.3e, arc %.3e m3/My\n",
+                    levels[variant], results[variant].sheddingPerMy,
+                    results[variant].riftingPerMy, results[variant].arcPerMy);
+    }
+
+    const auto ratio = [](double fine, double coarse) {
+        return coarse > 0.0 ? fine / coarse : 0.0;
+    };
+    const double shedRatio = ratio(results[1].sheddingPerMy, results[0].sheddingPerMy);
+    const double riftRatio = ratio(results[1].riftingPerMy, results[0].riftingPerMy);
+
+    std::printf("    level 6 against level 5: shedding %.2fx, rifting %.2fx\n",
+                shedRatio, riftRatio);
+
+    check(results[0].sheddingPerMy > 0.0, "crust is being shed at all");
+
+    // The same planet, so the same amount of rock should be moving whichever
+    // way it is divided up. Recorded rather than enforced while the cause is
+    // still open - the number is the finding.
+    std::printf("    %s\n",
+                (shedRatio > 1.5 || riftRatio > 1.5)
+                    ? "the finer grid destroys more crust: the one-sided rules are the cause"
+                    : "the rules are not obviously resolution-dependent: look elsewhere");
+}
+
 void testDrainageReorganises() {
     std::printf("Whether drainage networks reorganise on their own\n");
     simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
@@ -2695,6 +2770,10 @@ int main() {
     { const auto t0 = std::chrono::steady_clock::now();
       testWhatKeepsContinentsAbove();
       std::printf("[time] %-42s %6.0f ms\n", "testWhatKeepsContinentsAbove",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testCrustBudgetDoesNotDependOnCellSize();
+      std::printf("[time] %-42s %6.0f ms\n", "testCrustBudgetDoesNotDependOnCellSize",
                   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
     { const auto t0 = std::chrono::steady_clock::now();
       testDrainageReorganises();

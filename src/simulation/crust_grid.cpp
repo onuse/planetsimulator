@@ -1442,6 +1442,7 @@ void CrustGrid::reconcileCrust(float dt) {
             markers.push_back(fresh);
 
             fromMantle += static_cast<double>(fresh.volume);
+            crustBudget.meltFromMantle += static_cast<double>(fresh.volume);
             cell.thickness = k.oceanicThickness;
             cell.density = k.oceanicDensity;
             cell.age = 0.0f;
@@ -1465,6 +1466,7 @@ void CrustGrid::reconcileCrust(float dt) {
             markers.push_back(fresh);
 
             fromMantle += static_cast<double>(fresh.volume);
+            crustBudget.meltFromMantle += static_cast<double>(fresh.volume);
             cell.thickness = k.oceanicThickness;
             continue;
         }
