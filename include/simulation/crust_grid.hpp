@@ -496,7 +496,13 @@ public:
 
     // subdivisions: icosphere level. 6 gives 40,962 cells, ~17 km apart on a
     // 1000 km planet. plateCount: number of rigid plates.
-    CrustGrid(float planetRadius, uint32_t seed, int subdivisions = 6, int plateCount = 12);
+    // parcelsPerCell: how many crust parcels to seed in each cell, or zero for
+    // the default. Exposed because it is the one knob that changes how noisy
+    // the projection from parcels to cells is without changing any physics,
+    // which makes it the only way to ask whether a result depends on the
+    // sampling rather than on the rock.
+    CrustGrid(float planetRadius, uint32_t seed, int subdivisions = 6, int plateCount = 12,
+              int parcelsPerCell = 0);
 
     // Advance the simulation. A request larger than the stable step is split
     // internally, so callers can ask for any interval.
@@ -734,6 +740,16 @@ public:
         double delaminated = 0.0;         // buoyant roots foundering
         double riftedAway = 0.0;          // continental crust stretched to ocean
         float simulatedTime = 0.0f;
+
+        // How the shedding is distributed, which is what tells noise from
+        // physics. A column genuinely thickened by collision sits far above its
+        // capacity; a column that only reads too thick because its parcels
+        // happened to land generously sits barely above it. The two look
+        // identical in a total and completely different in a histogram.
+        long long shedEvents = 0;         // cells shedding at all
+        long long marginalEvents = 0;     // shedding less than a twentieth of capacity
+        double marginalVolume = 0.0;      // m^3 shed by those
+        double excessThickness = 0.0;     // m of excess, summed over events
     };
     const CrustBudget& getCrustBudget() const { return crustBudget; }
     void resetCrustBudget() { crustBudget = CrustBudget{}; }

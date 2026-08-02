@@ -169,8 +169,14 @@ double CrustGrid::Marker::consumeProportionally(double wanted) {
     return removed;
 }
 
-CrustGrid::CrustGrid(float planetRadius, uint32_t seed, int subdivisions, int plateCount)
+CrustGrid::CrustGrid(float planetRadius, uint32_t seed, int subdivisions, int plateCount,
+                     int parcelsPerCell)
     : planetRadius(planetRadius), seed(seed), climate(*this) {
+    if (parcelsPerCell > 0) {
+        constants.markersPerCell = parcelsPerCell;
+        constants.maxMarkersPerCell =
+            std::max(constants.maxMarkersPerCell, parcelsPerCell * 2);
+    }
     buildGeodesicGrid(subdivisions);
     buildAccelerator();
     assignPlates(plateCount);
@@ -1514,6 +1520,13 @@ void CrustGrid::reconcileCrust(float dt) {
             // thickness at once.
             remaining -= buoyant ? marker.removeFromBottom(remaining)
                                  : marker.consumeProportionally(remaining);
+        }
+
+        crustBudget.shedEvents++;
+        crustBudget.excessThickness += static_cast<double>(excess);
+        if (excess < capacity * 0.05f) {
+            crustBudget.marginalEvents++;
+            crustBudget.marginalVolume += excessVolume;
         }
 
         const double consumed = excessVolume - std::max(0.0, remaining);

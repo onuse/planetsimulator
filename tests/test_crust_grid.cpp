@@ -2178,6 +2178,71 @@ void testWhatKeepsContinentsAbove() {
                     : "land barely responds: something else sets the equilibrium");
 }
 
+void testWhetherTheSheddingIsNoise() {
+    std::printf("Whether the capacity rule is shedding noise or shedding rock\n");
+
+    // The account so far is that cell thickness is projected from scattered
+    // parcels, so it carries sampling noise, and a one-sided clamp on a noisy
+    // quantity takes the upper tail and leaves the lower. It explains the
+    // resolution dependence and it has never been tested.
+    //
+    // The direct test changes the noise without changing any physics. More
+    // parcels per cell means the same rock read from a larger sample, so the
+    // projection error falls as one over the square root of the count while
+    // every rate and threshold in the model stays exactly where it was. If the
+    // shedding is noise, it falls with the parcel count. If it does not, the
+    // account is wrong and the resolution dependence is something else.
+    struct Result {
+        int markers;
+        double shedPerMy;
+        double marginalShare;
+        double marginalVolumeShare;
+    };
+    Result results[2];
+
+    const int counts[] = {6, 12};
+    for (int variant = 0; variant < 2; variant++) {
+        // Plate count held fixed. The first version of this varied the fourth
+        // argument believing it was the parcel count; it is the number of
+        // plates, so what got measured was three times the plate boundaries
+        // giving three and a half times the subduction - entirely sensible, and
+        // nothing at all to do with the question.
+        simulation::CrustGrid grid(1000000.0f, 61, 5, 12, counts[variant]);
+
+        for (int i = 0; i < 10; i++) {
+            grid.step(1.0f);
+        }
+        grid.resetCrustBudget();
+        for (int i = 0; i < 20; i++) {
+            grid.step(1.0f);
+        }
+
+        const auto& b = grid.getCrustBudget();
+        const double perMy = b.simulatedTime > 0.0f ? 1.0 / b.simulatedTime : 0.0;
+        const double shed = b.subducted + b.delaminated;
+        results[variant] = {
+            counts[variant], shed * perMy,
+            b.shedEvents > 0 ? double(b.marginalEvents) / double(b.shedEvents) : 0.0,
+            shed > 0.0 ? b.marginalVolume / shed : 0.0};
+
+        std::printf("    %2d parcels/cell: shed %.3e m3/My, %.0f%% of events marginal, "
+                    "%.0f%% of volume\n",
+                    counts[variant], results[variant].shedPerMy,
+                    results[variant].marginalShare * 100.0,
+                    results[variant].marginalVolumeShare * 100.0);
+    }
+
+    const double change =
+        results[0].shedPerMy > 0.0 ? results[1].shedPerMy / results[0].shedPerMy : 1.0;
+    std::printf("    doubling the parcels changes shedding to %.2fx\n", change);
+
+    check(results[0].shedPerMy > 0.0, "crust is being shed at all");
+    std::printf("    %s\n",
+                change < 0.8
+                    ? "shedding falls with the sample size: it is projection noise"
+                    : "shedding is unmoved by the sample size: it is not noise, look elsewhere");
+}
+
 void testCrustBudgetDoesNotDependOnCellSize() {
     std::printf("Whether how finely the sphere is divided changes the crust budget\n");
 
@@ -2228,9 +2293,22 @@ void testCrustBudgetDoesNotDependOnCellSize() {
                             b.meltFromMantle * perMy,
                             b.arcFromMantle * perMy};
 
-        std::printf("    level %d: shed %.3e, rifted %.3e, arc %.3e m3/My\n",
+        // How far over capacity a shedding column typically is.
+        //
+        // If the resolution dependence were noise, this would be about the same
+        // at both grids and there would simply be more events at the finer one.
+        // If it is convergence concentrating - over-thickening happens along
+        // plate boundaries, which is a line, while capacity is tested per cell,
+        // so halving the cell width doubles the thickness the same convergence
+        // produces - then the typical excess scales with the grid and this is
+        // where it shows.
+        const double meanExcess =
+            b.shedEvents > 0 ? b.excessThickness / double(b.shedEvents) : 0.0;
+        std::printf("    level %d: shed %.3e, rifted %.3e, arc %.3e m3/My; "
+                    "%lld events, mean excess %.0f m\n",
                     levels[variant], results[variant].sheddingPerMy,
-                    results[variant].riftingPerMy, results[variant].arcPerMy);
+                    results[variant].riftingPerMy, results[variant].arcPerMy,
+                    b.shedEvents, meanExcess);
     }
 
     const auto ratio = [](double fine, double coarse) {
@@ -2772,6 +2850,9 @@ int main() {
       std::printf("[time] %-42s %6.0f ms\n", "testWhatKeepsContinentsAbove",
                   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
     { const auto t0 = std::chrono::steady_clock::now();
+      testWhetherTheSheddingIsNoise();
+      std::printf("[time] %-42s %6.0f ms\n", "testWhetherTheSheddingIsNoise",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
       testCrustBudgetDoesNotDependOnCellSize();
       std::printf("[time] %-42s %6.0f ms\n", "testCrustBudgetDoesNotDependOnCellSize",
                   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
