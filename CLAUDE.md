@@ -43,6 +43,36 @@ about. Read the signature before varying a positional argument, and be more
 suspicious of a clean dramatic result than of a messy one: a ratio of 3.6 is
 what prompted the check, and a ratio near 1.0 would have been believed.
 
+## Turn a wrong number into a violated invariant before trying to fix it
+
+The clearest pattern across this work, and it predicts which attempts succeed.
+
+Every defect that got fixed quickly was found as a *violated invariant*: more
+than half the land drained nowhere when the depression fill guarantees an
+outlet; three code paths assigned channel depth zero when nothing had filled
+the channel; a valley profile bottomed out on a clamp that was meant never to
+bind; a snow line scaled by the tallest mountain when its own comment said it
+was a temperature. Each named a line of code, and each fix worked first time.
+
+Every defect that resisted was found as a *wrong number*: the drainage network
+churns 80% per million years, continental crust falls 17.5% per sixty. A wrong
+number is consistent with a dozen mechanisms, so what follows is a sequence of
+plausible stories, each costing a build and a measurement, most of them wrong.
+Seven consecutive failures on the crustal budget and five on drainage stability
+all have this shape.
+
+So when a quantity comes out wrong, do not reach for a mechanism. Find the
+conservation law or the guarantee that the quantity should obey, instrument
+both sides of it, and check it balances. Either it balances - and the largest
+term is the answer - or it does not, and the residual localises to whatever
+code is not being watched. Both outcomes point at a line. A hypothesis about
+convexity or flexural wavelengths points at nothing.
+
+The corollary, learned expensively: instrument before hypothesising, every
+time. Timing the test suite, auditing the routing decisions, and varying the
+parcel count each answered in one run what reasoning had failed to settle in
+several. And check what a measurement measures before believing it - see above.
+
 ## Constants standing in for quantities the code could derive
 
 A recurring defect, now six times over: skirt depth, detail frequency, the bulk
@@ -72,6 +102,68 @@ Land came out at 9%, 14.5% and 15.7% for arc ratios of a quarter, a half and
 three quarters - so it is what sets the equilibrium rather than merely
 correlating with it. Sweep before setting, and record the sweep. Adjusting a
 constant until one run looks right is worth nothing.
+
+## The continental crust problem: what it actually is
+
+Nine attempts. The one that found it was the first that traced mass instead of
+proposing a mechanism, and the answer is not what any of the other eight
+assumed.
+
+Count every rock type over forty million years, with total rock conserved:
+
+    basalt    7.680e16 -> 8.612e16   (+9.32e15)
+    granite   1.160e17 -> 7.710e16   (-3.89e16)
+    andesite  8.952e15 -> 3.737e16   (+2.84e16)
+    sediment  1.104e15 -> 1.240e15   (+1.36e14)
+
+Granite - ancient craton - is being destroyed, and arcs hand about 73% of it
+back as andesite. The shortfall is exactly the continental decline. Nothing is
+lost to a mysterious path and nothing is a metric artefact: the only code that
+consumes granite is the capacity rule's shedding loop, which takes the densest
+parcels from an over-thick column, and in a continental column the densest
+parcels are granite.
+
+So the rule is feeding cratons to the mantle. On Earth cratons last billions of
+years; here a third of the granite goes in forty million.
+
+Forbidding buoyant rock from foundering - granite is 2750 against a mantle of
+3300 and cannot sink at any thickness - stops it dead: granite goes from
+-3.89e16 to +5.20e15. But total crust then grows 45%, because andesite at 2800
+is also buoyant and was also being eaten. The model was in a false steady
+state: arc production runs at about 1.3% of the felsic inventory per million
+year against Earth's 0.02%, some sixty-five times too fast, and the capacity
+rule was quietly disposing of the surplus.
+
+That is the real defect. Arcs overproduce, and shedding hides it by consuming
+whatever is nearest to hand, including craton.
+
+It also means the arc production ratio was calibrated by balancing two errors
+against each other. The sweep is real - land does respond, 9.2% / 14.5% / 15.7%
+- but the reason 0.5 worked is that it is where overproduction and
+overconsumption cancelled, not where either was right.
+
+The order of repair is therefore: find why arc production is sixty-five times
+too fast, fix that, and only then forbid buoyant rock from foundering. Doing
+the second without the first inflates the planet by half in forty million
+years.
+
+Do not attempt this by proposing a mechanism. `composition()` and the crust
+ledger are there; trace the mass.
+
+One number probably unifies the whole thing, with the working shown so it can
+be checked rather than believed. The capacity rule sheds about 1.0e16 m^3 per
+million year at level 6 against a total crust of 2.0e17, which is 5% of the
+planet's crust destroyed and remade every million years. Earth subducts about
+3 km^3/yr against a crust of ~1e19 m^3, which is 0.03%/My. A smaller planet
+does recycle faster - plate circumference falls with radius while speeds are
+calibrated to Earth's, so 6.4x - giving an expected 0.19%/My.
+
+That leaves the capacity rule destroying crust roughly twenty-five times too
+fast. Arc overproduction is downstream of it, since arc volume is just the shed
+volume times the production ratio, so both symptoms are one number being wrong.
+If that number comes down by a factor of twenty-five, the craton consumption,
+the arc overproduction and very likely the resolution dependence all go with
+it.
 
 ## Open: the crustal budget depends on resolution
 

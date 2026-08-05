@@ -2331,6 +2331,102 @@ void testCrustBudgetDoesNotDependOnCellSize() {
                     : "the rules are not obviously resolution-dependent: look elsewhere");
 }
 
+void testWhereTheContinentsGo() {
+    std::printf("Where the continental crust goes\n");
+
+    // One planet, three questions, because each of them needed fifty million
+    // years at level 6 and running three planets to ask them cost more than the
+    // rest of the suite put together.
+    //
+    // The questions: what rock the planet is made of and how that changes,
+    // whether the books close, and whether the land shrinks because crust is
+    // lost or because it piles up. They are the same investigation and they
+    // want the same history.
+    simulation::CrustGrid grid(1000000.0f, 61, 6, 12);
+
+    for (int i = 0; i < 5; i++) {
+        grid.step(2.0f);
+    }
+
+    const auto openComposition = grid.composition();
+    const double openContinental = grid.computeStats().continentalVolume;
+    grid.resetCrustBudget();
+
+    auto landAndThickness = [&](int& cells, double& thickness) {
+        auto snapshot = grid.publishSnapshot();
+        cells = 0;
+        thickness = 0.0;
+        for (size_t i = 0; i < snapshot->elevation.size(); i++) {
+            if (snapshot->elevation[i] > 0.0f && i < snapshot->crustThickness.size()) {
+                cells++;
+                thickness += snapshot->crustThickness[i];
+            }
+        }
+        if (cells > 0) {
+            thickness /= cells;
+        }
+    };
+
+    int openLand = 0;
+    double openThickness = 0.0;
+    landAndThickness(openLand, openThickness);
+
+    // Twenty million years, not forty. The granite trend is monotonic and the
+    // ratio the arcs hand back is steady, so the second half restated the first
+    // at level 6 prices - and this test alone had put the suite up by half.
+    const float span = 20.0f;
+    for (int i = 0; i < 10; i++) {
+        grid.step(span / 10.0f);
+    }
+
+    const auto closeComposition = grid.composition();
+    const double closeContinental = grid.computeStats().continentalVolume;
+    const auto& b = grid.getCrustBudget();
+
+    int closeLand = 0;
+    double closeThickness = 0.0;
+    landAndThickness(closeLand, closeThickness);
+
+    // --- what the planet is made of -----------------------------------------
+    const char* names[] = {"basalt", "granite", "andesite", "sediment"};
+    double openTotal = 0.0, closeTotal = 0.0;
+    for (size_t i = 0; i < openComposition.size(); i++) {
+        openTotal += openComposition[i];
+        closeTotal += closeComposition[i];
+        std::printf("    %-9s %.4e -> %.4e  (%+.4e)\n",
+                    i < 4 ? names[i] : "other", openComposition[i], closeComposition[i],
+                    closeComposition[i] - openComposition[i]);
+    }
+    std::printf("    %-9s %.4e -> %.4e  (%+.4e)\n", "TOTAL", openTotal, closeTotal,
+                closeTotal - openTotal);
+
+    // --- whether the books close --------------------------------------------
+    const double observed = closeContinental - openContinental;
+    const double accounted = b.continentalAdded - b.continentalConsumed;
+    std::printf("    continental %+.4e, accounted %+.4e, residual %+.4e\n",
+                observed, accounted, observed - accounted);
+
+    // --- lost or piled up ----------------------------------------------------
+    std::printf("    land %d -> %d cells (%+.0f%%), mean thickness %.0f -> %.0f m\n",
+                openLand, closeLand,
+                openLand > 0 ? 100.0 * (closeLand - openLand) / openLand : 0.0,
+                openThickness, closeThickness);
+
+    const double graniteChange = closeComposition[1] - openComposition[1];
+    const double andesiteChange = closeComposition[2] - openComposition[2];
+    std::printf("    granite %+.4e, andesite %+.4e - the capacity rule eats craton "
+                "and the arcs hand back %.0f%% of it\n",
+                graniteChange, andesiteChange,
+                graniteChange < 0.0 ? 100.0 * andesiteChange / -graniteChange : 0.0);
+
+    check(openTotal > 0.0, "there is rock to account for");
+    check(closeLand > 0, "there is still land");
+
+    // The finding, guarded so that a repair to the capacity rule shows up here
+    // as this assertion starting to fail in the right direction.
+    check(graniteChange < 0.0, "granite is still being consumed - see CLAUDE.md");
+}
+
 void testDrainageReorganises() {
     std::printf("Whether drainage networks reorganise on their own\n");
     simulation::CrustGrid grid(1000000.0f, 19, 6, 12);
@@ -2855,6 +2951,10 @@ int main() {
                   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
       testCrustBudgetDoesNotDependOnCellSize();
       std::printf("[time] %-42s %6.0f ms\n", "testCrustBudgetDoesNotDependOnCellSize",
+                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
+    { const auto t0 = std::chrono::steady_clock::now();
+      testWhereTheContinentsGo();
+      std::printf("[time] %-42s %6.0f ms\n", "testWhereTheContinentsGo",
                   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count()); }
     { const auto t0 = std::chrono::steady_clock::now();
       testDrainageReorganises();

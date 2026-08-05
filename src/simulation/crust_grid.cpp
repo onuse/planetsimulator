@@ -273,12 +273,42 @@ double CrustGrid::computeCrustVolume() const {
     return volume;
 }
 
+std::array<double, static_cast<size_t>(CrustGrid::RockType::Count)>
+CrustGrid::composition() const {
+    std::array<double, static_cast<size_t>(RockType::Count)> volume{};
+    for (const Marker& marker : markers) {
+        for (int i = 0; i < marker.layerCount; i++) {
+            const size_t index = static_cast<size_t>(marker.layers[i].rock);
+            if (index < volume.size()) {
+                volume[index] += marker.layers[i].volume;
+            }
+        }
+    }
+    return volume;
+}
+
+double CrustGrid::continentalVolumeOf(const Marker& marker) {
+    double volume = 0.0;
+    for (int i = 0; i < marker.layerCount; i++) {
+        if (isContinentalRock(marker.layers[i].rock)) {
+            volume += marker.layers[i].volume;
+        }
+    }
+    return volume;
+}
+
 double CrustGrid::computeContinentalVolume() const {
+    // Felsic rock, counted as rock rather than inferred from a density.
+    //
+    // Counting every parcel lighter than the subduction threshold sounds
+    // equivalent and is not: sediment weighs 2400 against a threshold of 2850,
+    // so a basalt parcel that catches enough of it starts counting as
+    // continent. Measured, that turned out to matter less than expected - the
+    // felsic figure falls almost identically - but the two must agree with the
+    // ledger, and the ledger weighs rock.
     double volume = 0.0;
     for (const Marker& marker : markers) {
-        if (marker.density < constants.subductionDensity) {
-            volume += marker.volume;
-        }
+        volume += continentalVolumeOf(marker);
     }
     return volume;
 }
@@ -1470,6 +1500,7 @@ void CrustGrid::reconcileCrust(float dt) {
 
             fromMantle += static_cast<double>(fresh.volume);
             crustBudget.meltFromMantle += static_cast<double>(fresh.volume);
+            crustBudget.continentalAdded += continentalVolumeOf(fresh);
             cell.thickness = k.oceanicThickness;
             cell.density = k.oceanicDensity;
             cell.age = 0.0f;
@@ -1494,6 +1525,7 @@ void CrustGrid::reconcileCrust(float dt) {
 
             fromMantle += static_cast<double>(fresh.volume);
             crustBudget.meltFromMantle += static_cast<double>(fresh.volume);
+            crustBudget.continentalAdded += continentalVolumeOf(fresh);
             cell.thickness = k.oceanicThickness;
             continue;
         }
@@ -1539,8 +1571,11 @@ void CrustGrid::reconcileCrust(float dt) {
             // leaving the young rock at the surface untouched. A subducting
             // slab descends entire, so it is consumed through its whole
             // thickness at once.
+            const double wasContinental = continentalVolumeOf(marker);
             remaining -= buoyant ? marker.removeFromBottom(remaining)
                                  : marker.consumeProportionally(remaining);
+            crustBudget.continentalConsumed +=
+                wasContinental - continentalVolumeOf(marker);
         }
 
         crustBudget.shedEvents++;
@@ -1587,6 +1622,7 @@ void CrustGrid::reconcileCrust(float dt) {
         fromMantle += static_cast<double>(arc.volume);
         continentalCreatedByArcs += static_cast<double>(arc.volume);
         crustBudget.arcFromMantle += static_cast<double>(arc.volume);
+        crustBudget.continentalAdded += continentalVolumeOf(arc);
         cells[target].thickness += arc.volume / cellArea;
     }
 
@@ -1693,6 +1729,7 @@ void CrustGrid::resolvePlateOverlap(float dt) {
         fromMantle += arc.volume;
         continentalCreatedByArcs += arc.volume;
         crustBudget.arcFromMantle += arc.volume;
+        crustBudget.continentalAdded += continentalVolumeOf(arc);
     }
 
     mantleReservoir += subducted - fromMantle;

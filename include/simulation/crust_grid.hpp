@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <algorithm>
+#include <array>
 #include <vector>
 
 #include "simulation/climate.hpp"
@@ -392,6 +393,25 @@ public:
         Count    = 4
     };
 
+    // Whether a rock type is what continents are made of.
+    //
+    // One definition, used by the inventory and by every term in the ledger.
+    // Having the inventory count rock while the ledger counted parcels under a
+    // density threshold is what made the books unclosable - and it was
+    // reintroduced once, immediately after being diagnosed, by fixing one and
+    // not the other.
+    // How much of each rock type exists, in cubic metres, indexed by RockType.
+    //
+    // The complete accounting. Total rock is conserved here to two parts in a
+    // hundred million million, so any inventory that falls is not losing rock -
+    // it is losing a label, and the only way to see which label it gained is to
+    // count them all at once.
+    std::array<double, static_cast<size_t>(RockType::Count)> composition() const;
+
+    static bool isContinentalRock(RockType rock) {
+        return rock == RockType::Granite || rock == RockType::Andesite;
+    }
+
     static float rockDensity(RockType rock) {
         switch (rock) {
             case RockType::Basalt:   return 2950.0f;
@@ -443,6 +463,9 @@ public:
     // return every column to where it started - field transport destroyed 57%
     // of the crustal contrast. Markers destroy none, because nothing is ever
     // averaged: a parcel of granite stays that parcel of granite.
+    struct Marker;
+    static double continentalVolumeOf(const Marker& marker);
+
     struct Marker {
         glm::vec3 position{0.0f, 0.0f, 1.0f}; // unit vector
         uint16_t plateId = 0;
@@ -779,6 +802,19 @@ public:
         long long marginalEvents = 0;     // shedding less than a twentieth of capacity
         double marginalVolume = 0.0;      // m^3 shed by those
         double excessThickness = 0.0;     // m of excess, summed over events
+
+        // Continental volume created and destroyed, measured against the same
+        // definition computeContinentalVolume uses - parcel by parcel, by the
+        // parcel's own density.
+        //
+        // Everything above is binned by whether the *cell* counted as buoyant,
+        // which is not the same question. The consumption loop takes the
+        // densest parcels first, so a volume logged as delaminated from a
+        // buoyant cell can be almost entirely rock that was never continental.
+        // Comparing those totals against a continental inventory was comparing
+        // two different quantities, which is why the books never balanced.
+        double continentalAdded = 0.0;
+        double continentalConsumed = 0.0;
     };
     const CrustBudget& getCrustBudget() const { return crustBudget; }
     void resetCrustBudget() { crustBudget = CrustBudget{}; }
