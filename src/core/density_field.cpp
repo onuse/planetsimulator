@@ -173,14 +173,46 @@ float DensityField::getSeaLevelHeight() const {
 }
 
 float DensityField::getSnowLineElevation(const glm::vec3& sphereNormal) const {
-    const TerrainParams& tp = terrainParams;
     const glm::vec3 n = glm::normalize(sphereNormal);
 
-    // |y| is |sin(latitude)|. Squaring keeps the snow line high across the
-    // tropics and drops it sharply only at high latitude.
+    // Snow lies where it does not melt, so the snow line is the height of the
+    // freezing isotherm and nothing else.
+    //
+    // The climate model already solves surface temperature, and already carries
+    // the lapse rate of a moist troposphere and the temperature below which
+    // ground holds snow year round. Given those, the line is the elevation at
+    // which the air reaches freezing, and there is nothing left to choose.
+    //
+    // It used to be a fraction of the planet's maximum elevation, interpolated
+    // between two constants by latitude. That is wrong in a way worth
+    // recording: a snow line pinned to the tallest peak means eroding one
+    // mountain lowers the snow line everywhere on the planet. Watching it fall
+    // from 3345 m to 3182 m over thirty million years looked like a cooling
+    // climate and was the summit wearing down - the ratio to maximum elevation
+    // stayed at 0.38 throughout.
+    if (crustGrid != nullptr && crustSnapshot != nullptr &&
+        crustSnapshot->temperature.size() == crustSnapshot->elevation.size() &&
+        !crustSnapshot->temperature.empty()) {
+        const auto& sky = crustGrid->getClimate().getConstants();
+        const float lapse = std::max(sky.lapseRate, 1e-6f);
+
+        // Both blended across the triangle rather than taken from the nearest
+        // cell, or the snow line is piecewise constant and the planet grows
+        // hexagons wherever the ground crosses it.
+        const float here = crustGrid->sampleTemperature(*crustSnapshot, n);
+        const float ground = crustGrid->sampleSurface(*crustSnapshot, n).elevation;
+
+        // How much higher than this ground the air has to be to reach freezing.
+        // Negative where the ground is already colder than that, which
+        // correctly puts the snow line at or below the surface.
+        return ground + (here - sky.freezingPoint) / lapse;
+    }
+
+    // No simulation attached: fall back to latitude, which is the best a bare
+    // noise planet can do.
+    const TerrainParams& tp = terrainParams;
     const float lat = std::abs(n.y);
     const float polar = lat * lat;
-
     const float fraction = glm::mix(tp.snowLineEquator, tp.snowLinePolar, polar);
     return getMaxElevation() * fraction;
 }

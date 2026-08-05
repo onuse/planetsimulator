@@ -734,6 +734,27 @@ float CrustGrid::sampleRiver(const Snapshot& snapshot, const glm::vec3& sphereNo
     return 1.0f - glm::smoothstep(half * 0.55f, half * 1.15f, river.distance);
 }
 
+float CrustGrid::sampleTemperature(const Snapshot& snapshot,
+                                   const glm::vec3& sphereNormal) const {
+    if (snapshot.temperature.size() != cells.size()) {
+        return 15.0f;
+    }
+    int corner[3];
+    float weight[3];
+    if (!barycentricCells(sphereNormal, corner, weight)) {
+        return 15.0f;
+    }
+    // Flat blend across the triangle. Temperature varies smoothly over
+    // thousands of kilometres, so the linear part is all there is; the sharp
+    // structure people see in a snow line comes from the terrain crossing it,
+    // not from the temperature field itself.
+    float degrees = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        degrees += weight[i] * snapshot.temperature[corner[i]];
+    }
+    return degrees;
+}
+
 float CrustGrid::sampleCloudCover(const Snapshot& snapshot,
                                   const glm::vec3& sphereNormal) const {
     if (snapshot.cloudCover.size() != cells.size()) {
@@ -1968,6 +1989,16 @@ std::shared_ptr<const CrustGrid::Snapshot> CrustGrid::publishSnapshot() const {
     snapshot->channelDepth.resize(cells.size(), 0.0f);
     snapshot->channelPoint = lastChannelPoint;
     snapshot->channelPoint.resize(cells.size(), glm::vec3(0.0f));
+
+    snapshot->temperature = climate.getFields().temperature;
+    snapshot->temperature.resize(cells.size(), 15.0f);
+
+    snapshot->crustOmega.resize(cells.size(), glm::vec3(0.0f));
+    for (size_t i = 0; i < cells.size(); i++) {
+        const uint16_t plate = cells[i].plateId;
+        snapshot->crustOmega[i] =
+            plate < plates.size() ? plates[plate].omega : glm::vec3(0.0f);
+    }
     snapshot->routedSurface = lastRoutedSurface;
     snapshot->routedSurface.resize(cells.size(), 0.0f);
 

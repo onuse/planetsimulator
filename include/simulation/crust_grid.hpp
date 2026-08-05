@@ -552,6 +552,14 @@ public:
         std::vector<uint8_t> surfaceRock; // RockType at the top of the column
         std::vector<float> cloudCover;    // 0 to 1, from the climate model
 
+        // Surface temperature in degrees C, from the climate model.
+        //
+        // Published because the snow line is a temperature, and without this
+        // the renderer had no way to ask what the temperature was - so it used
+        // latitude and a fraction of the tallest mountain on the planet
+        // instead.
+        std::vector<float> temperature;
+
         // The drainage network erosion routes water down. Accumulated
         // discharge at each cell, and which neighbour it flows into.
         //
@@ -595,6 +603,17 @@ public:
         // Derived rather than stored, so there is no second piece of state to
         // drift out of agreement with the network it describes.
         std::vector<glm::vec3> channelPoint;
+
+        // How the crust under each cell is turning, in radians per million
+        // years, as the Euler vector of the plate that owns it.
+        //
+        // The grid is Eulerian and the rock is not, so a fixed latitude and
+        // longitude is not a fixed piece of ground. Watching one place for six
+        // million years put the continent hundreds of kilometres outside an
+        // eighty kilometre view and showed open ocean, which reads as the river
+        // having vanished. Anything meaning to follow a feature has to move
+        // with the plate carrying it, and this is what says how.
+        std::vector<glm::vec3> crustOmega;
 
         // The surface the network was routed on, in metres relative to sea
         // level: elevation with depressions filled, at the moment the routing
@@ -676,6 +695,16 @@ public:
     // Sky cover at a direction, blended between cells. Read from a published
     // snapshot so the renderer's worker threads can ask while the simulation
     // is mid-step.
+    // Surface temperature at a direction, blended across the triangle a point
+    // falls in rather than taken from the nearest cell.
+    //
+    // Nearest-cell would be simpler and is visibly wrong: it makes the field
+    // piecewise constant, so anything thresholded against it - the snow line,
+    // for one - draws the grid. The planet grew hexagons the first time this
+    // was tried the easy way.
+    float sampleTemperature(const Snapshot& snapshot,
+                            const glm::vec3& sphereNormal) const;
+
     float sampleCloudCover(const Snapshot& snapshot, const glm::vec3& sphereNormal) const;
 
     // Where the nearest river channel is, and how big it is.

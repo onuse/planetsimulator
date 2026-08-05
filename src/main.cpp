@@ -624,6 +624,10 @@ private:
             control.reply(answer);
         }
 
+        // Following a piece of ground means re-aiming every frame, because the
+        // ground is what is moving.
+        commands->followTrackedCrust();
+
         // The light is locked to the view, so it has to be recomputed whenever
         // the view moves - which is every frame the camera is in motion, not
         // only when a command asks for it.

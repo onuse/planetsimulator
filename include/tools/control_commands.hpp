@@ -39,6 +39,18 @@ struct ControlContext {
     std::function<void(bool visible)> setCloudsVisible;
     std::function<bool()> cloudsVisible;
 
+    // A piece of crust the camera is following, rather than a coordinate.
+    //
+    // Kept as a direction that is advected by the local plate rotation every
+    // frame, so it stays on the same rock while the rock moves. Tracking by
+    // parcel index would be simpler and wrong - parcels are created by arcs and
+    // consumed by subduction, so an index does not stay pointed at the same
+    // thing.
+    bool tracking = false;
+    glm::dvec3 trackedDirection{0.0, 0.0, 1.0};
+    float trackedAltitude = 50000.0f;
+    float lastTrackedTime = 0.0f;
+
     // True while the light is being held at a fixed angle to the camera rather
     // than to the planet.
     bool sunFollowsCamera = false;
@@ -71,6 +83,13 @@ private:
     std::string stats() const;
     std::string find(const std::string& what);
     std::string applySun();
+
+public:
+    // Move the tracked point with the plate carrying it, and re-aim. Called
+    // once a frame by the application, not by a command.
+    void followTrackedCrust();
+
+private:
 };
 
 // Where a point on the planet is, in the terms a person uses. Kept here because

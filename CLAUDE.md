@@ -117,6 +117,42 @@ So the mechanism is still unexplained. What is not explained is specifically
 this: why 1.8x as many columns per cell exceed capacity at level 6, when the
 typical excess is unchanged and it is not noise.
 
+## Open: continents concentrate instead of spreading, and it shows as snow
+
+The mottled white blotches over the continents are not weather and not a
+colour-band artefact. They are snow, and the land really is at the snow line.
+
+    t= 7 My  land 12238  mean elevation 2616 m  snow line 3345 m  36% above
+    t=37 My  land  8719  mean elevation 2835 m  snow line 3182 m  42% above
+             mean land crust thickness 33.9 km -> 37.5 km
+
+Continental volume now holds, since the arc production ratio was corrected. The
+land *area* does not: it falls by nearly a third over thirty million years while
+the volume stays, so the same rock piles into less ground, thickens by three and
+a half kilometres, and isostasy lifts it across the snow line. The mean sits
+only a few hundred metres below the line, so ordinary relief puts neighbouring
+cells on opposite sides of it - which is exactly what produces blotches rather
+than an ice cap. It compounds: the ground rises while the snow line falls.
+
+Nothing spreads continental crust sideways. Real continents extend, rift and
+collapse under their own weight; here they only thicken. That is probably the
+same defect as the capacity rule above, seen from the other end, and this is
+the better handle on it - it is visible from orbit, so a repair can be judged
+by looking rather than by a resolution ratio.
+
+## Following the crust rather than a coordinate
+
+The grid is Eulerian and the rock is not. Watching a fixed latitude and
+longitude for six million years put the continent hundreds of kilometres
+outside an eighty kilometre view and showed open ocean, which reads exactly
+like the river having vanished.
+
+    python tools/planetctl.py camera track <lat> <lon> <km>
+
+latches onto the ground under that point and advects it by the local plate
+rotation every frame, so it stays on the same rock. Use it for anything watched
+over time; `camera goto` is for a fixed place on the sphere.
+
 ## Driving the simulator
 
     PlanetSimulator.exe -control 8765
